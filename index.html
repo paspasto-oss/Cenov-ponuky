@@ -2,23 +2,32 @@
 <html lang="sk">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
   <title>Spektra Install – Profi HVAC Tool</title>
+  
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  
+  <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/9439/9439247.png">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/9439/9439247.png">
+
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  
   <style>
-    :root { --red:#c40000; --blue:#0056b3; --navy:#0f172a; --gray:#64748b; --border:#e2e8f0; --bg:#f8fafc; --profit:#10b981; }
-    * { box-sizing:border-box; font-family: 'Inter', sans-serif; }
-    body { margin: 0; background: var(--bg); color: #1e293b; }
+    :root { --red:#c40000; --blue:#0056b3; --navy:#0f172a; --gray:#64748b; --border:#e2e8f0; --bg:#f8fafc; --profit:#10b981; --orange:#f59e0b; }
+    * { box-sizing:border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { margin: 0; background: var(--bg); color: #1e293b; padding-bottom: 50px; }
     
     .no-print { max-width: 1250px; margin: 20px auto; padding: 0 20px; }
     .card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
     
-    /* BUSINESS DASHBOARD */
+    /* DASHBOARD */
     .dashboard { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; background: var(--navy); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
     .dash-box { text-align: center; border-right: 1px solid #334155; }
     .dash-box:last-child { border-right: none; }
     .dash-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 5px; }
-    .dash-val { font-size: 24px; font-weight: bold; color: var(--profit); }
+    .dash-val { font-size: 20px; font-weight: bold; color: var(--profit); }
 
     /* EDITOR */
     h3 { margin-top: 0; color: var(--red); border-bottom: 2px solid var(--red); padding-bottom: 10px; font-size: 18px; }
@@ -26,15 +35,19 @@
     input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 15px; color: #1e293b; }
     
     .editor-table { width: 100%; border-collapse: collapse; }
-    .editor-table th { text-align: left; font-size: 11px; color: var(--gray); text-transform: uppercase; padding: 10px; border-bottom: 2px solid var(--border); }
+    .editor-table th { text-align: left; font-size: 11px; color: var(--gray); text-transform: uppercase; padding: 10px; }
     .editor-table td { padding: 10px 5px; border-bottom: 1px solid var(--border); }
 
-    .btn { padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; border: none; font-size: 14px; transition: 0.2s; }
+    /* TLAČIDLÁ */
+    .action-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+    .btn { padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; border: none; font-size: 14px; transition: 0.2s; flex: 1; min-width: 140px; text-align: center; }
     .btn-add { background: var(--blue); color: white; }
-    .btn-print { background: var(--red); color: white; float: right; margin-left: 10px; }
-    .btn-new { background: #475569; color: white; float: right; }
+    .btn-print { background: var(--red); color: white; }
+    .btn-save { background: var(--profit); color: white; }
+    .btn-load { background: var(--orange); color: white; }
+    .btn-new { background: #475569; color: white; }
 
-    /* PRINT AREA */
+    /* PDF ŠTÝL */
     #print-area { width: 210mm; min-height: 297mm; padding: 15mm; margin: 20px auto; background: white; border: 1px solid #ddd; }
     .doc-header { display: flex; justify-content: space-between; border-bottom: 2px solid var(--red); padding-bottom: 15px; margin-bottom: 20px; }
     .doc-logo img { height: 75px; }
@@ -46,14 +59,13 @@
     .rekapitulacia { border: 2px solid var(--border); border-radius: 10px; padding: 15px; margin-top: 20px; }
     .rek-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #eee; font-size: 14px; }
     .rek-total { color: var(--red); font-weight: bold; font-size: 20px; border-bottom: none; margin-top: 10px; }
-    .footer-text { font-size: 10px; color: #444; margin-top: 30px; border-top: 1px solid var(--border); padding-top: 10px; line-height: 1.5; }
+    .footer-text { font-size: 10px; color: #444; margin-top: 30px; border-top: 1px solid var(--border); padding-top: 10px; }
     .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; margin-top: 50px; }
     .sig-line { border-top: 1px solid black; text-align: center; font-size: 10px; padding-top: 5px; }
 
     @media print {
       .no-print { display: none !important; }
       #print-area { margin: 0; border: none; width: 100%; padding: 5mm; }
-      body { background: white; }
     }
   </style>
 </head>
@@ -64,15 +76,15 @@
     <h3 style="color:white; border-color:#334155;">SPEKTRA BUSINESS DASHBOARD</h3>
     <div class="dashboard">
       <div class="dash-box">
-        <span class="dash-label">Odhadovaný zisk</span>
+        <span class="dash-label">Zisk</span>
         <span class="dash-val" id="stat-margin">0.00 €</span>
       </div>
       <div class="dash-box">
-        <span class="dash-label">Krytie mesačnej réžie</span>
+        <span class="dash-label">Krytie réžie</span>
         <span class="dash-val" id="stat-coverage" style="color:#fbbf24;">0.0 %</span>
       </div>
       <div class="dash-box">
-        <span class="dash-label">Čistý výnos po réžii</span>
+        <span class="dash-label">Čistý výnos</span>
         <span class="dash-val" id="stat-net" style="color:#60a5fa;">0.00 €</span>
       </div>
     </div>
@@ -97,27 +109,31 @@
       <thead>
         <tr>
           <th width="45%">Popis / Katalóg</th>
-          <th width="10%">Množstvo (ks/m)</th>
-          <th width="15%">J. cena €</th>
+          <th width="10%">Množ.</th>
+          <th width="15%">Cena €</th>
           <th width="15%" style="text-align:right">Spolu</th>
           <th width="5%"></th>
         </tr>
       </thead>
       <tbody id="editorBody"></tbody>
     </table>
-    <div style="margin-top: 20px;">
+    
+    <div class="action-bar">
       <button class="btn btn-add" onclick="addRow()">+ Pridať položku</button>
-      <button class="btn btn-print" onclick="window.print()">Vytlačiť do PDF</button>
-      <button class="btn btn-new" onclick="createNewOffer()">Nová ponuka (Reset)</button>
+      <button class="btn btn-print" onclick="window.print()">Vytlačiť PDF</button>
+      <button class="btn btn-save" onclick="saveToArchive()">💾 Uložiť Archív</button>
+      <button class="btn btn-load" onclick="document.getElementById('fileInput').click()">📂 Načítať Archív</button>
+      <button class="btn btn-new" onclick="createNewOffer()">Nový (Reset)</button>
     </div>
+    <input type="file" id="fileInput" style="display:none" accept=".json" onchange="loadFromArchive(event)">
   </div>
 </div>
 
 <div id="print-area">
   <div class="doc-header">
     <div class="doc-logo">
-      <img src="logo.png" alt="Spektra" onerror="this.src='https://via.placeholder.com/150x70?text=Spektra+Install'">
-      <div style="font-size:9px; font-weight:bold; color:var(--gray); text-transform:uppercase; margin-top:5px">Spektra Install s.r.o.</div>
+        <img src="logo.png" alt="Spektra" onerror="this.src='https://via.placeholder.com/150x70?text=Spektra+Install'">
+        <div style="font-size:9px; font-weight:bold; color:var(--gray); text-transform:uppercase; margin-top:5px">Spektra Install s.r.o.</div>
     </div>
     <div class="doc-center">
       <h2>CENOVÁ PONUKA</h2>
@@ -154,40 +170,23 @@
 
 <script>
   const MESACNA_REZIA = 11650;
-  // --- VYČISTENÝ PROFESIONÁLNY KATALÓG (Bez ikon) ---
   const CATALOG = [
     { cat: "PLYN A REVÍZIE", items: [
       { l: "Demontáž plynového potrubia a zaslepenie", p: 45 },
       { l: "Revízna správa plyn - OPaOS (celok)", p: 110 },
       { l: "Tlaková skúška plynovodu + protokol", p: 65 },
-      { l: "Pripojenie plynového spotrebiča (kotol/sporák)", p: 85 }
+      { l: "Pripojenie plynového spotrebiča", p: 85 }
     ]},
-    { cat: "VODA A ODPAD (REHAU RAUTITAN)", items: [
+    { cat: "VODA A ODPAD (REHAU)", items: [
       { l: "Hrubá montáž vody a odpadu (za 1 bod)", p: 45 },
       { l: "Nástenka REHAU RAUTITAN RX+ (bronz)", p: 11 },
       { l: "Potrubie REHAU RAUTITAN Stabil / m", p: 8 },
-      { l: "Hlavný uzáver vody a filtrácia (set)", p: 155 },
-      { l: "Vonkajší nezámrzný ventil (komplet)", p: 195 }
+      { l: "Hlavný uzáver vody a filtrácia (set)", p: 155 }
     ]},
-    { cat: "MONTÁŽ SANITY A BOJLEROV", items: [
-      { l: "Montáž plochého ohrievača (Ariston Velis 80l)", p: 140 },
-      { l: "Montáž podomietkového WC modulu (Geberit)", p: 125 },
-      { l: "Montáž umývadla a batérie", p: 65 },
-      { l: "Montáž sprchového setu a batérie", p: 85 },
-      { l: "Montáž práčkového sifónu a ventilov", p: 40 }
-    ]},
-    { cat: "VYKUROVANIE", items: [
-      { l: "Montáž kondenzačného kotla (základ)", p: 550 },
-      { l: "Podlahové kúrenie (systémová doska + práca) / m2", p: 42 },
-      { l: "Podlahové kúrenie (na uložený polystyren ) / m2", p: 25 },
-      { l: "Montáž rozdeľovača kúrenia (za 1 okruh)", p: 35 },
-      { l: "Chemický preplach systému", p: 250 }
-      { l: "Vyčistenie UK a inhibitory do systému", p: 550 }
-    ]},
-    { cat: "DOPRAVA A SERVIS", items: [
-      { l: "Doprava materiálu a techniky (Žilina)", p: 30 },
-      { l: "Hodinová sadzba (pomocné práce)", p: 25 },
-      { l: "Likvidácia odpadu a demontáž starej sanity", p: 40 }
+    { cat: "MONTÁŽ SANITY", items: [
+      { l: "Montáž plochého ohrievača Ariston Velis 80l", p: 140 },
+      { l: "Montáž podomietkového WC modulu", p: 125 },
+      { l: "Montáž umývadla a batérie", p: 65 }
     ]}
   ];
 
@@ -196,22 +195,8 @@
 
   function initCP() {
     const year = new Date().getFullYear();
-    const formattedCounter = counter.toString().padStart(3, '0');
-    const cpNo = `CP-${year}/${formattedCounter}`;
-    document.getElementById('cpNumber').value = cpNo;
-    document.getElementById('prev-cp').innerText = cpNo;
-  }
-
-  function createNewOffer() {
-    if(confirm("Chcete vytvoriť novú ponuku? Číslo počítadla sa zvýši.")) {
-      counter++;
-      localStorage.setItem('cp_counter', counter);
-      rows = [{ text: '', desc: '', qty: 1, unitPrice: 0 }];
-      document.getElementById('custName').value = "";
-      localStorage.removeItem('rows_v3');
-      initCP();
-      render();
-    }
+    document.getElementById('cpNumber').value = `CP-${year}/${counter.toString().padStart(3, '0')}`;
+    document.getElementById('prev-cp').innerText = document.getElementById('cpNumber').value;
   }
 
   function addRow() {
@@ -219,24 +204,18 @@
     render();
   }
 
-  // AUTOMATICKÉ DOPĹŇANIE CENY PRI VÝBERE Z KATALÓGU
   function handleSelect(i, val) {
     let found;
     CATALOG.forEach(c => c.items.forEach(it => { if(it.l === val) found = it; }));
     if(found) {
       rows[i].text = found.l;
       rows[i].unitPrice = found.p;
-      rows[i].desc = ""; 
       render();
     }
   }
 
   function updateData(i, f, v) {
-    if (f === 'qty') {
-      rows[i][f] = Math.round(parseFloat(v || 0));
-    } else {
-      rows[i][f] = (f === 'text' || f === 'desc') ? v : parseFloat(v || 0);
-    }
+    rows[i][f] = (f === 'qty' || f === 'unitPrice') ? parseFloat(v || 0) : v;
     localStorage.setItem('rows_v3', JSON.stringify(rows));
     updateAll();
   }
@@ -245,21 +224,20 @@
     const body = document.getElementById('editorBody');
     body.innerHTML = '';
     rows.forEach((r, i) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>
-          <select onchange="handleSelect(${i}, this.value)" style="margin-bottom:5px">
-            <option>-- Výber z katalógu --</option>
-            ${CATALOG.map(c => `<optgroup label="${c.cat}">${c.items.map(it => `<option value="${it.l}" ${r.text===it.l?'selected':''}>${it.l}</option>`).join('')}</optgroup>`).join('')}
-          </select>
-          <input type="text" value="${r.desc}" placeholder="Doplnkový popis..." oninput="updateData(${i}, 'desc', this.value)">
-        </td>
-        <td><input type="number" step="1" value="${r.qty}" oninput="updateData(${i}, 'qty', this.value)"></td>
-        <td><input type="number" value="${r.unitPrice}" oninput="updateData(${i}, 'unitPrice', this.value)"></td>
-        <td style="text-align:right; font-weight:bold">${(r.qty * r.unitPrice).toFixed(2)} €</td>
-        <td><button onclick="rows.splice(${i},1);render();" style="color:red; background:none; border:none; cursor:pointer;">✕</button></td>
-      `;
-      body.appendChild(tr);
+      body.innerHTML += `
+        <tr>
+          <td>
+            <select onchange="handleSelect(${i}, this.value)" style="margin-bottom:5px">
+              <option>-- Katalóg --</option>
+              ${CATALOG.map(c => `<optgroup label="${c.cat}">${c.items.map(it => `<option value="${it.l}" ${r.text===it.l?'selected':''}>${it.l}</option>`).join('')}</optgroup>`).join('')}
+            </select>
+            <input type="text" value="${r.desc || ''}" placeholder="Popis..." oninput="updateData(${i}, 'desc', this.value)">
+          </td>
+          <td><input type="number" value="${r.qty}" oninput="updateData(${i}, 'qty', this.value)"></td>
+          <td><input type="number" value="${r.unitPrice}" oninput="updateData(${i}, 'unitPrice', this.value)"></td>
+          <td style="text-align:right; font-weight:bold">${(r.qty * r.unitPrice).toFixed(2)} €</td>
+          <td><button onclick="rows.splice(${i},1);render();" style="color:red; background:none; border:none;">✕</button></td>
+        </tr>`;
     });
     updateAll();
   }
@@ -269,27 +247,53 @@
     const pRows = document.getElementById('preview-rows');
     pRows.innerHTML = '';
     let totalBase = 0;
-
     rows.forEach(r => {
       const line = r.qty * r.unitPrice;
       totalBase += line;
-      if(r.text) {
-        pRows.innerHTML += `<tr><td><b>${r.text}</b><br><small>${r.desc}</small></td><td style="text-align:center">${r.qty}</td><td style="text-align:right">${r.unitPrice.toFixed(2)} €</td><td style="text-align:right; font-weight:bold">${line.toFixed(2)} €</td></tr>`;
-      }
+      if(r.text) pRows.innerHTML += `<tr><td><b>${r.text}</b><br><small>${r.desc || ''}</small></td><td style="text-align:center">${r.qty}</td><td style="text-align:right">${r.unitPrice.toFixed(2)} €</td><td style="text-align:right; font-weight:bold">${line.toFixed(2)} €</td></tr>`;
     });
-
     const vRate = parseFloat(document.getElementById('vatRate').value);
     const vVal = totalBase * (vRate/100);
     document.getElementById('res-base').innerText = totalBase.toLocaleString('sk-SK') + ' €';
     document.getElementById('res-vat-perc').innerText = vRate;
     document.getElementById('res-vat-val').innerText = vVal.toLocaleString('sk-SK') + ' €';
     document.getElementById('res-total').innerText = (totalBase + vVal).toLocaleString('sk-SK') + ' €';
-
-    // Dashboard
+    
     let margin = totalBase * 0.30;
     document.getElementById('stat-margin').innerText = margin.toFixed(2) + " €";
     document.getElementById('stat-coverage').innerText = ((margin / MESACNA_REZIA) * 100).toFixed(1) + " %";
     document.getElementById('stat-net').innerText = (margin - (MESACNA_REZIA / 15)).toFixed(2) + " €";
+  }
+
+  function saveToArchive() {
+    const data = { cp: document.getElementById('cpNumber').value, zakaznik: document.getElementById('custName').value, rows: rows };
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type : 'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${data.cp}_${data.zakaznik || 'ponuka'}.json`;
+    a.click();
+  }
+
+  function loadFromArchive(event) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const data = JSON.parse(e.target.result);
+      rows = data.rows;
+      document.getElementById('custName').value = data.zakaznik || "";
+      render();
+    };
+    reader.readAsText(event.target.files[0]);
+  }
+
+  function createNewOffer() {
+    if(confirm("Nová ponuka?")) {
+      counter++;
+      localStorage.setItem('cp_counter', counter);
+      rows = [{ text: '', desc: '', qty: 1, unitPrice: 0 }];
+      document.getElementById('custName').value = "";
+      initCP();
+      render();
+    }
   }
 
   initCP();
