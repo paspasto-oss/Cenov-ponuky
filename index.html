@@ -1,162 +1,297 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="sk">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spektra Business Dashboard</title>
-    <style>
-        :root { --red: #cc0000; --dark: #1a233a; --blue: #0056b3; }
-        body { font-family: sans-serif; margin: 0; padding: 0; background: #f0f2f5; }
-        
-        /* DASHBOARD */
-        .no-print { padding: 15px; max-width: 800px; margin: auto; }
-        .card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        h3 { color: var(--red); margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        
-        /* RESPONZÍVNE POLOŽKY */
-        .item-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; background: #f9f9f9; padding: 10px; border-radius: 8px; position: relative; }
-        .item-row input { padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
-        .inp-name { flex: 1 1 100%; } 
-        .inp-small { flex: 1; }
-        
-        .btn { border: none; padding: 12px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
-        .btn-add { background: var(--blue); color: white; }
-        .btn-print { background: var(--red); color: white; margin-top: 20px; font-size: 1.1em; }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Spektra Install – Profi HVAC Tool</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --red:#c40000; --blue:#0056b3; --navy:#0f172a; --gray:#64748b; --border:#e2e8f0; --bg:#f8fafc; --profit:#10b981; }
+    * { box-sizing:border-box; font-family: 'Inter', sans-serif; }
+    body { margin: 0; background: var(--bg); color: #1e293b; }
+    
+    .no-print { max-width: 1250px; margin: 20px auto; padding: 0 20px; }
+    .card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    
+    /* BUSINESS DASHBOARD */
+    .dashboard { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; background: var(--navy); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+    .dash-box { text-align: center; border-right: 1px solid #334155; }
+    .dash-box:last-child { border-right: none; }
+    .dash-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 5px; }
+    .dash-val { font-size: 24px; font-weight: bold; color: var(--profit); }
 
-        /* PDF NÁHĽAD */
-        .print-wrapper { width: 100%; overflow-x: auto; display: flex; justify-content: center; padding: 20px 0; background: #525659; }
-        #print-area { 
-            background: white; width: 210mm; min-height: 297mm; padding: 15mm; 
-            box-shadow: 0 0 10px rgba(0,0,0,0.1); transform-origin: top center;
-        }
+    /* EDITOR */
+    h3 { margin-top: 0; color: var(--red); border-bottom: 2px solid var(--red); padding-bottom: 10px; font-size: 18px; }
+    .grid-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+    input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 15px; color: #1e293b; }
+    
+    .editor-table { width: 100%; border-collapse: collapse; }
+    .editor-table th { text-align: left; font-size: 11px; color: var(--gray); text-transform: uppercase; padding: 10px; border-bottom: 2px solid var(--border); }
+    .editor-table td { padding: 10px 5px; border-bottom: 1px solid var(--border); }
 
-        @media screen and (max-width: 225mm) {
-            #print-area { transform: scale(calc(100vw / 225mm)); }
-            .print-wrapper { padding: 0; background: #f0f2f5; }
-        }
+    .btn { padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; border: none; font-size: 14px; transition: 0.2s; }
+    .btn-add { background: var(--blue); color: white; }
+    .btn-print { background: var(--red); color: white; float: right; margin-left: 10px; }
+    .btn-new { background: #475569; color: white; float: right; }
 
-        /* ŠTÝL PDF */
-        .pdf-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--red); padding-bottom: 10px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; font-size: 12px; text-align: left; }
-        th { background: #f8f9fa; }
-        .total-table { width: 250px; margin-left: auto; margin-top: 20px; font-weight: bold; }
+    /* PRINT AREA */
+    #print-area { width: 210mm; min-height: 297mm; padding: 15mm; margin: 20px auto; background: white; border: 1px solid #ddd; }
+    .doc-header { display: flex; justify-content: space-between; border-bottom: 2px solid var(--red); padding-bottom: 15px; margin-bottom: 20px; }
+    .doc-logo img { height: 75px; }
+    .doc-center { text-align: center; flex: 1; }
+    .doc-center h2 { color: var(--red); margin: 0; font-size: 24px; }
+    .preview-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .preview-table th { background: #f8fafc; border: 1px solid var(--border); font-size: 12px; padding: 10px; text-align: left; }
+    .preview-table td { border: 1px solid var(--border); padding: 10px; font-size: 12px; }
+    .rekapitulacia { border: 2px solid var(--border); border-radius: 10px; padding: 15px; margin-top: 20px; }
+    .rek-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #eee; font-size: 14px; }
+    .rek-total { color: var(--red); font-weight: bold; font-size: 20px; border-bottom: none; margin-top: 10px; }
+    .footer-text { font-size: 10px; color: #444; margin-top: 30px; border-top: 1px solid var(--border); padding-top: 10px; line-height: 1.5; }
+    .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; margin-top: 50px; }
+    .sig-line { border-top: 1px solid black; text-align: center; font-size: 10px; padding-top: 5px; }
 
-        @media print {
-            .no-print { display: none !important; }
-            .print-wrapper { padding: 0; background: white; }
-            #print-area { transform: none !important; box-shadow: none; width: 100%; }
-        }
-    </style>
+    @media print {
+      .no-print { display: none !important; }
+      #print-area { margin: 0; border: none; width: 100%; padding: 5mm; }
+      body { background: white; }
+    }
+  </style>
 </head>
 <body>
 
 <div class="no-print">
-    <div class="card">
-        <h3>Údaje o zákazníkovi</h3>
-        <input type="text" id="cust-name" placeholder="Meno zákazníka / Projekt (napr. Žilina - Rodinný dom)" oninput="aktualizujPDF()" style="width:100%; padding:10px; box-sizing:border-box;">
+  <div class="card" style="background: var(--navy); border:none;">
+    <h3 style="color:white; border-color:#334155;">SPEKTRA BUSINESS DASHBOARD</h3>
+    <div class="dashboard">
+      <div class="dash-box">
+        <span class="dash-label">Odhadovaný zisk</span>
+        <span class="dash-val" id="stat-margin">0.00 €</span>
+      </div>
+      <div class="dash-box">
+        <span class="dash-label">Krytie mesačnej réžie</span>
+        <span class="dash-val" id="stat-coverage" style="color:#fbbf24;">0.0 %</span>
+      </div>
+      <div class="dash-box">
+        <span class="dash-label">Čistý výnos po réžii</span>
+        <span class="dash-val" id="stat-net" style="color:#60a5fa;">0.00 €</span>
+      </div>
     </div>
+  </div>
 
-    <div class="card">
-        <h3>Položky rozpočtu</h3>
-        <div id="items-container"></div>
-        <button class="btn btn-add" onclick="pridajRiadok()">+ Pridať položku</button>
-        <button class="btn btn-print" onclick="window.print()">Vytlačiť hotovú ponuku</button>
+  <div class="card">
+    <h3>Údaje o zákazníkovi</h3>
+    <div class="grid-inputs">
+      <input type="text" id="custName" placeholder="Meno zákazníka / Projekt" oninput="updateAll()">
+      <input type="text" id="cpNumber" placeholder="Číslo ponuky" readonly style="background: #f1f5f9; font-weight: bold;">
+      <select id="vatRate" onchange="updateAll()">
+        <option value="23">DPH 23%</option>
+        <option value="20">DPH 20%</option>
+        <option value="0">Bez DPH</option>
+      </select>
     </div>
+  </div>
+
+  <div class="card">
+    <h3>Položky (Materiál & Práca)</h3>
+    <table class="editor-table">
+      <thead>
+        <tr>
+          <th width="45%">Popis / Katalóg</th>
+          <th width="10%">Množstvo (ks/m)</th>
+          <th width="15%">J. cena €</th>
+          <th width="15%" style="text-align:right">Spolu</th>
+          <th width="5%"></th>
+        </tr>
+      </thead>
+      <tbody id="editorBody"></tbody>
+    </table>
+    <div style="margin-top: 20px;">
+      <button class="btn btn-add" onclick="addRow()">+ Pridať položku</button>
+      <button class="btn btn-print" onclick="window.print()">Vytlačiť do PDF</button>
+      <button class="btn btn-new" onclick="createNewOffer()">Nová ponuka (Reset)</button>
+    </div>
+  </div>
 </div>
 
-<div class="print-wrapper">
-    <div id="print-area">
-        <div class="pdf-header">
-            <div>
-                <h2 style="margin:0; color:var(--red);">SPEKTRA INSTALL</h2>
-                <small>Spektra Install s.r.o. | Žilina</small>
-            </div>
-            <div style="text-align:right; font-size:10px;">
-                IČO: 50003361<br>
-                DIČ: 2120140235<br>
-                info@spektra.sk
-            </div>
-        </div>
-        
-        <h2 style="text-align:center; color:var(--red); margin-top:30px;">CENOVÁ PONUKA</h2>
-        <p><strong>Projekt:</strong> <span id="pdf-cust-name">-</span></p>
-        <p><strong>Dátum:</strong> 19. 01. 2026</p>
-
-        <table id="pdf-table">
-            <thead>
-                <tr><th>Popis položky</th><th>Množ.</th><th>J. cena</th><th>Spolu</th></tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-
-        <table class="total-table">
-            <tr><td>Základ dane:</td><td id="res-zaklad">0.00 €</td></tr>
-            <tr style="color:var(--red); font-size:16px;"><td>CELKOM S DPH (23%):</td><td id="res-celkom">0.00 €</td></tr>
-        </table>
-        
-        <div style="margin-top:50px; font-size:10px; color:gray;">
-            * Použitý materiál: REHAU RAUTITAN. Ponuka zahŕňa demontáž plynu a revíznu správu.
-        </div>
+<div id="print-area">
+  <div class="doc-header">
+    <div class="doc-logo">
+      <img src="logo.png" alt="Spektra" onerror="this.src='https://via.placeholder.com/150x70?text=Spektra+Install'">
+      <div style="font-size:9px; font-weight:bold; color:var(--gray); text-transform:uppercase; margin-top:5px">Spektra Install s.r.o.</div>
     </div>
-</div>
+    <div class="doc-center">
+      <h2>CENOVÁ PONUKA</h2>
+      <div id="prev-cp" style="font-size:11px; font-weight:bold; color:var(--gray);"></div>
+      <div id="prev-project" style="font-size:12px; margin-top:5px; font-weight:bold;">Projekt: -</div>
+    </div>
+    <div style="text-align:right; font-size:10px;">
+      <b>Spektra Install s.r.o.</b><br>Rajecká Lesná 98, 013 15<br>IČO: 53690036 | DIČ: 2121459450
+    </div>
+  </div>
 
-<datalist id="katalog">
-    <option value="Demontáž plynového potrubia k ohrievaču">
-    <option value="Revízna správa plyn (odborná prehliadka a skúška)">
-    <option value="Hrubá montáž rozvodov vody a odpadu (za bod)">
-    <option value="Montáž a napojenie plochého ohrievača vody Ariston">
-    <option value="Montáž sanity (WC, umývadlo, batéria)">
-    <option value="Nástenka REHAU RAUTITAN RX+ (bronz)">
-    <option value="Potrubie REHAU RAUTITAN Stabil">
-    <option value="Ohrievač vody Ariston Velis 80l">
-    <option value="Rohový ventil 1/2 x 3/8 celokovový">
-    <option value="Doprava a režijné náklady Žilina">
-</datalist>
+  <table class="preview-table">
+    <thead>
+      <tr><th>Položka - Materiál a odborná montáž</th><th width="60" style="text-align:center">Množ.</th><th width="100" style="text-align:right">Jedn. cena</th><th width="120" style="text-align:right">Spolu bez DPH</th></tr>
+    </thead>
+    <tbody id="preview-rows"></tbody>
+  </table>
+
+  <div class="rekapitulacia">
+    <div class="rek-row"><span>Základ dane (Bez DPH)</span><span id="res-base">0,00 €</span></div>
+    <div class="rek-row"><span>DPH <span id="res-vat-perc">23</span> %</span><span id="res-vat-val">0,00 €</span></div>
+    <div class="rek-row rek-total"><span>CELKOVÁ SUMA S DPH</span><span id="res-total">0,00 €</span></div>
+  </div>
+
+  <div class="footer-text">
+    * Záruka: 36 mesiacov na montáž, 10 rokov na systém Rehau Rautitan. Platba: Záloha 60% na materiál.
+  </div>
+
+  <div class="sig-grid">
+    <div class="sig-line">Zhotoviteľ: Spektra Install s.r.o.</div>
+    <div class="sig-line">Objednávateľ (Súhlas s ponukou)</div>
+  </div>
+</div>
 
 <script>
-    function pridajRiadok(n = '', q = '', p = '') {
-        const container = document.getElementById('items-container');
-        const row = document.createElement('div');
-        row.className = 'item-row';
-        row.innerHTML = `
-            <input type="text" class="inp-name" placeholder="Popis položky" list="katalog" value="${n}" oninput="aktualizujPDF()">
-            <input type="number" class="inp-small qty" placeholder="Množ." value="${q}" oninput="aktualizujPDF()">
-            <input type="number" class="inp-small price" placeholder="Cena €" value="${p}" oninput="aktualizujPDF()">
-            <button onclick="this.parentElement.remove(); aktualizujPDF()" style="color:red; background:none; border:none; cursor:pointer;">✕</button>
-        `;
-        container.appendChild(row);
-        aktualizujPDF();
+  const MESACNA_REZIA = 11650;
+  // --- VYČISTENÝ PROFESIONÁLNY KATALÓG (Bez ikon) ---
+  const CATALOG = [
+    { cat: "PLYN A REVÍZIE", items: [
+      { l: "Demontáž plynového potrubia a zaslepenie", p: 45 },
+      { l: "Revízna správa plyn - OPaOS (celok)", p: 110 },
+      { l: "Tlaková skúška plynovodu + protokol", p: 65 },
+      { l: "Pripojenie plynového spotrebiča (kotol/sporák)", p: 85 }
+    ]},
+    { cat: "VODA A ODPAD (REHAU RAUTITAN)", items: [
+      { l: "Hrubá montáž vody a odpadu (za 1 bod)", p: 45 },
+      { l: "Nástenka REHAU RAUTITAN RX+ (bronz)", p: 11 },
+      { l: "Potrubie REHAU RAUTITAN Stabil / m", p: 8 },
+      { l: "Hlavný uzáver vody a filtrácia (set)", p: 155 },
+      { l: "Vonkajší nezámrzný ventil (komplet)", p: 195 }
+    ]},
+    { cat: "MONTÁŽ SANITY A BOJLEROV", items: [
+      { l: "Montáž plochého ohrievača (Ariston Velis 80l)", p: 140 },
+      { l: "Montáž podomietkového WC modulu (Geberit)", p: 125 },
+      { l: "Montáž umývadla a batérie", p: 65 },
+      { l: "Montáž sprchového setu a batérie", p: 85 },
+      { l: "Montáž práčkového sifónu a ventilov", p: 40 }
+    ]},
+    { cat: "VYKUROVANIE", items: [
+      { l: "Montáž kondenzačného kotla (základ)", p: 450 },
+      { l: "Podlahové kúrenie (systémová doska + práca) / m2", p: 42 },
+      { l: "Montáž rozdeľovača kúrenia (za 1 okruh)", p: 35 },
+      { l: "Chemický preplach systému", p: 250 }
+    ]},
+    { cat: "DOPRAVA A SERVIS", items: [
+      { l: "Doprava materiálu a techniky (Žilina)", p: 30 },
+      { l: "Hodinová sadzba (pomocné práce)", p: 25 },
+      { l: "Likvidácia odpadu a demontáž starej sanity", p: 40 }
+    ]}
+  ];
+
+  let rows = JSON.parse(localStorage.getItem('rows_v3')) || [{ text: '', desc: '', qty: 1, unitPrice: 0 }];
+  let counter = parseInt(localStorage.getItem('cp_counter')) || 1;
+
+  function initCP() {
+    const year = new Date().getFullYear();
+    const formattedCounter = counter.toString().padStart(3, '0');
+    const cpNo = `CP-${year}/${formattedCounter}`;
+    document.getElementById('cpNumber').value = cpNo;
+    document.getElementById('prev-cp').innerText = cpNo;
+  }
+
+  function createNewOffer() {
+    if(confirm("Chcete vytvoriť novú ponuku? Číslo počítadla sa zvýši.")) {
+      counter++;
+      localStorage.setItem('cp_counter', counter);
+      rows = [{ text: '', desc: '', qty: 1, unitPrice: 0 }];
+      document.getElementById('custName').value = "";
+      localStorage.removeItem('rows_v3');
+      initCP();
+      render();
     }
+  }
 
-    function aktualizujPDF() {
-        document.getElementById('pdf-cust-name').innerText = document.getElementById('cust-name').value || '-';
-        const rows = document.querySelectorAll('.item-row');
-        const tbody = document.querySelector('#pdf-table tbody');
-        tbody.innerHTML = '';
-        let suma = 0;
+  function addRow() {
+    rows.push({ text: '', desc: '', qty: 1, unitPrice: 0 });
+    render();
+  }
 
-        rows.forEach(r => {
-            const n = r.querySelector('.inp-name').value;
-            const q = parseFloat(r.querySelector('.qty').value) || 0;
-            const p = parseFloat(r.querySelector('.price').value) || 0;
-            if(n || q*p > 0) {
-                suma += (q*p);
-                tbody.innerHTML += `<tr><td>${n}</td><td>${q}</td><td>${p.toFixed(2)} €</td><td>${(q*p).toFixed(2)} €</td></tr>`;
-            }
-        });
-
-        document.getElementById('res-zaklad').innerText = suma.toFixed(2) + ' €';
-        document.getElementById('res-celkom').innerText = (suma * 1.23).toFixed(2) + ' €';
+  // AUTOMATICKÉ DOPĹŇANIE CENY PRI VÝBERE Z KATALÓGU
+  function handleSelect(i, val) {
+    let found;
+    CATALOG.forEach(c => c.items.forEach(it => { if(it.l === val) found = it; }));
+    if(found) {
+      rows[i].text = found.l;
+      rows[i].unitPrice = found.p;
+      rows[i].desc = ""; 
+      render();
     }
+  }
 
-    // Automaticky pridá základné položky pri štarte
-    window.onload = () => {
-        pridajRiadok("Demontáž plynového potrubia k ohrievaču", 1, 45);
-        pridajRiadok("Revízna správa plyn", 1, 110);
-        pridajRiadok("Nástenka REHAU RAUTITAN RX+ (bronz)", 10, 10.50);
-    };
+  function updateData(i, f, v) {
+    if (f === 'qty') {
+      rows[i][f] = Math.round(parseFloat(v || 0));
+    } else {
+      rows[i][f] = (f === 'text' || f === 'desc') ? v : parseFloat(v || 0);
+    }
+    localStorage.setItem('rows_v3', JSON.stringify(rows));
+    updateAll();
+  }
+
+  function render() {
+    const body = document.getElementById('editorBody');
+    body.innerHTML = '';
+    rows.forEach((r, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>
+          <select onchange="handleSelect(${i}, this.value)" style="margin-bottom:5px">
+            <option>-- Výber z katalógu --</option>
+            ${CATALOG.map(c => `<optgroup label="${c.cat}">${c.items.map(it => `<option value="${it.l}" ${r.text===it.l?'selected':''}>${it.l}</option>`).join('')}</optgroup>`).join('')}
+          </select>
+          <input type="text" value="${r.desc}" placeholder="Doplnkový popis..." oninput="updateData(${i}, 'desc', this.value)">
+        </td>
+        <td><input type="number" step="1" value="${r.qty}" oninput="updateData(${i}, 'qty', this.value)"></td>
+        <td><input type="number" value="${r.unitPrice}" oninput="updateData(${i}, 'unitPrice', this.value)"></td>
+        <td style="text-align:right; font-weight:bold">${(r.qty * r.unitPrice).toFixed(2)} €</td>
+        <td><button onclick="rows.splice(${i},1);render();" style="color:red; background:none; border:none; cursor:pointer;">✕</button></td>
+      `;
+      body.appendChild(tr);
+    });
+    updateAll();
+  }
+
+  function updateAll() {
+    document.getElementById('prev-project').innerText = 'Projekt: ' + (document.getElementById('custName').value || '-');
+    const pRows = document.getElementById('preview-rows');
+    pRows.innerHTML = '';
+    let totalBase = 0;
+
+    rows.forEach(r => {
+      const line = r.qty * r.unitPrice;
+      totalBase += line;
+      if(r.text) {
+        pRows.innerHTML += `<tr><td><b>${r.text}</b><br><small>${r.desc}</small></td><td style="text-align:center">${r.qty}</td><td style="text-align:right">${r.unitPrice.toFixed(2)} €</td><td style="text-align:right; font-weight:bold">${line.toFixed(2)} €</td></tr>`;
+      }
+    });
+
+    const vRate = parseFloat(document.getElementById('vatRate').value);
+    const vVal = totalBase * (vRate/100);
+    document.getElementById('res-base').innerText = totalBase.toLocaleString('sk-SK') + ' €';
+    document.getElementById('res-vat-perc').innerText = vRate;
+    document.getElementById('res-vat-val').innerText = vVal.toLocaleString('sk-SK') + ' €';
+    document.getElementById('res-total').innerText = (totalBase + vVal).toLocaleString('sk-SK') + ' €';
+
+    // Dashboard
+    let margin = totalBase * 0.30;
+    document.getElementById('stat-margin').innerText = margin.toFixed(2) + " €";
+    document.getElementById('stat-coverage').innerText = ((margin / MESACNA_REZIA) * 100).toFixed(1) + " %";
+    document.getElementById('stat-net').innerText = (margin - (MESACNA_REZIA / 15)).toFixed(2) + " €";
+  }
+
+  initCP();
+  render();
 </script>
-
 </body>
 </html>
