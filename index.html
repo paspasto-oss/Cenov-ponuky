@@ -11,115 +11,78 @@
   
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23c40000%22/><text y=%22.9em%22 x=%2250%25%22 font-family=%22Inter, sans-serif%22 font-weight=%22bold%22 font-size=%2260%22 text-anchor=%22middle%22 fill=%22white%22>CP</text></svg>">
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23c40000%22/><text y=%22.9em%22 x=%2250%25%22 font-family=%22Inter, sans-serif%22 font-weight=%22bold%22 font-size=%2260%22 text-anchor=%22middle%22 fill=%22white%22>CP</text></svg>">
-
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   
   <style>
     :root { --red:#c40000; --blue:#0056b3; --navy:#0f172a; --gray:#64748b; --border:#e2e8f0; --bg:#f8fafc; --profit:#10b981; --orange:#f59e0b; }
     * { box-sizing:border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
     body { margin: 0; background: var(--bg); color: #1e293b; padding-bottom: 50px; }
-    
     .no-print { max-width: 1250px; margin: 20px auto; padding: 0 20px; }
     .card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
-    
-    .dashboard { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; background: var(--navy); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+    .dashboard { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; background: var(--navy); color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
     .dash-box { text-align: center; border-right: 1px solid #334155; }
     .dash-box:last-child { border-right: none; }
-    .dash-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 5px; }
-    .dash-val { font-size: 20px; font-weight: bold; color: var(--profit); }
-
+    .dash-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; display: block; }
+    .dash-val { font-size: 18px; font-weight: bold; color: var(--profit); }
     h3 { margin-top: 0; color: var(--red); border-bottom: 2px solid var(--red); padding-bottom: 10px; font-size: 18px; }
     .grid-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-    input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 15px; color: #1e293b; }
-    
+    input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 15px; }
     .editor-table { width: 100%; border-collapse: collapse; }
     .editor-table th { text-align: left; font-size: 11px; color: var(--gray); text-transform: uppercase; padding: 10px; }
     .editor-table td { padding: 10px 5px; border-bottom: 1px solid var(--border); }
-
     .action-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
-    .btn { padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; border: none; font-size: 14px; transition: 0.2s; flex: 1; min-width: 140px; text-align: center; }
+    .btn { padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; border: none; font-size: 14px; flex: 1; min-width: 140px; text-align: center; }
     .btn-add { background: var(--blue); color: white; }
     .btn-print { background: var(--red); color: white; }
     .btn-save { background: var(--profit); color: white; }
     .btn-load { background: var(--orange); color: white; }
     .btn-new { background: #475569; color: white; }
-
     #print-area { width: 210mm; min-height: 297mm; padding: 15mm; margin: 20px auto; background: white; border: 1px solid #ddd; }
     .doc-header { display: flex; justify-content: space-between; border-bottom: 2px solid var(--red); padding-bottom: 15px; margin-bottom: 20px; }
-    .doc-logo img { height: 75px; }
+    .doc-logo img { height: 70px; }
     .doc-center { text-align: center; flex: 1; }
-    .doc-center h2 { color: var(--red); margin: 0; font-size: 24px; }
+    .doc-center h2 { color: var(--red); margin: 0; font-size: 22px; }
     .preview-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-    .preview-table th { background: #f8fafc; border: 1px solid var(--border); font-size: 12px; padding: 10px; text-align: left; }
-    .preview-table td { border: 1px solid var(--border); padding: 10px; font-size: 12px; }
-    .rekapitulacia { border: 2px solid var(--border); border-radius: 10px; padding: 15px; margin-top: 20px; }
+    .preview-table th { background: #f8fafc; border: 1px solid var(--border); font-size: 11px; padding: 8px; text-align: left; }
+    .preview-table td { border: 1px solid var(--border); padding: 8px; font-size: 12px; }
+    .rekapitulacia { border: 2px solid var(--border); border-radius: 10px; padding: 15px; }
     .rek-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #eee; font-size: 14px; }
-    .rek-total { color: var(--red); font-weight: bold; font-size: 20px; border-bottom: none; margin-top: 10px; }
-    .footer-text { font-size: 10px; color: #444; margin-top: 30px; border-top: 1px solid var(--border); padding-top: 10px; }
-    .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; margin-top: 50px; }
-    .sig-line { border-top: 1px solid black; text-align: center; font-size: 10px; padding-top: 5px; }
-
-    @media print {
-      .no-print { display: none !important; }
-      #print-area { margin: 0; border: none; width: 100%; padding: 5mm; }
-    }
+    .rek-total { color: var(--red); font-weight: bold; font-size: 18px; border-bottom: none; margin-top: 10px; }
+    @media print { .no-print { display: none !important; } #print-area { margin: 0; border: none; width: 100%; } }
   </style>
 </head>
 <body>
 
 <div class="no-print">
   <div class="card" style="background: var(--navy); border:none;">
-    <h3 style="color:white; border-color:#334155;">SPEKTRA BUSINESS DASHBOARD</h3>
     <div class="dashboard">
-      <div class="dash-box">
-        <span class="dash-label">Odhadovaný Zisk</span>
-        <span class="dash-val" id="stat-margin">0.00 €</span>
-      </div>
-      <div class="dash-box">
-        <span class="dash-label">Krytie réžie</span>
-        <span class="dash-val" id="stat-coverage" style="color:#fbbf24;">0.0 %</span>
-      </div>
-      <div class="dash-box">
-        <span class="dash-label">Čistý výnos</span>
-        <span class="dash-val" id="stat-net" style="color:#60a5fa;">0.00 €</span>
-      </div>
+      <div class="dash-box"><span class="dash-label">Zisk (30%)</span><span class="dash-val" id="stat-margin">0 €</span></div>
+      <div class="dash-box"><span class="dash-label">Krytie réžie</span><span class="dash-val" id="stat-coverage" style="color:#fbbf24;">0 %</span></div>
+      <div class="dash-box"><span class="dash-label">Čistý výnos</span><span class="dash-val" id="stat-net" style="color:#60a5fa;">0 €</span></div>
     </div>
   </div>
 
   <div class="card">
-    <h3>Údaje o zákazníkovi</h3>
+    <h3>Zákazník a Projekt</h3>
     <div class="grid-inputs">
       <input type="text" id="custName" placeholder="Meno zákazníka / Projekt" oninput="updateAll()">
-      <input type="text" id="cpNumber" placeholder="Číslo ponuky" readonly style="background: #f1f5f9; font-weight: bold;">
-      <select id="vatRate" onchange="updateAll()">
-        <option value="23">DPH 23%</option>
-        <option value="20">DPH 20%</option>
-        <option value="0">Bez DPH</option>
-      </select>
+      <input type="text" id="cpNumber" placeholder="Číslo ponuky" readonly style="background:#f1f5f9;">
+      <select id="vatRate" onchange="updateAll()"><option value="23">DPH 23%</option><option value="20">DPH 20%</option><option value="0">Bez DPH</option></select>
     </div>
   </div>
 
   <div class="card">
-    <h3>Položky (Materiál & Práca)</h3>
+    <h3>Položky Ponuky</h3>
     <table class="editor-table">
-      <thead>
-        <tr>
-          <th width="45%">Popis / Katalóg</th>
-          <th width="10%">Množ.</th>
-          <th width="15%">Cena €</th>
-          <th width="15%" style="text-align:right">Spolu</th>
-          <th width="5%"></th>
-        </tr>
-      </thead>
+      <thead><tr><th>Popis / Katalóg</th><th width="80">Množ.</th><th width="100">Cena €</th><th width="100" style="text-align:right">Spolu</th><th width="40"></th></tr></thead>
       <tbody id="editorBody"></tbody>
     </table>
-    
     <div class="action-bar">
       <button class="btn btn-add" onclick="addRow()">+ Pridať položku</button>
       <button class="btn btn-print" onclick="window.print()">Vytlačiť PDF</button>
       <button class="btn btn-save" onclick="saveToArchive()">💾 Uložiť Archív</button>
-      <button class="btn btn-load" onclick="document.getElementById('fileInput').click()">📂 Načítať Archív</button>
-      <button class="btn btn-new" onclick="createNewOffer()">Nový (Reset)</button>
+      <button class="btn btn-load" onclick="document.getElementById('fileInput').click()">📂 Načítať</button>
+      <button class="btn btn-new" onclick="createNewOffer()">Reset</button>
     </div>
     <input type="file" id="fileInput" style="display:none" accept=".json" onchange="loadFromArchive(event)">
   </div>
@@ -127,95 +90,61 @@
 
 <div id="print-area">
   <div class="doc-header">
-    <div class="doc-logo">
-        <img src="logo.png" alt="Spektra" onerror="this.src='https://via.placeholder.com/150x70?text=Spektra+Install'">
-        <div style="font-size:9px; font-weight:bold; color:var(--gray); text-transform:uppercase; margin-top:5px">Spektra Install s.r.o.</div>
-    </div>
-    <div class="doc-center">
-      <h2>CENOVÁ PONUKA</h2>
-      <div id="prev-cp" style="font-size:11px; font-weight:bold; color:var(--gray);"></div>
-      <div id="prev-project" style="font-size:12px; margin-top:5px; font-weight:bold;">Projekt: -</div>
-    </div>
-    <div style="text-align:right; font-size:10px;">
-      <b>Spektra Install s.r.o.</b><br>Rosinská cesta 13, 010 08 Žilina<br>IČO: 50003361 | DIČ: 2120140235
-    </div>
+    <div class="doc-logo"><img src="logo.png" alt="Spektra" onerror="this.src='https://via.placeholder.com/150x70?text=Spektra+Install'"></div>
+    <div class="doc-center"><h2 id="prev-doc-title">CENOVÁ PONUKA</h2><div id="prev-cp" style="font-size:11px;font-weight:bold;color:var(--gray);"></div><div id="prev-project" style="font-size:12px;margin-top:5px;font-weight:bold;"></div></div>
+    <div style="text-align:right; font-size:10px;"><b>Spektra Install s.r.o.</b><br>Rosinská cesta 13, Žilina<br>IČO: 50003361</div>
   </div>
-
   <table class="preview-table">
-    <thead>
-      <tr><th>Položka - Materiál a odborná montáž</th><th width="60" style="text-align:center">Množ.</th><th width="100" style="text-align:right">Jedn. cena</th><th width="120" style="text-align:right">Spolu bez DPH</th></tr>
-    </thead>
+    <thead><tr><th>Položka - Materiál a odborná montáž</th><th width="60" style="text-align:center">Množ.</th><th width="80" style="text-align:right">J. cena</th><th width="100" style="text-align:right">Spolu bez DPH</th></tr></thead>
     <tbody id="preview-rows"></tbody>
   </table>
-
   <div class="rekapitulacia">
-    <div class="rek-row"><span>Základ dane (Bez DPH)</span><span id="res-base">0,00 €</span></div>
+    <div class="rek-row"><span>Základ dane</span><span id="res-base">0,00 €</span></div>
     <div class="rek-row"><span>DPH <span id="res-vat-perc">23</span> %</span><span id="res-vat-val">0,00 €</span></div>
     <div class="rek-row rek-total"><span>CELKOVÁ SUMA S DPH</span><span id="res-total">0,00 €</span></div>
-  </div>
-
-  <div class="footer-text">
-    * Záruka: 36 mesiacov na montáž, 10 rokov na systém Rehau Rautitan. Platba: Záloha 60% na materiál.
-  </div>
-
-  <div class="sig-grid">
-    <div class="sig-line">Zhotoviteľ: Spektra Install s.r.o.</div>
-    <div class="sig-line">Objednávateľ (Súhlas s ponukou)</div>
   </div>
 </div>
 
 <script>
   const MESACNA_REZIA = 11650;
-  
-  // KATALÓG S NOVÝMI SEKACÍMI PRÁCAMI
   const CATALOG = [
     { cat: "1. PRÍPRAVA A NÁVRH", items: [
       { l: "Obhliadka miesta realizácie a konzultácia", p: 50 },
-      { l: "Návrh systému, výpočty a spracovanie výkresov", p: 150 },
-      { l: "Sekacie práce a príprava trasy - BYT (5-8h)", p: 280 },
-      { l: "Sekacie práce a príprava trasy - RD (10h+)", p: 450 }
+      { l: "Návrh systému a spracovanie výkresov", p: 150 },
+      { l: "Sekacie práce a príprava trasy - BYT", p: 280 },
+      { l: "Sekacie práce a príprava trasy - RD", p: 450 }
     ]},
     { cat: "2. ROZVODY VODY A ODPADU", items: [
-      { l: "Hrubá montáž rozvodov vody a odpadu (za 1 bod)", p: 45 },
-      { l: "Nástenka REHAU RAUTITAN RX+ (bronz)", p: 11.50 },
-      { l: "Potrubie REHAU RAUTITAN Stabil 16 / bm", p: 8.50 },
-      { l: "Hlavný uzáver vody a filtrácia (set)", p: 155 }
+      { l: "Montáž rozvodov vody a odpadu (za 1 bod)", p: 45 },
+      { l: "Nástenka REHAU RAUTITAN RX+", p: 11.50 },
+      { l: "Potrubie REHAU RAUTITAN Stabil 16 / bm", p: 8.50 }
     ]},
-    { cat: "3. ROZVODY KÚRENIA A ROZDEĽOVAČE", items: [
-      { l: "Rozvod potrubia kúrenia k rozdeľovačom / bm", p: 12.00 },
-      { l: "Montáž rozdeľovača 10-okruhový (materiál+skrinka+práca)", p: 580 },
-      { l: "Montáž radiátora (napojenie + osadenie)", p: 75 },
-      { l: "Podlahové kúrenie (systémová doska + práca) / m2", p: 42 }
+    { cat: "3. KÚRENIE A ROZDEĽOVAČE", items: [
+      { l: "Rozvod potrubia kúrenia k rozdeľovačom / bm", p: 12 },
+      { l: "Rozdeľovač 10-okruhový (materiál+skrinka)", p: 580 },
+      { l: "Podlahové kúrenie (doska + práca) / m2", p: 42 }
     ]},
-    { cat: "4. KOTOLŇA - KOMPONENTY", items: [
-      { l: "Anuloid (hydraulický vyrovnávač tlaku) s izoláciou", p: 220 },
-      { l: "Sada čerpadlových skupín, ventily a uchytenie", p: 480 },
-      { l: "Magnetický filter a separátor nečistôt", p: 145 },
-      { l: "Expanzná nádoba kúrenie / pitná voda", p: 95 }
+    { cat: "4. ZDROJE TEPLA - TČ", items: [
+      { l: "Vaillant aroTHERM plus 7kW", p: 8200 },
+      { l: "Panasonic Aquarea 9kW", p: 7400 },
+      { l: "Hyundai Monoblok 8kW", p: 4600 },
+      { l: "Midea Nature 10kW (R290)", p: 5100 }
     ]},
-    { cat: "5. ZDROJ KÚRENIA - TEPELNÉ ČERPADLÁ", items: [
-      { l: "Tepelné čerpadlo Vaillant aroTHERM plus + VWL 7kW", p: 8200 },
-      { l: "Tepelné čerpadlo Panasonic Aquarea High Performance 9kW", p: 7400 },
-      { l: "Tepelné čerpadlo Hyundai Monoblok 8kW", p: 4600 },
-      { l: "Tepelné čerpadlo Midea Nature 10kW (R290)", p: 5100 }
+    { cat: "5. PLYN A PELETY", items: [
+      { l: "Plynový kotol Protherm Tiger (42l)", p: 2150 },
+      { l: "Peletový kotol OPOP Biopel 20kW", p: 5600 }
     ]},
-    { cat: "6. ZDROJ KÚRENIA - PLYN A PELETY", items: [
-      { l: "Plynový kotol Protherm Tiger Condens (42l zásobník)", p: 2150 },
-      { l: "Peletový kotol OPOP Biopel Premium 20kW (set)", p: 5600 }
+    { cat: "6. MONTÁŽNE PRÁCE (Hodinová sadzba)", items: [
+      { l: "Montážne práce - odborné (hodinová sadzba)", p: 35, isHourly: true }
     ]},
-    { cat: "7. OHRIEVAČE VODY (ZÁSOBNÍKY)", items: [
-      { l: "Zásobník vody pre TČ Dražice OKC 200 l / HP", p: 880 },
-      { l: "Zásobník vody pre TČ Dražice OKC 300 l / HP", p: 1150 }
-    ]},
-    { cat: "8. SKÚŠKY A ODOVZDANIE", items: [
-      { l: "Vykurovacia skúška a vyregulovanie systému", p: 120 },
-      { l: "Tlakové skúšky kurenár / vodár ku kolaudácii", p: 85 },
-      { l: "Uvedenie do prevádzky a zaškolenie obsluhy", p: 90 },
-      { l: "Revízna správa plyn / elektro", p: 110 }
+    { cat: "7. SKÚŠKY A REVÍZIE", items: [
+      { l: "Tlakové skúšky a protokoly", p: 85 },
+      { l: "Uvedenie do prevádzky a zaškolenie", p: 90 },
+      { l: "Revízna správa plyn", p: 110 }
     ]}
   ];
 
-  let rows = JSON.parse(localStorage.getItem('rows_v3')) || [{ text: '', desc: '', qty: 1, unitPrice: 0 }];
+  let rows = JSON.parse(localStorage.getItem('rows_v3')) || [{ text: '', desc: '', qty: 1, unitPrice: 0, isHourly: false }];
   let counter = parseInt(localStorage.getItem('cp_counter')) || 1;
 
   function initCP() {
@@ -225,7 +154,7 @@
   }
 
   function addRow() {
-    rows.push({ text: '', desc: '', qty: 1, unitPrice: 0 });
+    rows.push({ text: '', desc: '', qty: 1, unitPrice: 0, isHourly: false });
     render();
   }
 
@@ -235,14 +164,9 @@
     if(found) {
       rows[i].text = found.l;
       rows[i].unitPrice = found.p;
+      rows[i].isHourly = found.isHourly || false;
       render();
     }
-  }
-
-  function updateData(i, f, v) {
-    rows[i][f] = (f === 'qty' || f === 'unitPrice') ? parseFloat(v || 0) : v;
-    localStorage.setItem('rows_v3', JSON.stringify(rows));
-    updateAll();
   }
 
   function render() {
@@ -253,7 +177,7 @@
         <tr>
           <td>
             <select onchange="handleSelect(${i}, this.value)" style="margin-bottom:5px">
-              <option>-- Katalóg --</option>
+              <option>-- Výber --</option>
               ${CATALOG.map(c => `<optgroup label="${c.cat}">${c.items.map(it => `<option value="${it.l}" ${r.text===it.l?'selected':''}>${it.l}</option>`).join('')}</optgroup>`).join('')}
             </select>
             <input type="text" value="${r.desc || ''}" placeholder="Doplnkový popis..." oninput="updateData(${i}, 'desc', this.value)">
@@ -261,9 +185,15 @@
           <td><input type="number" value="${r.qty}" oninput="updateData(${i}, 'qty', this.value)"></td>
           <td><input type="number" value="${r.unitPrice}" oninput="updateData(${i}, 'unitPrice', this.value)"></td>
           <td style="text-align:right; font-weight:bold">${(r.qty * r.unitPrice).toFixed(2)} €</td>
-          <td><button onclick="rows.splice(${i},1);render();" style="color:red; background:none; border:none; cursor:pointer;">✕</button></td>
+          <td><button onclick="rows.splice(${i},1);render();" style="color:red; background:none; border:none;">✕</button></td>
         </tr>`;
     });
+    updateAll();
+  }
+
+  function updateData(i, f, v) {
+    rows[i][f] = (f === 'qty' || f === 'unitPrice') ? parseFloat(v || 0) : v;
+    localStorage.setItem('rows_v3', JSON.stringify(rows));
     updateAll();
   }
 
@@ -272,11 +202,20 @@
     const pRows = document.getElementById('preview-rows');
     pRows.innerHTML = '';
     let totalBase = 0;
+
     rows.forEach(r => {
       const line = r.qty * r.unitPrice;
       totalBase += line;
-      if(r.text) pRows.innerHTML += `<tr><td><b>${r.text}</b><br><small>${r.desc || ''}</small></td><td style="text-align:center">${r.qty}</td><td style="text-align:right">${r.unitPrice.toFixed(2)} €</td><td style="text-align:right; font-weight:bold">${line.toFixed(2)} €</td></tr>`;
+      if(r.text) {
+        if(r.isHourly) {
+          // Na PDF skryjeme množstvo a jednotkovú cenu, ukážeme len celok
+          pRows.innerHTML += `<tr><td><b>${r.text}</b><br><small>${r.desc || ''}</small></td><td colspan="2" style="text-align:right; color:#666; font-style:italic;">Zahrnuté v cene prác</td><td style="text-align:right; font-weight:bold">${line.toFixed(2)} €</td></tr>`;
+        } else {
+          pRows.innerHTML += `<tr><td><b>${r.text}</b><br><small>${r.desc || ''}</small></td><td style="text-align:center">${r.qty}</td><td style="text-align:right">${r.unitPrice.toFixed(2)} €</td><td style="text-align:right; font-weight:bold">${line.toFixed(2)} €</td></tr>`;
+        }
+      }
     });
+
     const vRate = parseFloat(document.getElementById('vatRate').value);
     const vVal = totalBase * (vRate/100);
     document.getElementById('res-base').innerText = totalBase.toLocaleString('sk-SK') + ' €';
@@ -285,9 +224,9 @@
     document.getElementById('res-total').innerText = (totalBase + vVal).toLocaleString('sk-SK') + ' €';
     
     let margin = totalBase * 0.30;
-    document.getElementById('stat-margin').innerText = margin.toFixed(2) + " €";
+    document.getElementById('stat-margin').innerText = Math.round(margin) + " €";
     document.getElementById('stat-coverage').innerText = ((margin / MESACNA_REZIA) * 100).toFixed(1) + " %";
-    document.getElementById('stat-net').innerText = (margin - (MESACNA_REZIA / 15)).toFixed(2) + " €";
+    document.getElementById('stat-net').innerText = Math.round(margin - (MESACNA_REZIA / 22)) + " €";
   }
 
   function saveToArchive() {
@@ -311,10 +250,10 @@
   }
 
   function createNewOffer() {
-    if(confirm("Vytvoriť novú ponuku? Rozpísané dáta budú vymazané.")) {
+    if(confirm("Vytvoriť novú ponuku?")) {
       counter++;
       localStorage.setItem('cp_counter', counter);
-      rows = [{ text: '', desc: '', qty: 1, unitPrice: 0 }];
+      rows = [{ text: '', desc: '', qty: 1, unitPrice: 0, isHourly: false }];
       document.getElementById('custName').value = "";
       initCP();
       render();
