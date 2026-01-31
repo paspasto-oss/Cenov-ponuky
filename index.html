@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
-  <title>Spektra Install – Profi HVAC Tool</title>
+  <title>Spektra CP</title>
   
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Spektra CP">
   
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23c40000%22/><text y=%22.9em%22 x=%2250%25%22 font-family=%22Inter, sans-serif%22 font-weight=%22bold%22 font-size=%2260%22 text-anchor=%22middle%22 fill=%22white%22>CP</text></svg>">
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23c40000%22/><text y=%22.9em%22 x=%2250%25%22 font-family=%22Inter, sans-serif%22 font-weight=%22bold%22 font-size=%2260%22 text-anchor=%22middle%22 fill=%22white%22>CP</text></svg>">
@@ -22,14 +22,12 @@
     .no-print { max-width: 1250px; margin: 20px auto; padding: 0 20px; }
     .card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
     
-    /* DASHBOARD */
     .dashboard { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; background: var(--navy); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
     .dash-box { text-align: center; border-right: 1px solid #334155; }
     .dash-box:last-child { border-right: none; }
     .dash-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 5px; }
     .dash-val { font-size: 20px; font-weight: bold; color: var(--profit); }
 
-    /* EDITOR */
     h3 { margin-top: 0; color: var(--red); border-bottom: 2px solid var(--red); padding-bottom: 10px; font-size: 18px; }
     .grid-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
     input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 15px; color: #1e293b; }
@@ -38,7 +36,6 @@
     .editor-table th { text-align: left; font-size: 11px; color: var(--gray); text-transform: uppercase; padding: 10px; }
     .editor-table td { padding: 10px 5px; border-bottom: 1px solid var(--border); }
 
-    /* TLAČIDLÁ */
     .action-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
     .btn { padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; border: none; font-size: 14px; transition: 0.2s; flex: 1; min-width: 140px; text-align: center; }
     .btn-add { background: var(--blue); color: white; }
@@ -47,7 +44,6 @@
     .btn-load { background: var(--orange); color: white; }
     .btn-new { background: #475569; color: white; }
 
-    /* PDF ŠTÝL */
     #print-area { width: 210mm; min-height: 297mm; padding: 15mm; margin: 20px auto; background: white; border: 1px solid #ddd; }
     .doc-header { display: flex; justify-content: space-between; border-bottom: 2px solid var(--red); padding-bottom: 15px; margin-bottom: 20px; }
     .doc-logo img { height: 75px; }
@@ -76,7 +72,7 @@
     <h3 style="color:white; border-color:#334155;">SPEKTRA BUSINESS DASHBOARD</h3>
     <div class="dashboard">
       <div class="dash-box">
-        <span class="dash-label">Zisk</span>
+        <span class="dash-label">Odhadovaný Zisk</span>
         <span class="dash-val" id="stat-margin">0.00 €</span>
       </div>
       <div class="dash-box">
@@ -141,7 +137,7 @@
       <div id="prev-project" style="font-size:12px; margin-top:5px; font-weight:bold;">Projekt: -</div>
     </div>
     <div style="text-align:right; font-size:10px;">
-      <b>Spektra Install s.r.o.</b><br>Rajecká Lesná 98, 013 15<br>IČO: 53690036 | DIČ: 2121459450
+      <b>Spektra Install s.r.o.</b><br>Rosinská cesta 13, 010 08 Žilina<br>IČO: 50003361 | DIČ: 2120140235
     </div>
   </div>
 
@@ -170,7 +166,17 @@
 
 <script>
   const MESACNA_REZIA = 11650;
+  
+  // KATALÓG S NOVÝMI SEKACÍMI PRÁCAMI
   const CATALOG = [
+    { cat: "SEKANIE A PRÍPRAVA TRÁS (Včítane náradia)", items: [
+      { l: "Sekacie práce a príprava trasy - BYT (5-8h)", p: 280 },
+      { l: "Sekacie práce a príprava trasy - RD (10h+)", p: 450 },
+      { l: "Sekanie drážky v tehle (voda/odpad) / bm", p: 7.50 },
+      { l: "Sekanie drážky v betóne (voda/odpad) / bm", p: 18.00 },
+      { l: "Prestup cez stenu tehlou (do 30cm)", p: 15 },
+      { l: "Jadrový vývrt do betónu (D110)", p: 45 }
+    ]},
     { cat: "PLYN A REVÍZIE", items: [
       { l: "Demontáž plynového potrubia a zaslepenie", p: 45 },
       { l: "Revízna správa plyn - OPaOS (celok)", p: 110 },
@@ -179,8 +185,8 @@
     ]},
     { cat: "VODA A ODPAD (REHAU)", items: [
       { l: "Hrubá montáž vody a odpadu (za 1 bod)", p: 45 },
-      { l: "Nástenka REHAU RAUTITAN RX+ (bronz)", p: 11 },
-      { l: "Potrubie REHAU RAUTITAN Stabil / m", p: 8 },
+      { l: "Nástenka REHAU RAUTITAN RX+ (bronz)", p: 11.50 },
+      { l: "Potrubie REHAU RAUTITAN Stabil 16 / m", p: 8.50 },
       { l: "Hlavný uzáver vody a filtrácia (set)", p: 155 }
     ]},
     { cat: "MONTÁŽ SANITY", items: [
@@ -231,12 +237,12 @@
               <option>-- Katalóg --</option>
               ${CATALOG.map(c => `<optgroup label="${c.cat}">${c.items.map(it => `<option value="${it.l}" ${r.text===it.l?'selected':''}>${it.l}</option>`).join('')}</optgroup>`).join('')}
             </select>
-            <input type="text" value="${r.desc || ''}" placeholder="Popis..." oninput="updateData(${i}, 'desc', this.value)">
+            <input type="text" value="${r.desc || ''}" placeholder="Doplnkový popis..." oninput="updateData(${i}, 'desc', this.value)">
           </td>
           <td><input type="number" value="${r.qty}" oninput="updateData(${i}, 'qty', this.value)"></td>
           <td><input type="number" value="${r.unitPrice}" oninput="updateData(${i}, 'unitPrice', this.value)"></td>
           <td style="text-align:right; font-weight:bold">${(r.qty * r.unitPrice).toFixed(2)} €</td>
-          <td><button onclick="rows.splice(${i},1);render();" style="color:red; background:none; border:none;">✕</button></td>
+          <td><button onclick="rows.splice(${i},1);render();" style="color:red; background:none; border:none; cursor:pointer;">✕</button></td>
         </tr>`;
     });
     updateAll();
@@ -286,7 +292,7 @@
   }
 
   function createNewOffer() {
-    if(confirm("Nová ponuka?")) {
+    if(confirm("Vytvoriť novú ponuku? Rozpísané dáta budú vymazané.")) {
       counter++;
       localStorage.setItem('cp_counter', counter);
       rows = [{ text: '', desc: '', qty: 1, unitPrice: 0 }];
