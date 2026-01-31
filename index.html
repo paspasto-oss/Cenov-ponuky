@@ -209,7 +209,7 @@
       if(r.text) {
         if(r.isHourly) {
           // Na PDF skryjeme množstvo a jednotkovú cenu, ukážeme len celok
-          pRows.innerHTML += `<tr><td><b>${r.text}</b><br><small>${r.desc || ''}</small></td><td colspan="2" style="text-align:right; color:#666; font-style:italic;">Zahrnuté v cene prác</td><td style="text-align:right; font-weight:bold">${line.toFixed(2)} €</td></tr>`;
+          pRows.innerHTML += `<tr><td><b>${r.text}</b><br><small>${r.desc || ''}</small></td><td colspan="2" style="text-align:right; color:#666; font-style:italic;">Komplet</td><td style="text-align:right; font-weight:bold">${line.toFixed(2)} €</td></tr>`;
         } else {
           pRows.innerHTML += `<tr><td><b>${r.text}</b><br><small>${r.desc || ''}</small></td><td style="text-align:center">${r.qty}</td><td style="text-align:right">${r.unitPrice.toFixed(2)} €</td><td style="text-align:right; font-weight:bold">${line.toFixed(2)} €</td></tr>`;
         }
