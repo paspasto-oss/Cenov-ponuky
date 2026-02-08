@@ -1,267 +1,300 @@
-<!doctype html>
-<html lang="sk">
+<!DOCTYPE html>
+<html lang="it">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
-  <title>Spektra CP</title>
-  
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Spektra CP">
-  
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23c40000%22/><text y=%22.9em%22 x=%2250%25%22 font-family=%22Inter, sans-serif%22 font-weight=%22bold%22 font-size=%2260%22 text-anchor=%22middle%22 fill=%22white%22>CP</text></svg>">
-  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23c40000%22/><text y=%22.9em%22 x=%2250%25%22 font-family=%22Inter, sans-serif%22 font-weight=%22bold%22 font-size=%2260%22 text-anchor=%22middle%22 fill=%22white%22>CP</text></svg>">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-  
-  <style>
-    :root { --red:#c40000; --blue:#0056b3; --navy:#0f172a; --gray:#64748b; --border:#e2e8f0; --bg:#f8fafc; --profit:#10b981; --orange:#f59e0b; }
-    * { box-sizing:border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-    body { margin: 0; background: var(--bg); color: #1e293b; padding-bottom: 50px; }
-    .no-print { max-width: 1250px; margin: 20px auto; padding: 0 20px; }
-    .card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
-    .dashboard { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; background: var(--navy); color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
-    .dash-box { text-align: center; border-right: 1px solid #334155; }
-    .dash-box:last-child { border-right: none; }
-    .dash-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; display: block; }
-    .dash-val { font-size: 18px; font-weight: bold; color: var(--profit); }
-    h3 { margin-top: 0; color: var(--red); border-bottom: 2px solid var(--red); padding-bottom: 10px; font-size: 18px; }
-    .grid-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-    input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 15px; }
-    .editor-table { width: 100%; border-collapse: collapse; }
-    .editor-table th { text-align: left; font-size: 11px; color: var(--gray); text-transform: uppercase; padding: 10px; }
-    .editor-table td { padding: 10px 5px; border-bottom: 1px solid var(--border); }
-    .action-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
-    .btn { padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; border: none; font-size: 14px; flex: 1; min-width: 140px; text-align: center; }
-    .btn-add { background: var(--blue); color: white; }
-    .btn-print { background: var(--red); color: white; }
-    .btn-save { background: var(--profit); color: white; }
-    .btn-load { background: var(--orange); color: white; }
-    .btn-new { background: #475569; color: white; }
-    #print-area { width: 210mm; min-height: 297mm; padding: 15mm; margin: 20px auto; background: white; border: 1px solid #ddd; }
-    .doc-header { display: flex; justify-content: space-between; border-bottom: 2px solid var(--red); padding-bottom: 15px; margin-bottom: 20px; }
-    .doc-logo img { height: 70px; }
-    .doc-center { text-align: center; flex: 1; }
-    .doc-center h2 { color: var(--red); margin: 0; font-size: 22px; }
-    .preview-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-    .preview-table th { background: #f8fafc; border: 1px solid var(--border); font-size: 11px; padding: 8px; text-align: left; }
-    .preview-table td { border: 1px solid var(--border); padding: 8px; font-size: 12px; }
-    .rekapitulacia { border: 2px solid var(--border); border-radius: 10px; padding: 15px; }
-    .rek-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #eee; font-size: 14px; }
-    .rek-total { color: var(--red); font-weight: bold; font-size: 18px; border-bottom: none; margin-top: 10px; }
-    @media print { .no-print { display: none !important; } #print-area { margin: 0; border: none; width: 100%; } }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spektra Install – Generatore Offerte Tarvisio</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #D60000;
+            --primary-dark: #a50000;
+            --gray-50: #F9FAFB;
+            --gray-100: #F3F4F6;
+            --gray-200: #E5E7EB;
+            --gray-700: #374151;
+            --gray-900: #111827;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            background-color: var(--gray-100);
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            color: var(--gray-900);
+            line-height: 1.35;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            gap: 24px;
+            max-width: 1450px;
+            margin: 0 auto;
+            padding: 20px;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .controls h2 { margin: 0 0 10px 0; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+        .controls h2::before { content:''; width: 10px; height: 10px; background: var(--primary); border-radius: 50%; display: inline-block; }
+
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        
+        label { font-size: 10px; font-weight: 700; color: var(--gray-700); text-transform: uppercase; }
+        input, select, textarea {
+            padding: 8px;
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 6px; font-weight: 700; cursor: pointer; margin-top: 10px; }
+        .btn-primary:hover { background: var(--primary-dark); }
+
+        /* PREVIEW */
+        .preview-container {
+            background: #cbd5e1;
+            border-radius: 16px;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            justify-content: center;
+        }
+
+        .a4-page {
+            width: 210mm;
+            min-height: 297mm;
+            background: white;
+            padding: 15mm;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header { border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; }
+        .logo-placeholder { font-size: 26px; font-weight: 900; color: var(--primary); letter-spacing: -1px; }
+        .logo-placeholder span { color: var(--gray-900); }
+
+        .pricing-table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 12px; }
+        .pricing-table th { background: var(--gray-100); padding: 8px; text-align: left; border-bottom: 2px solid var(--gray-200); }
+        .pricing-table td { padding: 8px; border-bottom: 1px solid var(--gray-100); }
+        .num { text-align: right; }
+
+        .subsidy-box { margin-top: 20px; padding: 15px; border: 1px dashed var(--primary); background: #fffafa; border-radius: 8px; }
+        .notes { margin-top: auto; font-size: 10px; color: var(--gray-700); border-top: 1px solid #eee; padding-top: 10px; }
+
+        @media print {
+            .controls { display: none; }
+            .preview-container { background: none; padding: 0; }
+            .a4-page { box-shadow: none; width: 100%; margin: 0; }
+        }
+    </style>
 </head>
 <body>
 
-<div class="no-print">
-  <div class="card" style="background: var(--navy); border:none;">
-    <div class="dashboard">
-      <div class="dash-box"><span class="dash-label">Zisk (30%)</span><span class="dash-val" id="stat-margin">0 €</span></div>
-      <div class="dash-box"><span class="dash-label">Krytie réžie</span><span class="dash-val" id="stat-coverage" style="color:#fbbf24;">0 %</span></div>
-      <div class="dash-box"><span class="dash-label">Čistý výnos</span><span class="dash-val" id="stat-net" style="color:#60a5fa;">0 €</span></div>
-    </div>
-  </div>
+<div class="app-container">
+    <section class="controls">
+        <h2>Offerta Tarvisio (Zona F)</h2>
+        
+        <div class="form-row">
+            <div class="form-group"><label>Nr. Offerta</label><input type="text" id="inp-no" value="OF-2026-001"></div>
+            <div class="form-group"><label>Data</label><input type="date" id="inp-date"></div>
+        </div>
 
-  <div class="card">
-    <h3>Zákazník a Projekt</h3>
-    <div class="grid-inputs">
-      <input type="text" id="custName" placeholder="Meno zákazníka / Projekt" oninput="updateAll()">
-      <input type="text" id="cpNumber" placeholder="Číslo ponuky" readonly style="background:#f1f5f9;">
-      <select id="vatRate" onchange="updateAll()"><option value="23">DPH 23%</option><option value="20">DPH 20%</option><option value="0">Bez DPH</option></select>
-    </div>
-  </div>
+        <div class="form-group"><label>Cliente</label><input type="text" id="inp-name" placeholder="Nome del proprietario"></div>
+        <div class="form-group"><label>Indirizzo (Tarvisio)</label><input type="text" id="inp-addr" placeholder="Via Romana..."></div>
 
-  <div class="card">
-    <h3>Položky Ponuky</h3>
-    <table class="editor-table">
-      <thead><tr><th>Popis / Katalóg</th><th width="80">Množ.</th><th width="100">Cena €</th><th width="100" style="text-align:right">Spolu</th><th width="40"></th></tr></thead>
-      <tbody id="editorBody"></tbody>
-    </table>
-    <div class="action-bar">
-      <button class="btn btn-add" onclick="addRow()">+ Pridať položku</button>
-      <button class="btn btn-print" onclick="window.print()">Vytlačiť PDF</button>
-      <button class="btn btn-save" onclick="saveToArchive()">💾 Uložiť Archív</button>
-      <button class="btn btn-load" onclick="document.getElementById('fileInput').click()">📂 Načítať</button>
-      <button class="btn btn-new" onclick="createNewOffer()">Reset</button>
-    </div>
-    <input type="file" id="fileInput" style="display:none" accept=".json" onchange="loadFromArchive(event)">
-  </div>
-</div>
+        <hr style="width:100%; border:0; border-top:1px solid #eee;">
 
-<div id="print-area">
-  <div class="doc-header">
-    <div class="doc-logo"><img src="logo.png" alt="Spektra" onerror="this.src='https://via.placeholder.com/150x70?text=Spektra+Install'"></div>
-    <div class="doc-center"><h2 id="prev-doc-title">CENOVÁ PONUKA</h2><div id="prev-cp" style="font-size:11px;font-weight:bold;color:var(--gray);"></div><div id="prev-project" style="font-size:12px;margin-top:5px;font-weight:bold;"></div></div>
-    <div style="text-align:right; font-size:10px;"><b>Spektra Install s.r.o.</b><br>Rosinská cesta 13, Žilina<br>IČO: 50003361</div>
-  </div>
-  <table class="preview-table">
-    <thead><tr><th>Položka - Materiál a odborná montáž</th><th width="60" style="text-align:center">Množ.</th><th width="80" style="text-align:right">J. cena</th><th width="100" style="text-align:right">Spolu bez DPH</th></tr></thead>
-    <tbody id="preview-rows"></tbody>
-  </table>
-  <div class="rekapitulacia">
-    <div class="rek-row"><span>Základ dane</span><span id="res-base">0,00 €</span></div>
-    <div class="rek-row"><span>DPH <span id="res-vat-perc">23</span> %</span><span id="res-vat-val">0,00 €</span></div>
-    <div class="rek-row rek-total"><span>CELKOVÁ SUMA S DPH</span><span id="res-total">0,00 €</span></div>
-  </div>
+        <div class="form-group">
+            <label>Sistema Zubadan / T-CAP</label>
+            <select id="inp-model">
+                <option value="zuba8">Mitsubishi Zubadan 8kW Split + AiO 200L</option>
+                <option value="zuba12">Mitsubishi Zubadan 12kW Split + AiO 200L</option>
+                <option value="tcap9">Panasonic T-CAP 9kW Split + AiO 185L</option>
+                <option value="tcap12">Panasonic T-CAP 12kW Split + AiO 185L</option>
+            </select>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>IVA Italia</label>
+                <select id="inp-vat">
+                    <option value="10" selected>10% (Ristrutturazione)</option>
+                    <option value="22">22% (Standard)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Incentivo Statale</label>
+                <select id="inp-bonus">
+                    <option value="0.65">Ecobonus 65%</option>
+                    <option value="0.50">Bonus Casa 50%</option>
+                    <option value="CT2">Conto Termico 2.0</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Sconto Extra (€)</label>
+            <input type="number" id="inp-disc" value="0">
+        </div>
+
+        <button class="btn-primary" onclick="window.print()">🖨️ GENERA PDF / STAMPA</button>
+        <p style="font-size:10px; color:gray; text-align:center;">Configurato per sistemi Split (senza acqua all'esterno)</p>
+    </section>
+
+    <section class="preview-container">
+        <div class="a4-page">
+            <div class="header">
+                <div>
+                    <div class="logo-placeholder">SPEKTRA <span>INSTALL</span></div>
+                    <div style="font-size:11px; font-weight:500;">SISTEMI TERMICI PROFESSIONALI</div>
+                </div>
+                <div style="text-align:right;">
+                    <h1 style="margin:0; font-size:20px; color:var(--gray-900);">PREVENTIVO</h1>
+                    <div style="font-size:12px;">Nr: <strong id="out-no"></strong></div>
+                    <div style="font-size:12px;">Data: <strong id="out-date"></strong></div>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:40px; margin-bottom:30px; font-size:12px;">
+                <div>
+                    <span style="color:#666; text-transform:uppercase; font-size:10px; font-weight:bold;">Fornitore</span><br>
+                    <strong>Spektra Install S.r.l.</strong><br>
+                    Sede Operativa: Tarvisio (UD)<br>
+                    P.IVA: SK53690036
+                </div>
+                <div>
+                    <span style="color:#666; text-transform:uppercase; font-size:10px; font-weight:bold;">Cliente</span><br>
+                    <strong id="out-name"></strong><br>
+                    <span id="out-addr"></span>
+                </div>
+            </div>
+
+            <p style="font-size:12px;">In riferimento alla Sua richiesta per l'immobile sito in <strong>Tarvisio</strong>, proponiamo la fornitura e posa in opera di un sistema a pompa di calore aria-acqua con tecnologia <strong>Split</strong>, ideale per garantire prestazioni costanti anche a -15°C.</p>
+
+            <table class="pricing-table">
+                <thead>
+                    <tr>
+                        <th style="width:60%;">Descrizione Materiale e Servizi</th>
+                        <th class="num">Prezzo (IVA escl.)</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    </tbody>
+            </table>
+
+            <div style="margin-left:auto; width:260px; border-top:2px solid var(--primary); padding-top:10px;">
+                <div style="display:flex; justify-content:space-between; font-size:12px; padding:3px 0;">
+                    <span>Imponibile:</span> <span id="t-net"></span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:12px; padding:3px 0;">
+                    <span>IVA:</span> <span id="t-vat"></span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:16px; font-weight:bold; color:var(--primary); margin-top:5px;">
+                    <span>TOTALE:</span> <span id="t-total"></span>
+                </div>
+            </div>
+
+            <div class="subsidy-box" id="sub-box">
+                <h4 style="margin:0; color:var(--primary); font-size:13px;">RECUPERO FISCALE STIMATO</h4>
+                <p style="font-size:11px; margin:5px 0;">Grazie agli incentivi vigenti in Italia, è possibile recuperare una parte significativa dell'investimento:</p>
+                <div style="display:flex; justify-content:space-between; font-weight:bold;">
+                    <span id="sub-type">Ecobonus 65% (detrazione in 10 anni):</span>
+                    <span id="sub-val" style="color:var(--primary);"></span>
+                </div>
+            </div>
+
+            <div class="notes">
+                <strong>NOTE TECNICHE E CONDIZIONI:</strong><br>
+                • <strong>Sistema Split:</strong> Il collegamento tra unità esterna ed interna è realizzato con tubazioni frigorifere in rame isolate. Nessun rischio di congelamento esterno.<br>
+                • <strong>Installazione:</strong> Include posa unità, collegamento idraulico ai radiatori, scarico condensa e primo avviamento.<br>
+                • <strong>Garanzia:</strong> 5 anni sul compressore, 2 anni sui componenti idraulici.<br>
+                • <strong>Validità:</strong> 30 giorni dalla data di emissione.
+            </div>
+
+            <div style="margin-top:30px; display:flex; justify-content:space-between; align-items:flex-end;">
+                <div style="font-size:11px;">Spektra Install S.r.l.</div>
+                <div style="text-align:center; width:200px;">
+                    <div style="border-bottom:1px solid #000; height:40px;"></div>
+                    <div style="font-size:9px; margin-top:5px;">Firma per accettazione</div>
+                </div>
+            </div>
+        </div>
+    </section>
 </div>
 
 <script>
-  const MESACNA_REZIA = 11650;
-  const CATALOG = [
-    { cat: "1. PRÍPRAVA A NÁVRH", items: [
-      { l: "Obhliadka miesta realizácie a konzultácia", p: 50 },
-      { l: "Návrh systému a spracovanie výkresov", p: 150 },
-      { l: "Sekacie práce a príprava trasy - BYT", p: 280 },
-      { l: "Sekacie práce a príprava trasy - RD", p: 450 }
-    ]},
-    { cat: "2. ROZVODY VODY A ODPADU", items: [
-      { l: "Montáž rozvodov vody a odpadu (za 1 bod)", p: 45 },
-      { l: "Nástenka REHAU RAUTITAN RX+", p: 11.50 },
-      { l: "Potrubie REHAU RAUTITAN Stabil 16 / bm", p: 8.50 }
-    ]},
-    { cat: "3. KÚRENIE A ROZDEĽOVAČE", items: [
-      { l: "Rozvod potrubia kúrenia k rozdeľovačom / bm", p: 12 },
-      { l: "Rozdeľovač 10-okruhový (materiál+skrinka)", p: 580 },
-      { l: "Podlahové kúrenie (doska + práca) / m2", p: 42 }
-    ]},
-    { cat: "4. ZDROJE TEPLA - TČ", items: [
-      { l: "Vaillant aroTHERM plus 7kW", p: 8200 },
-      { l: "Panasonic Aquarea 9kW", p: 7400 },
-      { l: "Hyundai Monoblok 8kW", p: 4600 },
-      { l: "Midea Nature 10kW (R290)", p: 5100 }
-    ]},
-    { cat: "5. PLYN A PELETY", items: [
-      { l: "Plynový kotol Protherm Tiger (42l)", p: 2150 },
-      { l: "Peletový kotol OPOP Biopel 20kW", p: 5600 }
-    ]},
-    { cat: "6. MONTÁŽNE PRÁCE", items: [
-      { l: "Montážne práce - odborné", p: 35, isHourly: true }
-    ]},
-    { cat: "7. SKÚŠKY A REVÍZIE", items: [
-      { l: "Tlakové skúšky a protokoly", p: 85 },
-      { l: "Uvedenie do prevádzky a zaškolenie", p: 90 },
-      { l: "Revízna správa plyn", p: 110 }
-    ]}
-  ];
-
-  let rows = JSON.parse(localStorage.getItem('rows_v3')) || [{ text: '', desc: '', qty: 1, unitPrice: 0, isHourly: false }];
-  let counter = parseInt(localStorage.getItem('cp_counter')) || 1;
-
-  function initCP() {
-    const year = new Date().getFullYear();
-    document.getElementById('cpNumber').value = `CP-${year}/${counter.toString().padStart(3, '0')}`;
-    document.getElementById('prev-cp').innerText = document.getElementById('cpNumber').value;
-  }
-
-  function addRow() {
-    rows.push({ text: '', desc: '', qty: 1, unitPrice: 0, isHourly: false });
-    render();
-  }
-
-  function handleSelect(i, val) {
-    let found;
-    CATALOG.forEach(c => c.items.forEach(it => { if(it.l === val) found = it; }));
-    if(found) {
-      rows[i].text = found.l;
-      rows[i].unitPrice = found.p;
-      rows[i].isHourly = found.isHourly || false;
-      render();
-    }
-  }
-
-  function render() {
-    const body = document.getElementById('editorBody');
-    body.innerHTML = '';
-    rows.forEach((r, i) => {
-      body.innerHTML += `
-        <tr>
-          <td>
-            <select onchange="handleSelect(${i}, this.value)" style="margin-bottom:5px">
-              <option>-- Výber --</option>
-              ${CATALOG.map(c => `<optgroup label="${c.cat}">${c.items.map(it => `<option value="${it.l}" ${r.text===it.l?'selected':''}>${it.l}</option>`).join('')}</optgroup>`).join('')}
-            </select>
-            <input type="text" value="${r.desc || ''}" placeholder="Doplnkový popis..." oninput="updateData(${i}, 'desc', this.value)">
-          </td>
-          <td><input type="number" value="${r.qty}" oninput="updateData(${i}, 'qty', this.value)"></td>
-          <td><input type="number" value="${r.unitPrice}" oninput="updateData(${i}, 'unitPrice', this.value)"></td>
-          <td style="text-align:right; font-weight:bold">${(r.qty * r.unitPrice).toFixed(2)} €</td>
-          <td><button onclick="rows.splice(${i},1);render();" style="color:red; background:none; border:none;">✕</button></td>
-        </tr>`;
-    });
-    updateAll();
-  }
-
-  function updateData(i, f, v) {
-    rows[i][f] = (f === 'qty' || f === 'unitPrice') ? parseFloat(v || 0) : v;
-    localStorage.setItem('rows_v3', JSON.stringify(rows));
-    updateAll();
-  }
-
-  function updateAll() {
-    document.getElementById('prev-project').innerText = 'Projekt: ' + (document.getElementById('custName').value || '-');
-    const pRows = document.getElementById('preview-rows');
-    pRows.innerHTML = '';
-    let totalBase = 0;
-
-    rows.forEach(r => {
-      const line = r.qty * r.unitPrice;
-      totalBase += line;
-      if(r.text) {
-        if(r.isHourly) {
-          // Na PDF skryjeme množstvo a jednotkovú cenu, ukážeme len celok
-          pRows.innerHTML += `<tr><td><b>${r.text}</b><br><small>${r.desc || ''}</small></td><td colspan="2" style="text-align:right; color:#666; font-style:italic;">Komplet</td><td style="text-align:right; font-weight:bold">${line.toFixed(2)} €</td></tr>`;
-        } else {
-          pRows.innerHTML += `<tr><td><b>${r.text}</b><br><small>${r.desc || ''}</small></td><td style="text-align:center">${r.qty}</td><td style="text-align:right">${r.unitPrice.toFixed(2)} €</td><td style="text-align:right; font-weight:bold">${line.toFixed(2)} €</td></tr>`;
-        }
-      }
-    });
-
-    const vRate = parseFloat(document.getElementById('vatRate').value);
-    const vVal = totalBase * (vRate/100);
-    document.getElementById('res-base').innerText = totalBase.toLocaleString('sk-SK') + ' €';
-    document.getElementById('res-vat-perc').innerText = vRate;
-    document.getElementById('res-vat-val').innerText = vVal.toLocaleString('sk-SK') + ' €';
-    document.getElementById('res-total').innerText = (totalBase + vVal).toLocaleString('sk-SK') + ' €';
-    
-    let margin = totalBase * 0.30;
-    document.getElementById('stat-margin').innerText = Math.round(margin) + " €";
-    document.getElementById('stat-coverage').innerText = ((margin / MESACNA_REZIA) * 100).toFixed(1) + " %";
-    document.getElementById('stat-net').innerText = Math.round(margin - (MESACNA_REZIA / 22)) + " €";
-  }
-
-  function saveToArchive() {
-    const data = { cp: document.getElementById('cpNumber').value, zakaznik: document.getElementById('custName').value, rows: rows };
-    const blob = new Blob([JSON.stringify(data, null, 2)], {type : 'application/json'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `${data.cp}_${data.zakaznik || 'ponuka'}.json`;
-    a.click();
-  }
-
-  function loadFromArchive(event) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const data = JSON.parse(e.target.result);
-      rows = data.rows;
-      document.getElementById('custName').value = data.zakaznik || "";
-      render();
+    const DATA = {
+        models: {
+            'zuba8': { name: 'Mitsubishi Zubadan 8kW Split + Tower 200L', price: 11500 },
+            'zuba12': { name: 'Mitsubishi Zubadan 12kW Split + Tower 200L', price: 13200 },
+            'tcap9': { name: 'Panasonic T-CAP 9kW Split + AiO 185L', price: 10200 },
+            'tcap12': { name: 'Panasonic T-CAP 12kW Split + AiO 185L', price: 11900 }
+        },
+        install: 2800 // Paušálna cena montáže v IT
     };
-    reader.readAsText(event.target.files[0]);
-  }
 
-  function createNewOffer() {
-    if(confirm("Vytvoriť novú ponuku?")) {
-      counter++;
-      localStorage.setItem('cp_counter', counter);
-      rows = [{ text: '', desc: '', qty: 1, unitPrice: 0, isHourly: false }];
-      document.getElementById('custName').value = "";
-      initCP();
-      render();
+    function update() {
+        const model = DATA.models[document.getElementById('inp-model').value];
+        const vat = parseFloat(document.getElementById('inp-vat').value) / 100;
+        const bonus = document.getElementById('inp-bonus').value;
+        const discount = parseFloat(document.getElementById('inp-disc').value) || 0;
+
+        // Meta
+        document.getElementById('out-no').innerText = document.getElementById('inp-no').value;
+        document.getElementById('out-date').innerText = document.getElementById('inp-date').value;
+        document.getElementById('out-name').innerText = document.getElementById('inp-name').value;
+        document.getElementById('out-addr').innerText = document.getElementById('inp-addr').value;
+
+        // Table
+        const net = model.price + DATA.install - discount;
+        const vatAmt = net * vat;
+        const total = net + vatAmt;
+
+        document.getElementById('table-body').innerHTML = `
+            <tr><td><strong>${model.name}</strong><br><small>Unità esterna + Unità interna All-in-One con accumulo ACS</small></td><td class="num">€ ${model.price.toLocaleString()}</td></tr>
+            <tr><td>Installazione professionale, materiali di consumo, tubazioni frigorifere isolate e collaudo</td><td class="num">€ ${DATA.install.toLocaleString()}</td></tr>
+            ${discount > 0 ? `<tr style="color:green;"><td>Sconto commerciale</td><td class="num">- € ${discount.toLocaleString()}</td></tr>` : ''}
+        `;
+
+        document.getElementById('t-net').innerText = `€ ${net.toLocaleString()}`;
+        document.getElementById('t-vat').innerText = `€ ${vatAmt.toLocaleString()}`;
+        document.getElementById('t-total').innerText = `€ ${total.toLocaleString()}`;
+
+        // Bonus
+        let bVal = 0;
+        let bText = "";
+        if(bonus === "0.65") { bVal = total * 0.65; bText = "Ecobonus 65% (Detrazione 10 anni)"; }
+        else if(bonus === "0.50") { bVal = total * 0.50; bText = "Bonus Casa 50% (Detrazione 10 anni)"; }
+        else { bVal = 4400; bText = "Conto Termico 2.0 (Rimborso GSE)"; }
+
+        document.getElementById('sub-type').innerText = bText + ":";
+        document.getElementById('sub-val').innerText = `€ ${bVal.toLocaleString()}`;
     }
-  }
 
-  initCP();
-  render();
+    document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', update));
+    update();
 </script>
+
 </body>
 </html>
