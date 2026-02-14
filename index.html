@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spektra Install – Generátor Ponúk v3.26 (Hyundai Full)</title>
+    <title>Spektra Install – Generátor Ponúk v3.27 (Len kúrenie)</title>
     
     <!-- FAVICON -->
     <link rel="icon" href="data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23D60000'/%3E%3Ctext x='32' y='47' fill='white' font-family='sans-serif' font-weight='900' font-size='44' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
@@ -520,6 +520,7 @@
                 <select id="inp-tank">
                     <option value="200">200 litrov (Externý)</option>
                     <option value="300" selected>300 litrov (Externý)</option>
+                    <option value="heating_only">Bez zásobníka (Len kúrenie)</option>
                     <!-- Možnosť "Integrovaný" sa vyberie automaticky cez JS -->
                     <option value="integrated" disabled style="display:none">Integrovaný v jednotke</option>
                     <option value="none" disabled style="display:none">Bez zásobníka (Klimatizácia)</option>
@@ -845,6 +846,7 @@
         tank: {
             200: 1050,
             300: 1290,
+            'heating_only': 0, // NEW
             'integrated': 0,
             'none': 0
         },
@@ -927,7 +929,7 @@
             ui.voucher.disabled = false;
             
             if (modelData.isAiO) {
-                if (ui.tank.value !== 'integrated' && ui.tank.value !== 'none') {
+                if (ui.tank.value !== 'integrated' && ui.tank.value !== 'none' && ui.tank.value !== 'heating_only') {
                     previousTankVal = ui.tank.value;
                 }
                 ui.tank.value = 'integrated';
@@ -937,7 +939,7 @@
                 ui.tank.disabled = false;
                 ui.tankHint.style.display = 'none';
                 if (ui.tank.value === 'integrated' || ui.tank.value === 'none') {
-                    ui.tank.value = previousTankVal;
+                    ui.tank.value = (previousTankVal === 'integrated' || previousTankVal === 'none') ? '300' : previousTankVal;
                 }
             }
         }
@@ -970,6 +972,8 @@
         if (modelData.type === 'hp') {
             if (modelData.isAiO) {
                 items.push({ name: `Integrovaný nerezový zásobník TÚV`, gross: 0 });
+            } else if (selectedTankKey === 'heating_only') {
+                items.push({ name: `Bez zásobníka TÚV (Len vykurovanie)`, gross: 0 });
             } else {
                 items.push({ name: `Zásobník TÚV ${selectedTankKey} litrov - smalt`, gross: PRICES.tank[selectedTankKey] });
             }
