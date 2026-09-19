@@ -65,6 +65,7 @@
         <div class="field"><label>Stav budovy</label><select id="buildingClass"><option value="45">Novostavba / veľmi dobre zateplený</option><option value="60" selected>Zateplený dom</option><option value="95">Starší / slabšie zateplený</option><option value="125">Nezateplený / vysoká strata</option></select></div></div>
       </div>
       <div class="field"><label>Vykurovací systém</label><select id="heating"><option value="underfloor">Podlahové vykurovanie</option><option value="radiators">Radiátory</option><option value="high_temp">Vysokoteplotné radiátory / náročné podmienky</option></select></div>
+      <div class="field"><label>Príprava TÚV</label><select id="dhwMode"><option value="external" selected>Áno – externý zásobník TÚV</option><option value="none">Bez externého zásobníka TÚV</option></select></div>
     </div>
     <button class="btn primary full" onclick="nextCategory()">Pokračovať →</button>
   </section>
@@ -190,10 +191,10 @@ function renderHome(){
 }
 function labelStatus(x){return x==='sent'?'Odoslaná':x==='approved'?'Schválená':'Rozpracovaná'}
 function labelCat(x){return x==='heat_pump'?'Tepelné čerpadlo':x==='air_conditioning'?'Klimatizácia':x==='boiler'?'Kotol':'Iné'}
-function startWizard(){current={id:'q_'+Date.now(),quote_no:'26NA'+String(quotes.length+1).padStart(4,'0'),status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[]};category='heat_pump';brand='';recommendation=null;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';toggleLoss();go('step1')}
+function startWizard(){current={id:'q_'+Date.now(),quote_no:'26NA'+String(quotes.length+1).padStart(4,'0'),status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[]};category='heat_pump';brand='';recommendation=null;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
 function nextBuilding(){let name=s(document.getElementById('cName').value),phone=s(document.getElementById('cPhone').value),addr=s(document.getElementById('cAddress').value);if(!name||!phone||!addr){alert('Vyplň meno, telefón a adresu realizácie.');return}current.customer={name,phone,email:s(document.getElementById('cEmail').value),address:addr,note:s(document.getElementById('cNote').value)};go('step2')}
 function toggleLoss(){let known=document.getElementById('hasLoss').value==='yes';document.getElementById('lossKnown').classList.toggle('hidden',!known);document.getElementById('lossEstimate').classList.toggle('hidden',known)}
-function nextCategory(){let known=document.getElementById('hasLoss').value==='yes',loss=+document.getElementById('heatLoss').value||0,area=+document.getElementById('area').value||0;if(known&&loss<=0){alert('Zadaj tepelnú stratu.');return}if(!known&&area<=0){alert('Zadaj vykurovanú plochu.');return}current.building={known_loss:known,heat_loss_kw:known?loss:null,area_m2:known?null:area,w_per_m2:+document.getElementById('buildingClass').value,heating:document.getElementById('heating').value};renderChoices();go('step3')}
+function nextCategory(){let known=document.getElementById('hasLoss').value==='yes',loss=+document.getElementById('heatLoss').value||0,area=+document.getElementById('area').value||0;if(known&&loss<=0){alert('Zadaj tepelnú stratu.');return}if(!known&&area<=0){alert('Zadaj vykurovanú plochu.');return}current.building={known_loss:known,heat_loss_kw:known?loss:null,area_m2:known?null:area,w_per_m2:+document.getElementById('buildingClass').value,heating:document.getElementById('heating').value,with_external_dhw_tank:document.getElementById('dhwMode').value==='external'};renderChoices();go('step3')}
 function renderChoices(){let cats=[['heat_pump','♨','Tepelné čerpadlo'],['air_conditioning','❄','Klimatizácia'],['boiler','🔥','Kotol']];document.getElementById('catChoices').innerHTML=cats.map(c=>'<button class="choice '+(category===c[0]?'on':'')+'" onclick="selectCat(\''+c[0]+'\')"><span>'+c[1]+'</span><b>'+c[2]+'</b></button>').join('');renderBrands()}
 function selectCat(c){category=c;brand='';renderChoices()}
 function catalogCategory(d){return d.category==='tepelne_cerpadlo'?'heat_pump':d.category==='klimatizacia'?'air_conditioning':d.category==='kotol'?'boiler':d.category}
@@ -247,7 +248,7 @@ function buildBOM(){
  let key=bundleKeyFor(d),recipe=bundleRecipes.find(b=>b.key===key);
  if(recipe&&recipe.items&&recipe.items.length){
    recipe.items.forEach(r=>{
-     if(r.condition==='with_external_dhw_tank')return;
+     if(r.condition==='with_external_dhw_tank'&&!current.building.with_external_dhw_tank)return;
      if(r.condition==='device_electrical_spec_allows'||r.condition==='3_phase_device_and_spec_allows'||r.condition==='according_to_device'||r.condition==='new_enclosure_required')return;
      if(r.required===false&&r.default_enabled!==true&&r.role!=='installation_service')return;
      let st=stockByRecipe(r),qty=recipeQty(r);
