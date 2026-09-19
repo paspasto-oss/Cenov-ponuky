@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "statuses": [
+    {
+      "id": "lead",
+      "label": "Dopyt"
+    },
+    {
+      "id": "draft",
+      "label": "Rozpracovaná"
+    },
+    {
+      "id": "ready",
+      "label": "Pripravená"
+    },
+    {
+      "id": "sent",
+      "label": "Odoslaná"
+    },
+    {
+      "id": "approved",
+      "label": "Schválená"
+    },
+    {
+      "id": "rejected",
+      "label": "Zamietnutá"
+    }
+  ],
+  "inquiry_types": [
+    {
+      "id": "heat_pump",
+      "label": "Tepelné čerpadlo",
+      "icon": "♨"
+    },
+    {
+      "id": "air_conditioning",
+      "label": "Klimatizácia",
+      "icon": "❄"
+    },
+    {
+      "id": "boiler",
+      "label": "Kotol",
+      "icon": "🔥"
+    },
+    {
+      "id": "plumbing",
+      "label": "ZTI",
+      "icon": "💧"
+    },
+    {
+      "id": "service",
+      "label": "Servis",
+      "icon": "🛠"
+    },
+    {
+      "id": "other",
+      "label": "Iné",
+      "icon": "+"
+    }
+  ],
+  "quick_inquiry": {
+    "required": [
+      "customer_name",
+      "contact",
+      "inquiry_type"
+    ],
+    "optional": [
+      "address",
+      "preferred_term",
+      "note"
+    ],
+    "target_completion_seconds": 60
+  },
+  "quote_steps": [
+    "customer",
+    "job_type",
+    "device",
+    "extras",
+    "pricing",
+    "send"
+  ]
+}
