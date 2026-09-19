@@ -226,14 +226,53 @@ function roleToStock(role){
  const keys={magnetic_filter:['magnet','filter'],air_separator:['odlucovac','vzduch'],heating_safety_valve:['poist','ventil'],heating_expansion_vessel:['expanz','25'],dhw_expansion_vessel:['expanz','8'],ball_valves:['gul','ventil'],pipe_outdoor:['potrub'],pipe_insulation_outdoor:['izol'],freeze_protection:['nemrzn','glykol'],electrical_feed:['kabel'],installation_consumables:['montaz'],refrigerant_pipe_pair:['medene','potrub'],refrigerant_pipe_insulation:['izol'],communication_cable:['kabel'],condensate_drain:['kondenz'],copper_pipe_liquid:['medene'],copper_pipe_gas:['medene'],pipe_insulation:['izol'],power_cable:['kabel'],pvc_trunking:['kanal'],outdoor_bracket:['konzol'],anti_vibration_set:['silentblok']};
  let arr=keys[role]||[role];return stocks.find(x=>arr.every(k=>norm(x.name).includes(norm(k))))||null
 }
+function stockByRecipe(r){
+ if(!r||!stocks.length)return null;
+ if(r.pohoda_code){let byCode=stocks.find(x=>s(x.code)===s(r.pohoda_code));if(byCode)return byCode}
+ if(r.pohoda_plu){let byPlu=stocks.find(x=>s(x.plu)===s(r.pohoda_plu));if(byPlu)return byPlu}
+ return null
+}
+function recipeQty(r){
+ if(r.qty_at_5m!=null)return +r.qty_at_5m;
+ if(r.qty!=null)return +r.qty;
+ return 1
+}
+function recipeName(r,stock){
+ return stock?.name||r.expected_name||roleLabels[r.role]||r.role
+}
 function bundleKeyFor(d){let st=systemType(d);return st==='monoblock'?'hp_monoblock_5m':st==='split'?'hp_split_5m':st==='single_split_ac'?'ac_single_split_5m':null}
 function buildBOM(){
  let d=recommendation,stock=findStockForDevice(d),items=[];
- items.push({role:'device',name:(d.brand+' '+d.model+' '+(d.variant||'')).trim(),qty:1,unit:'ks',pohoda:stock,price:stock?.sell_price_ex_vat??d.sell_price_ex_vat??null,cost:stock?.purchase_price_ex_vat??d.purchase_price_ex_vat??null,visible:true});
- let key=bundleKeyFor(d),roles=fallbackBundles[key]||[];
- roles.forEach(role=>{let st=roleToStock(role),q=roleQty[role]||[1,'ks'];items.push({role,name:roleLabels[role]||role,qty:q[0],unit:q[1],pohoda:st,price:st?.sell_price_ex_vat??null,cost:st?.purchase_price_ex_vat??null,visible:false})});
- items.push({role:'installation',name:category==='air_conditioning'?'Montáž klimatizácie do 5 m':'Montáž a uvedenie do prevádzky',qty:1,unit:'súb.',pohoda:null,price:category==='heat_pump'?600:null,cost:null,visible:true});
- current.items=items;current.system_type=systemType(d);current.bundle_key=key;current.device=recommendation;current.updated=Date.now()
+ items.push({role:'device',name:(d.brand+' '+d.model+' '+(d.variant||'')).trim(),qty:1,unit:'ks',pohoda:stock,price:stock?.sell_price_ex_vat??d.sell_price_ex_vat??null,cost:stock?.purchase_price_ex_vat??d.purchase_price_ex_vat??null,visible:true,mapping_status:stock?'mapped':'unmapped'});
+ let key=bundleKeyFor(d),recipe=bundleRecipes.find(b=>b.key===key);
+ if(recipe&&recipe.items&&recipe.items.length){
+   recipe.items.forEach(r=>{
+     if(r.condition==='with_external_dhw_tank')return;
+     if(r.condition==='device_electrical_spec_allows'||r.condition==='3_phase_device_and_spec_allows'||r.condition==='according_to_device'||r.condition==='new_enclosure_required')return;
+     if(r.required===false&&r.default_enabled!==true&&r.role!=='installation_service')return;
+     let st=stockByRecipe(r),qty=recipeQty(r);
+     let defaultPrice=r.default_sell_price_ex_vat!=null?+r.default_sell_price_ex_vat:null;
+     items.push({
+       role:r.role,
+       name:recipeName(r,st),
+       qty:qty,
+       unit:r.unit||'ks',
+       pohoda:st,
+       pohoda_code:r.pohoda_code||null,
+       mapping_status:r.mapping_status|| (st?'mapped':'unmapped'),
+       price:st?.sell_price_ex_vat??defaultPrice,
+       cost:st?.purchase_price_ex_vat??null,
+       visible:r.role==='installation_service',
+       customer_group:r.customer_group||recipe.customer_label,
+       note:r.note||''
+     })
+   })
+ }else{
+   let roles=fallbackBundles[key]||[];
+   roles.forEach(role=>{let st=roleToStock(role),q=roleQty[role]||[1,'ks'];items.push({role,name:roleLabels[role]||role,qty:q[0],unit:q[1],pohoda:st,price:st?.sell_price_ex_vat??null,cost:st?.purchase_price_ex_vat??null,visible:false,mapping_status:st?'mapped':'unmapped'})});
+   items.push({role:'installation',name:category==='air_conditioning'?'Montáž klimatizácie do 5 m':'Montáž a uvedenie do prevádzky',qty:1,unit:'súb.',pohoda:null,price:category==='heat_pump'?600:null,cost:null,visible:true,mapping_status:'service'});
+ }
+ current.items=items;current.system_type=systemType(d);current.bundle_key=key;current.device=recommendation;current.route_m=5;current.updated=Date.now()
 }
 function renderRecommendation(){
  let d=recommendation,required=current.required_kw,target=current.target_kw;
