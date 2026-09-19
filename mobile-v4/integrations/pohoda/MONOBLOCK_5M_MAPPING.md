@@ -33,3 +33,23 @@ Zákazník tieto riadky nemusí vidieť jednotlivo. PDF ich môže zoskupiť ako
 **Hydraulické a montážne príslušenstvo do 5 m**.
 
 POHODA/Výdajka však dostane jednotlivé skladové karty a reálne množstvá.
+
+
+## Rozšírenie firemného štandardu
+
+Na základe aktuálneho montážneho štandardu boli pridané:
+
+- Obehové čerpadlo OHI PRO 25-60/180: `115907`, PLU `103223`, 1 ks
+- Skrutkovanie k čerpadlu 1"x6/4" so vstavaným guľovým kohútikom: `110810001`, PLU `108196`, 2 ks
+- Prechodová vsuvka 28x1": `124243G281`, PLU `101284`, 8 ks
+- Cu koleno 28 mm 90°: `5090 028000000`, PLU `103740`, 14 ks
+- Mosadzné šróbenie 1": `5061001`, PLU `104102`, 6 ks
+- Mosadzné šróbenie 3/4": `50610034`, PLU `104091`, 4 ks pri externom zásobníku TÚV
+- AOV 1/2": `330030`, 2 ks
+- Vypúšťací ventil 1/2": `46450012`, PLU `102398`, 2 ks
+- Vsuvka 1": `06458006`, PLU `108449`, 14 ks
+- T-kus 1" x 3/4" x 1": `06413104`, PLU `108375`, 12 ks
+- T-kus 3/4" x 1/2" x 3/4": `06413102`, PLU `108373`, 4 ks pri TÚV
+- MERABELL READY! G1/2"-G1/2", 0,8 m: `M0414`, PLU `250018`, 2 ks
+
+V hlavnom sprievodcovi pribudla voľba **externý zásobník TÚV / bez externého zásobníka**. TÚV šróbenia a redukované T-kusy sa vložia len pri externom zásobníku.
