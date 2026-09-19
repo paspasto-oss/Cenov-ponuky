@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101114">
+<title>Spektra Ponuky Mobile</title>
+<style>
+:root{--bg:#0f1012;--panel:#181a1f;--panel2:#20232a;--line:#30343d;--text:#f5f6f8;--muted:#9fa5af;--red:#e32626;--red2:#ff453a;--green:#1f9d63;--amber:#c99a2e}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}
+.app{min-height:100vh;display:grid;grid-template-columns:250px 1fr}.side{position:sticky;top:0;height:100vh;padding:22px 14px;border-right:1px solid #272a31;background:#111216}.brand{display:flex;align-items:center;gap:11px;padding:0 8px;margin-bottom:25px}.logo{width:40px;height:40px;border:5px solid var(--red);border-right-color:transparent;border-radius:50%}.brand b{font-size:18px}.sub{font-size:12px;color:var(--muted)}.nav button{display:block;width:100%;border:0;background:transparent;color:var(--muted);text-align:left;padding:12px 13px;border-radius:11px;margin:3px 0}.nav button:hover,.nav button.active{background:#22252b;color:#fff}
+.main{width:100%;max-width:1500px;margin:auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:flex-start;gap:15px;margin-bottom:18px}.top h1,.editorHead h1{margin:0;font-size:28px}.top p{margin:5px 0 0;color:var(--muted)}
+.btn{border:0;border-radius:11px;padding:11px 15px;background:#2a2e36;color:#fff;font-weight:750}.btn.primary{background:linear-gradient(135deg,var(--red),var(--red2))}.btn.ghost{background:transparent;border:1px solid var(--line)}.btn.small{padding:8px 10px;font-size:13px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:17px}.stat,.card{background:var(--panel);border:1px solid #292d34;border-radius:16px}.stat{padding:15px}.stat small{color:var(--muted)}.stat strong{display:block;font-size:23px;margin-top:7px}.grid{display:grid;grid-template-columns:1.35fr .85fr;gap:17px}.card{padding:17px}.card h2{font-size:17px;margin:0 0 13px}.quotes{display:flex;flex-direction:column;gap:9px}.qrow{display:grid;grid-template-columns:1fr 115px 120px 34px;align-items:center;gap:9px;padding:12px;background:#1d2025;border:1px solid #30343d;border-radius:13px}.qrow small{display:block;color:var(--muted);margin-top:3px}.money{text-align:right;font-weight:800}.badge{justify-self:start;font-size:11px;padding:5px 8px;border-radius:999px;background:#2a2f37}.badge.done{background:#173d2d;color:#92edbd}.badge.draft{background:#3a3116;color:#ffda79}.empty{text-align:center;padding:30px 10px;color:var(--muted)}
+.templates{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.tpl{background:#1d2025;border:1px solid #343943;border-radius:12px;padding:12px;cursor:pointer}.tpl:hover{border-color:#656c79}.tpl b{display:block;margin-bottom:4px}.tpl span{font-size:12px;color:var(--muted)}
+.editor{display:none}.editor.show{display:block}.dashboard.hide{display:none}.editorHead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}.editorActions{display:flex;gap:8px;flex-wrap:wrap}.field{display:flex;flex-direction:column;gap:6px}.field label{font-size:12px;font-weight:750;color:#c8ccd4}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.full{grid-column:1/-1}input,select,textarea{width:100%;background:#111318;color:#fff;border:1px solid #3a3f49;border-radius:10px;padding:10px 11px;outline:0}input:focus,select:focus,textarea:focus{border-color:#777e8c}textarea{min-height:90px;resize:vertical}
+.internal{margin-top:12px;padding:12px;border:1px dashed #454b56;border-radius:11px;background:#15181c}.sum{display:flex;justify-content:space-between;gap:10px;padding:5px 0}.summary{max-width:400px;margin:14px 0 0 auto;border-top:1px solid var(--line);padding-top:10px}.summary .total{font-size:20px;font-weight:900;border-top:1px solid var(--line);padding-top:11px;margin-top:6px}
+.tableWrap{overflow:auto}.items{width:100%;border-collapse:separate;border-spacing:0 8px}.items th{text-align:left;font-size:11px;color:var(--muted);padding:0 6px}.items td{background:#1d2025;border-top:1px solid #30343d;border-bottom:1px solid #30343d;padding:6px}.items td:first-child{border-left:1px solid #30343d;border-radius:10px 0 0 10px}.items td:last-child{border-right:1px solid #30343d;border-radius:0 10px 10px 0}.items input,.items select{padding:8px}.del{border:0;border-radius:9px;background:#3b1d1d;color:#ffb0b0;padding:8px 11px}.mobileNav,.mobileActions{display:none}
+.modalBg{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:80;display:none;align-items:center;justify-content:center;padding:18px}.modalBg.show{display:flex}.modal{width:min(620px,100%);max-height:92vh;overflow:hidden;background:#fff;color:#151515;border-radius:19px;box-shadow:0 30px 90px rgba(0,0,0,.45);display:flex;flex-direction:column}.modalHead{display:flex;justify-content:space-between;align-items:center;padding:18px 21px;border-bottom:1px solid #e7e7e7}.modalHead h2{margin:0;font-size:20px}.x{border:0;background:transparent;font-size:27px}.modalBody{padding:18px;overflow:auto}.modal input,.modal textarea,.modal select{background:#fff;color:#111;border-color:#d3d3d3}.ai{padding:12px 14px;background:#fff7e8;border:1px solid #ecc677;border-radius:12px;margin-bottom:14px;color:#39290b}.drop{margin-top:7px;border:1.5px dashed #c6c6c6;border-radius:12px;background:#fafafa;padding:16px;text-align:center;color:#555}.modal .primary{width:100%;margin-top:14px}
+.print{display:none}
+@media(max-width:1050px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:900px){
+ body{padding-bottom:77px}.app{display:block}.side{display:none}.main{padding:12px 12px 95px}.top,.editorHead{position:sticky;top:0;z-index:30;background:rgba(15,16,18,.97);backdrop-filter:blur(10px);margin:-12px -12px 13px;padding:12px;border-bottom:1px solid #292d34}.top p{display:none}.top h1,.editorHead h1{font-size:22px}.editorActions{display:none}.formgrid{grid-template-columns:1fr 1fr}input,select,textarea{font-size:16px}
+ .qrow{grid-template-columns:1fr auto}.qrow .badge,.qrow .money{display:none}.items{display:block}.items thead{display:none}.items tbody{display:block}.items tr{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#1d2025;border:1px solid #30343d;border-radius:13px;padding:10px;margin-bottom:10px}.items td{display:block;background:transparent!important;border:0!important;padding:0!important}.items td:first-child,.items td:last-child{grid-column:1/-1}.items td:nth-child(2):before{content:"Množstvo"}.items td:nth-child(3):before{content:"MJ"}.items td:nth-child(4):before{content:"Cena bez DPH"}.items td:nth-child(5):before{content:"Interný náklad"}.items td:nth-child(n+2):nth-child(-n+5):before{display:block;font-size:10px;color:var(--muted);margin:0 0 4px 2px}.items input,.items select{width:100%}
+ .mobileNav{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;left:0;right:0;bottom:0;z-index:90;background:rgba(18,19,23,.99);border-top:1px solid #343943;padding:7px 8px calc(7px + env(safe-area-inset-bottom))}.mobileNav button{border:0;background:transparent;color:#c4c8d0;font-size:11px;font-weight:700;padding:5px 2px}.mobileNav .ico{display:block;font-size:20px;line-height:22px}.mobileActions{display:flex;position:fixed;left:10px;right:10px;bottom:77px;z-index:85;gap:7px;padding:7px;background:rgba(23,25,29,.98);border:1px solid #343943;border-radius:14px}.mobileActions .btn{flex:1;padding:10px 5px;font-size:12px}
+}
+@media(max-width:600px){.main{padding-left:9px;padding-right:9px}.top,.editorHead{margin-left:-9px;margin-right:-9px}.formgrid{grid-template-columns:1fr}.full{grid-column:auto}.templates{grid-template-columns:1fr}.newBtn{font-size:12px;padding:9px 10px}.modalBg{align-items:flex-end;padding:0}.modal{width:100%;border-radius:19px 19px 0 0;max-height:94vh}}
+@media print{
+ body{background:#fff;color:#111}.app,.modalBg,.mobileNav,.mobileActions{display:none!important}.print{display:block}@page{size:A4;margin:14mm}.phead{display:flex;justify-content:space-between;border-bottom:3px solid #e32626;padding-bottom:13px}.pbrand{display:flex;align-items:center;gap:10px}.plogo{width:36px;height:36px;border:5px solid #e32626;border-right-color:transparent;border-radius:50%}.ptitle{text-align:right}.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:25px;margin:20px 0}.ptable{width:100%;border-collapse:collapse}.ptable th,.ptable td{border-bottom:1px solid #ddd;padding:7px 5px;text-align:left}.ptable th{text-transform:uppercase;font-size:10px;color:#666}.ptable .r{text-align:right}.ptotal{max-width:320px;margin:17px 0 0 auto}.ptotal div{display:flex;justify-content:space-between;padding:4px 0}.ptotal .big{border-top:2px solid #111;margin-top:6px;padding-top:9px;font-size:19px;font-weight:900}.pnote{margin-top:22px;font-size:12px;color:#555}
+}
+</style>
+</head>
+<body>
+<div class="app">
+ <aside class="side">
+  <div class="brand"><div class="logo"></div><div><b>Spektra Ponuky</b><div class="sub">mobil / tablet</div></div></div>
+  <div class="nav">
+   <button class="active" onclick="showDashboard()">Prehľad</button>
+   <button onclick="openNew()">+ Nová ponuka</button>
+   <button onclick="goTemplates()">Šablóny</button>
+   <button onclick="exportAll()">Export dát</button>
+  </div>
+ </aside>
+ <main class="main">
+  <section id="dashboard" class="dashboard">
+   <div class="top"><div><h1>Cenové ponuky</h1><p>Rýchla tvorba ponúk na mobile, tablete aj PC.</p></div><button class="btn primary newBtn" onclick="openNew()">+ Nová ponuka</button></div>
+   <div class="stats">
+    <div class="stat"><small>Ponuky spolu</small><strong id="sCount">0</strong></div>
+    <div class="stat"><small>Hodnota ponúk</small><strong id="sValue">0 €</strong></div>
+    <div class="stat"><small>Priemerná marža</small><strong id="sMargin">0 %</strong></div>
+    <div class="stat"><small>Rozpracované</small><strong id="sDraft">0</strong></div>
+   </div>
+   <div class="grid">
+    <div class="card"><h2>Posledné ponuky</h2><div id="quoteList" class="quotes"></div></div>
+    <div class="card" id="templates"><h2>Rýchle šablóny</h2><div class="templates">
+     <div class="tpl" onclick="fromTemplate('tc')"><b>Tepelné čerpadlo</b><span>TČ + hydraulika + montáž</span></div>
+     <div class="tpl" onclick="fromTemplate('klima')"><b>Klimatizácia</b><span>jednotka + montáž</span></div>
+     <div class="tpl" onclick="fromTemplate('zti')"><b>ZTI</b><span>voda, odpad, skúška</span></div>
+     <div class="tpl" onclick="fromTemplate('servis')"><b>Servis</b><span>diagnostika + práca + doprava</span></div>
+    </div></div>
+   </div>
+  </section>
+
+  <section id="editor" class="editor">
+   <div class="editorHead">
+    <div><button class="btn ghost small" onclick="showDashboard()">← Späť</button><h1 id="editorTitle" style="margin-top:10px">Nová cenová ponuka</h1><div class="sub">Interné náklady sa do zákazníckeho PDF netlačia.</div></div>
+    <div class="editorActions"><button class="btn" onclick="saveQuote()">Uložiť</button><button class="btn ghost" onclick="downloadCSV()">CSV</button><button class="btn primary" onclick="printQuote()">PDF</button></div>
+   </div>
+   <div class="grid">
+    <div class="card"><h2>Základné údaje</h2><div class="formgrid">
+     <div class="field"><label>Číslo ponuky</label><input id="qNumber"></div>
+     <div class="field"><label>Dátum</label><input id="qDate" type="date"></div>
+     <div class="field"><label>Zákazník / firma</label><input id="qCustomer" placeholder="Meno alebo názov firmy"></div>
+     <div class="field"><label>Telefón / e-mail</label><input id="qContact" placeholder="+421... / email"></div>
+     <div class="field full"><label>Adresa realizácie</label><input id="qAddress" placeholder="Ulica, mesto"></div>
+     <div class="field full"><label>Predmet ponuky</label><input id="qSubject" placeholder="Dodávka a montáž..."></div>
+     <div class="field full"><label>Poznámka pre zákazníka</label><textarea id="qNote" placeholder="Rozsah prác, termín, podmienky..."></textarea></div>
+    </div></div>
+    <div class="card"><h2>Nastavenie ceny</h2><div class="formgrid">
+     <div class="field"><label>DPH</label><select id="qVat" onchange="recalc()"><option value="23">23 %</option><option value="20">20 %</option><option value="10">10 %</option><option value="0">0 %</option></select></div>
+     <div class="field"><label>Zľava na celok (%)</label><input id="qDiscount" type="number" step="0.1" value="0" oninput="recalc()"></div>
+     <div class="field"><label>Platnosť (dní)</label><input id="qValidity" type="number" value="14"></div>
+     <div class="field"><label>Stav</label><select id="qStatus"><option value="draft">Rozpracovaná</option><option value="sent">Odoslaná</option><option value="done">Schválená</option></select></div>
+    </div><div class="internal"><b>Interná kalkulácia</b><div class="sum"><span>Náklad spolu</span><b id="costTotal">0 €</b></div><div class="sum"><span>Hrubý zisk</span><b id="profitTotal">0 €</b></div><div class="sum"><span>Marža</span><b id="marginTotal">0 %</b></div></div></div>
+   </div>
+   <div class="card" style="margin-top:17px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>Položky</h2><button class="btn small" onclick="addItem()">+ Pridať</button></div>
+    <div class="tableWrap"><table class="items"><thead><tr><th>Popis</th><th>Množstvo</th><th>MJ</th><th>Cena bez DPH</th><th>Náklad</th><th></th></tr></thead><tbody id="itemsBody"></tbody></table></div>
+    <div class="summary"><div class="sum"><span>Medzisúčet</span><b id="subtotal">0 €</b></div><div class="sum"><span>Zľava</span><b id="discountVal">0 €</b></div><div class="sum"><span>DPH</span><b id="vatVal">0 €</b></div><div class="sum total"><span>Spolu s DPH</span><span id="grandTotal">0 €</span></div></div>
+   </div>
+  </section>
+ </main>
+</div>
+
+<div id="mobileActions" class="mobileActions" style="display:none"><button class="btn" onclick="saveQuote()">Uložiť</button><button class="btn ghost" onclick="downloadCSV()">CSV</button><button class="btn primary" onclick="printQuote()">PDF</button></div>
+<nav class="mobileNav"><button onclick="showDashboard()"><span class="ico">⌂</span>Prehľad</button><button onclick="openNew()"><span class="ico">＋</span>Nová</button><button onclick="goTemplates()"><span class="ico">▦</span>Šablóny</button><button onclick="exportAll()"><span class="ico">⇩</span>Export</button></nav>
+
+<div id="modal" class="modalBg" onclick="if(event.target===this)closeNew()">
+ <div class="modal"><div class="modalHead"><h2>Nová cenová ponuka</h2><button class="x" onclick="closeNew()">×</button></div><div class="modalBody">
+  <div class="ai">✨ Opíš práce alebo nahraj dokument. Aplikácia pripraví prvý návrh položiek.</div>
+  <div class="field"><label>Popis prác</label><textarea id="aiText" placeholder="Napr. tepelné čerpadlo 9 kW, montáž do 5 m, zásobník TÚV 200 l, filter..."></textarea></div>
+  <div class="field" style="margin-top:12px"><label>Dokumenty (voliteľné)</label><div class="drop">PDF, Excel, Word alebo obrázky<br><input type="file" multiple accept=".pdf,.xlsx,.xls,.doc,.docx,image/*"></div></div>
+  <button class="btn primary" onclick="generateDraft()">Vygenerovať návrh ✨</button>
+ </div></div>
+</div>
+
+<div id="printArea" class="print"></div>
+
+<script>
+var KEY='spektra_quotes_mobile_v2';
+var quotes=JSON.parse(localStorage.getItem(KEY)||'[]');
+var currentId=null;
+function el(id){return document.getElementById(id)}
+function eur(n){return new Intl.NumberFormat('sk-SK',{style:'currency',currency:'EUR'}).format(Number(n||0))}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]})}
+function uid(){return 'q_'+Date.now()+'_'+Math.random().toString(16).slice(2)}
+function today(){return new Date().toISOString().slice(0,10)}
+function qno(){return String(new Date().getFullYear()).slice(-2)+'NA'+String(quotes.length+1).padStart(4,'0')}
+function item(name,qty,unit,price,cost){return {name:name||'',qty:qty==null?1:qty,unit:unit||'ks',price:price||0,cost:cost||0}}
+var templates={
+ tc:[item('Tepelné čerpadlo – dodávka zariadenia'),item('Hydraulické príslušenstvo a armatúry',1,'súb.'),item('Zásobník TÚV'),item('Montáž a uvedenie do prevádzky',1,'súb.',600,120)],
+ klima:[item('Klimatizačná jednotka'),item('Montáž klimatizácie do 3 m',1,'súb.'),item('Montážny a spojovací materiál',1,'súb.')],
+ zti:[item('Rozvody vody',1,'súb.'),item('Odpadové potrubie',1,'súb.'),item('Montážne práce',1,'súb.'),item('Tlaková skúška',1,'súb.')],
+ servis:[item('Diagnostika zariadenia',1,'hod'),item('Servisné práce',1,'hod'),item('Doprava')]
+};
+function blank(items){return {id:uid(),number:qno(),date:today(),customer:'',contact:'',address:'',subject:'',note:'',vat:23,discount:0,validity:14,status:'draft',items:items||[],updated:Date.now()}}
+function calc(q){var subtotal=0,cost=0;(q.items||[]).forEach(function(i){subtotal+=(+i.qty||0)*(+i.price||0);cost+=(+i.qty||0)*(+i.cost||0)});var disc=subtotal*(+q.discount||0)/100,after=subtotal-disc,vat=after*(+q.vat||0)/100,grand=after+vat,profit=after-cost,margin=after?profit/after*100:0;return {subtotal:subtotal,cost:cost,disc:disc,after:after,vat:vat,grand:grand,profit:profit,margin:margin}}
+function statusName(s){return s==='done'?'Schválená':s==='sent'?'Odoslaná':'Rozpracovaná'}
+function persist(){localStorage.setItem(KEY,JSON.stringify(quotes));renderDashboard()}
+function renderDashboard(){var list=el('quoteList');if(!quotes.length){list.innerHTML='<div class="empty">Zatiaľ nemáš uloženú žiadnu ponuku.</div>'}else{list.innerHTML=quotes.slice().sort(function(a,b){return b.updated-a.updated}).map(function(q){var c=calc(q);return '<div class="qrow"><div><b>'+esc(q.customer||q.subject||'Bez názvu')+'</b><small>'+esc(q.number)+' · '+esc(q.subject||'')+'</small></div><span class="badge '+(q.status==='done'?'done':q.status==='draft'?'draft':'')+'">'+statusName(q.status)+'</span><div class="money">'+eur(c.grand)+'</div><button class="btn small" onclick="editQuote(\''+q.id+'\')">›</button></div>'}).join('')}
+ var cs=quotes.map(calc),sum=cs.reduce(function(a,c){return a+c.grand},0),ms=cs.filter(function(c){return c.after>0}).map(function(c){return c.margin});el('sCount').textContent=quotes.length;el('sValue').textContent=eur(sum);el('sMargin').textContent=(ms.length?ms.reduce(function(a,b){return a+b},0)/ms.length:0).toFixed(1)+' %';el('sDraft').textContent=quotes.filter(function(q){return q.status==='draft'}).length}
+function showDashboard(){el('dashboard').classList.remove('hide');el('editor').classList.remove('show');el('mobileActions').style.display='none';currentId=null;renderDashboard()}
+function openNew(){el('modal').classList.add('show')}
+function closeNew(){el('modal').classList.remove('show')}
+function goTemplates(){showDashboard();el('templates').scrollIntoView({behavior:'smooth'})}
+function fromTemplate(t){var q=blank(JSON.parse(JSON.stringify(templates[t]||[])));q.subject=t==='tc'?'Dodávka a montáž tepelného čerpadla':t==='klima'?'Dodávka a montáž klimatizácie':t==='zti'?'Zdravotechnické inštalácie':'Servisné práce';openEditor(q)}
+function generateDraft(){var t=(el('aiText').value||'').toLowerCase(),q;if(/tepel|tč|čerpad/.test(t)){q=blank(JSON.parse(JSON.stringify(templates.tc)));q.subject='Dodávka a montáž tepelného čerpadla'}else if(/klim|split/.test(t)){q=blank(JSON.parse(JSON.stringify(templates.klima)));q.subject='Dodávka a montáž klimatizácie'}else if(/voda|odpad|zti|kúpeľ|kupel/.test(t)){q=blank(JSON.parse(JSON.stringify(templates.zti)));q.subject='Zdravotechnické a montážne práce'}else if(/servis|oprava|diagnost/.test(t)){q=blank(JSON.parse(JSON.stringify(templates.servis)));q.subject='Servisné práce'}else{q=blank([item('Práce podľa zadania',1,'súb.'),item('Montážny materiál',1,'súb.')])}
+ if(/demont/.test(t))q.items.push(item('Demontáž pôvodného zariadenia',1,'súb.',50,0));if(/schod|vynos|znos/.test(t))q.items.push(item('Znos / výnos a manipulácia',1,'súb.',200,0));if(/filter/.test(t))q.items.push(item('Magnetický filter / odlučovač nečistôt'));if(/expanz/.test(t))q.items.push(item('Expanzná nádoba'));q.note=el('aiText').value;closeNew();openEditor(q)}
+function openEditor(q){currentId=q.id;el('dashboard').classList.add('hide');el('editor').classList.add('show');el('mobileActions').style.display='flex';el('qNumber').value=q.number||'';el('qDate').value=q.date||today();el('qCustomer').value=q.customer||'';el('qContact').value=q.contact||'';el('qAddress').value=q.address||'';el('qSubject').value=q.subject||'';el('qNote').value=q.note||'';el('qVat').value=q.vat==null?23:q.vat;el('qDiscount').value=q.discount||0;el('qValidity').value=q.validity||14;el('qStatus').value=q.status||'draft';el('editorTitle').textContent=(quotes.some(function(x){return x.id===q.id})?'Upraviť':'Nová')+' cenová ponuka';renderItems(q.items||[])}
+function editQuote(id){var q=quotes.find(function(x){return x.id===id});if(q)openEditor(JSON.parse(JSON.stringify(q)))}
+function readItems(){return Array.from(el('itemsBody').querySelectorAll('tr')).map(function(tr){return {name:tr.querySelector('.n').value,qty:+tr.querySelector('.q').value||0,unit:tr.querySelector('.u').value,price:+tr.querySelector('.p').value||0,cost:+tr.querySelector('.c').value||0}})}
+function current(){return {id:currentId||uid(),number:el('qNumber').value,date:el('qDate').value,customer:el('qCustomer').value,contact:el('qContact').value,address:el('qAddress').value,subject:el('qSubject').value,note:el('qNote').value,vat:+el('qVat').value,discount:+el('qDiscount').value,validity:+el('qValidity').value,status:el('qStatus').value,items:readItems(),updated:Date.now()}}
+function saveQuote(){var q=current(),i=quotes.findIndex(function(x){return x.id===q.id});currentId=q.id;if(i>=0)quotes[i]=q;else quotes.push(q);persist();alert('Ponuka bola uložená.')}
+function addItem(i){i=i||item('');var tr=document.createElement('tr');var opts=['ks','m','m²','hod','súb.'].map(function(u){return '<option'+(u===i.unit?' selected':'')+'>'+u+'</option>'}).join('');tr.innerHTML='<td><input class="n" value="'+esc(i.name)+'" placeholder="Názov položky" oninput="recalc()"></td><td><input class="q" type="number" step="0.01" value="'+i.qty+'" oninput="recalc()"></td><td><select class="u" onchange="recalc()">'+opts+'</select></td><td><input class="p" type="number" step="0.01" value="'+i.price+'" oninput="recalc()"></td><td><input class="c" type="number" step="0.01" value="'+i.cost+'" oninput="recalc()"></td><td><button class="del" onclick="this.closest(\'tr\').remove();recalc()">×</button></td>';el('itemsBody').appendChild(tr);recalc()}
+function renderItems(items){el('itemsBody').innerHTML='';(items.length?items:[item('')]).forEach(addItem);recalc()}
+function recalc(){var c=calc({items:readItems(),discount:+el('qDiscount').value||0,vat:+el('qVat').value||0});el('subtotal').textContent=eur(c.subtotal);el('discountVal').textContent='-'+eur(c.disc);el('vatVal').textContent=eur(c.vat);el('grandTotal').textContent=eur(c.grand);el('costTotal').textContent=eur(c.cost);el('profitTotal').textContent=eur(c.profit);el('marginTotal').textContent=c.margin.toFixed(1)+' %'}
+function printQuote(){var q=current(),c=calc(q),d=new Date(q.date||Date.now()).toLocaleDateString('sk-SK'),rows=q.items.map(function(i){return '<tr><td>'+esc(i.name)+'</td><td>'+i.qty+'</td><td>'+esc(i.unit)+'</td><td class="r">'+eur(i.price)+'</td><td class="r">'+eur(i.qty*i.price)+'</td></tr>'}).join('');el('printArea').innerHTML='<div class="phead"><div class="pbrand"><div class="plogo"></div><div><b style="font-size:20px">Spektra Install s.r.o.</b><div>Hollého 210, 015 01 Rajec</div></div></div><div class="ptitle"><b style="font-size:23px">CENOVÁ PONUKA</b><div>'+esc(q.number)+'</div><div>'+d+'</div></div></div><div class="pgrid"><div><b>Zákazník</b><div>'+esc(q.customer||'—')+'</div><div>'+esc(q.contact||'')+'</div><div>'+esc(q.address||'')+'</div></div><div><b>Predmet</b><div>'+esc(q.subject||'—')+'</div><div>Platnosť: '+(q.validity||14)+' dní</div></div></div><table class="ptable"><thead><tr><th>Položka</th><th>Množstvo</th><th>MJ</th><th class="r">Cena bez DPH</th><th class="r">Spolu</th></tr></thead><tbody>'+rows+'</tbody></table><div class="ptotal"><div><span>Medzisúčet</span><b>'+eur(c.subtotal)+'</b></div><div><span>Zľava '+(q.discount||0)+' %</span><b>-'+eur(c.disc)+'</b></div><div><span>DPH '+(q.vat||0)+' %</span><b>'+eur(c.vat)+'</b></div><div class="big"><span>Spolu s DPH</span><span>'+eur(c.grand)+'</span></div></div><div class="pnote"><b>Poznámka:</b><br>'+esc(q.note||'')+'</div>';window.print()}
+function blob(data,name,type){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:type}));a.download=name;a.click();setTimeout(function(){URL.revokeObjectURL(a.href)},400)}
+function downloadCSV(){var q=current(),rows=[['Číslo',q.number],['Zákazník',q.customer],['Predmet',q.subject],[],['Položka','Množstvo','MJ','Cena bez DPH','Náklad']];q.items.forEach(function(i){rows.push([i.name,i.qty,i.unit,i.price,i.cost])});var csv=rows.map(function(r){return r.map(function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'}).join(';')}).join('\n');blob(csv,(q.number||'ponuka')+'.csv','text/csv;charset=utf-8')}
+function exportAll(){blob(JSON.stringify(quotes,null,2),'spektra-ponuky-backup.json','application/json')}
+renderDashboard();
+</script>
+</body>
+</html>
