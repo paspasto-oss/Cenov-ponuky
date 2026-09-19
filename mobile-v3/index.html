@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111216"><title>Spektra Ponuky – Terén</title>
+<style>
+:root{--bg:#0f1012;--p:#181a1f;--p2:#22252b;--line:#333842;--t:#f7f7f8;--m:#a9afb9;--r:#e52424;--g:#1f9d63;--a:#c89422}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding-bottom:76px}button,input,textarea,select{font:inherit}button{cursor:pointer}
+.wrap{max-width:1050px;margin:auto;padding:14px}.head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}.brand{display:flex;align-items:center;gap:10px}.logo{width:37px;height:37px;border:5px solid var(--r);border-right-color:transparent;border-radius:50%}.head b{font-size:19px}.sub{font-size:12px;color:var(--m)}
+.hero{background:linear-gradient(145deg,#1b1e23,#14161a);border:1px solid #2c3037;border-radius:18px;padding:18px;margin-bottom:14px}.hero h1{font-size:24px;margin:0 0 6px}.hero p{margin:0;color:var(--m)}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}.big{min-height:92px;border:1px solid #343944;border-radius:16px;background:var(--p2);color:#fff;padding:13px;text-align:left}.big.primary{background:linear-gradient(135deg,#d91f1f,#ef332b);border:0}.big .ico{display:block;font-size:27px;margin-bottom:7px}.big b{font-size:16px;display:block}.big small{color:#d7d9dd}.big.primary small{color:#fff}
+.card{background:var(--p);border:1px solid #292d34;border-radius:16px;padding:14px;margin-bottom:12px}.card h2{font-size:17px;margin:0 0 12px}.list{display:flex;flex-direction:column;gap:8px}.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;background:#1e2126;border:1px solid #30353d;border-radius:13px}.row b{display:block}.row small{color:var(--m)}.badge{font-size:11px;padding:5px 8px;border-radius:999px;background:#333844;color:#ddd}.badge.lead{background:#382f16;color:#ffdb76}.badge.sent{background:#173247;color:#8ed1ff}.badge.approved{background:#153b2b;color:#8cedb9}
+.btn{border:0;border-radius:11px;background:#2b2f37;color:white;font-weight:750;padding:11px 14px}.btn.primary{background:var(--r)}.btn.ghost{background:transparent;border:1px solid var(--line)}.btn.full{width:100%}.btn.green{background:var(--g)}.btn.small{padding:8px 10px;font-size:13px}
+.screen{display:none}.screen.on{display:block}.topline{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.topline h1{font-size:22px;margin:0}.field{display:flex;flex-direction:column;gap:6px;margin-bottom:11px}.field label{font-size:12px;font-weight:800;color:#cbd0d7}input,textarea,select{width:100%;font-size:16px;background:#111318;color:#fff;border:1px solid #3b4049;border-radius:11px;padding:11px 12px;outline:none}textarea{min-height:92px;resize:vertical}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.types{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.type{border:1px solid #363b45;background:#1c1f24;color:#fff;border-radius:13px;padding:13px 8px;text-align:center;min-height:82px}.type.on{border:2px solid var(--r);background:#251a1b}.type span{display:block;font-size:24px;margin-bottom:5px}.type b{font-size:12px}
+.steps{display:flex;gap:5px;margin-bottom:12px}.step{height:5px;flex:1;background:#31353c;border-radius:10px}.step.on{background:var(--r)}
+.summary{background:#111318;border:1px solid #343943;border-radius:13px;padding:12px}.srow{display:flex;justify-content:space-between;gap:12px;padding:5px 0}.srow.total{font-size:20px;font-weight:900;border-top:1px solid #3b4049;margin-top:6px;padding-top:10px}.sendgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.sendgrid .btn{min-height:55px}
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:50;background:rgba(17,18,22,.98);border-top:1px solid #333842;display:grid;grid-template-columns:repeat(3,1fr);padding:7px 8px calc(7px + env(safe-area-inset-bottom))}.nav button{border:0;background:transparent;color:#c5c9d0;font-size:11px;font-weight:700}.nav span{display:block;font-size:20px}
+@media(max-width:620px){.wrap{padding:10px}.actions{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}.types{grid-template-columns:repeat(2,1fr)}.hero h1{font-size:21px}.sendgrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <div class="head"><div class="brand"><div class="logo"></div><div><b>Spektra Ponuky</b><div class="sub">terén / predajňa</div></div></div><div id="autosave" class="sub">Uložené</div></div>
+
+ <section id="home" class="screen on">
+  <div class="hero"><h1>Čo potrebuješ urobiť?</h1><p>Nový zákazník sa dá zapísať za menej ako minútu.</p>
+   <div class="actions">
+    <button class="big primary" onclick="newLead()"><span class="ico">＋</span><b>Rýchly dopyt</b><small>Meno, kontakt, čo zákazník potrebuje</small></button>
+    <button class="big" onclick="newQuote()"><span class="ico">€</span><b>Nová ponuka</b><small>Keď už poznáme zariadenie a rozsah</small></button>
+   </div>
+  </div>
+  <div class="card"><h2>Rozpracované</h2><div id="records" class="list"></div></div>
+ </section>
+
+ <section id="lead" class="screen">
+  <div class="topline"><button class="btn ghost small" onclick="go('home')">← Späť</button><h1>Rýchly dopyt</h1></div>
+  <div class="steps"><div class="step on"></div><div class="step"></div></div>
+  <div class="card">
+   <div class="field"><label>Meno alebo firma *</label><input id="lName" placeholder="Ján Novák"></div>
+   <div class="grid2">
+    <div class="field"><label>Telefón</label><input id="lPhone" type="tel" placeholder="0905 123 456"></div>
+    <div class="field"><label>E-mail</label><input id="lEmail" type="email" placeholder="zakaznik@email.sk"></div>
+   </div>
+   <div class="field"><label>Obec / adresa realizácie</label><input id="lAddress" placeholder="napr. Rajec"></div>
+  </div>
+  <div class="card"><h2>Čo zákazník potrebuje? *</h2><div id="types" class="types"></div></div>
+  <div class="card">
+   <div class="field"><label>Krátka poznámka</label><textarea id="lNote" placeholder="Napr. RD 140 m², radiátory, chce vymeniť plynový kotol..."></textarea></div>
+   <div class="field"><label>Preferovaný termín</label><input id="lTerm" placeholder="napr. čo najskôr / október"></div>
+  </div>
+  <button class="btn primary full" onclick="saveLead()">Uložiť dopyt</button>
+ </section>
+
+ <section id="leadDetail" class="screen">
+  <div class="topline"><button class="btn ghost small" onclick="go('home')">← Späť</button><h1>Zákazník</h1></div>
+  <div class="card" id="leadInfo"></div>
+  <div class="sendgrid">
+   <button class="btn green" onclick="callCustomer()">☎ Zavolať</button>
+   <button class="btn" onclick="waCustomer()">WhatsApp</button>
+  </div>
+  <div style="height:9px"></div>
+  <button class="btn primary full" onclick="convertLead()">Dokončiť cenovú ponuku →</button>
+ </section>
+
+ <section id="quote" class="screen">
+  <div class="topline"><button class="btn ghost small" onclick="go('home')">← Späť</button><h1>Cenová ponuka</h1></div>
+  <div class="steps"><div class="step on"></div><div class="step on"></div><div class="step on"></div></div>
+  <div class="card">
+   <h2>Zákazník</h2>
+   <div class="field"><label>Meno / firma</label><input id="qName"></div>
+   <div class="grid2"><div class="field"><label>Telefón</label><input id="qPhone" type="tel"></div><div class="field"><label>E-mail</label><input id="qEmail" type="email"></div></div>
+   <div class="field"><label>Adresa realizácie</label><input id="qAddress"></div>
+  </div>
+  <div class="card">
+   <h2>Zákazka</h2>
+   <div class="field"><label>Typ</label><select id="qType"></select></div>
+   <div class="field"><label>Zariadenie</label><select id="qDevice"><option value="">Zariadenie doplníme z cenníka</option></select></div>
+   <div class="field"><label>Poznámka / rozsah</label><textarea id="qNote"></textarea></div>
+  </div>
+  <div class="card">
+   <h2>Cena</h2>
+   <div class="grid2"><div class="field"><label>Cena bez DPH</label><input id="qNet" type="number" step="0.01" oninput="updatePrice()"></div><div class="field"><label>DPH</label><select id="qVat" onchange="updatePrice()"><option value="23">23 %</option><option value="20">20 %</option><option value="0">0 %</option></select></div></div>
+   <div class="summary"><div class="srow"><span>Bez DPH</span><b id="netOut">0 €</b></div><div class="srow"><span>DPH</span><b id="vatOut">0 €</b></div><div class="srow total"><span>Spolu</span><span id="grossOut">0 €</span></div></div>
+  </div>
+  <button class="btn primary full" onclick="saveQuote()">Uložiť a pokračovať na odoslanie</button>
+ </section>
+
+ <section id="send" class="screen">
+  <div class="topline"><button class="btn ghost small" onclick="go('quote')">← Upraviť</button><h1>Odoslať zákazníkovi</h1></div>
+  <div class="card" id="sendSummary"></div>
+  <div class="sendgrid">
+   <button class="btn primary" onclick="printOffer()">PDF / Tlač</button>
+   <button class="btn green" onclick="shareSystem()">Zdieľať</button>
+   <button class="btn" onclick="shareWA()">WhatsApp</button>
+   <button class="btn" onclick="shareEmail()">E-mail</button>
+  </div>
+  <div class="sub" style="margin-top:10px">MVP: WhatsApp a e-mail posielajú textový súhrn. PDF sa vytlačí/uloží zo zariadenia. Neskôr doplníme odoslanie PDF jedným klikom.</div>
+ </section>
+</div>
+
+<nav class="nav"><button onclick="go('home')"><span>⌂</span>Prehľad</button><button onclick="newLead()"><span>＋</span>Dopyt</button><button onclick="newQuote()"><span>€</span>Ponuka</button></nav>
+
+<script>
+const K='spektra_field_records_v1', types=[
+{id:'heat_pump',label:'Tepelné čerpadlo',icon:'♨'},{id:'air_conditioning',label:'Klimatizácia',icon:'❄'},{id:'boiler',label:'Kotol',icon:'🔥'},{id:'plumbing',label:'ZTI',icon:'💧'},{id:'service',label:'Servis',icon:'🛠'},{id:'other',label:'Iné',icon:'+'}
+];
+let records=JSON.parse(localStorage.getItem(K)||'[]'), activeId=null, selectedType='';
+const e=id=>document.getElementById(id), fmt=n=>new Intl.NumberFormat('sk-SK',{style:'currency',currency:'EUR'}).format(+n||0);
+function persist(){localStorage.setItem(K,JSON.stringify(records));e('autosave').textContent='Uložené '+new Date().toLocaleTimeString('sk-SK',{hour:'2-digit',minute:'2-digit'});renderHome()}
+function go(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('on'));e(id).classList.add('on');scrollTo(0,0)}
+function typeLabel(id){return (types.find(x=>x.id===id)||{}).label||'Iné'}
+function statusLabel(s){return s==='lead'?'Dopyt':s==='sent'?'Odoslaná':s==='approved'?'Schválená':'Rozpracovaná'}
+function renderTypes(){e('types').innerHTML=types.map(t=>'<button class="type '+(selectedType===t.id?'on':'')+'" onclick="pickType(\''+t.id+'\')"><span>'+t.icon+'</span><b>'+t.label+'</b></button>').join('');e('qType').innerHTML=types.map(t=>'<option value="'+t.id+'">'+t.label+'</option>').join('')}
+function pickType(id){selectedType=id;renderTypes()}
+function newLead(){activeId=null;selectedType='';['lName','lPhone','lEmail','lAddress','lNote','lTerm'].forEach(id=>e(id).value='');renderTypes();go('lead')}
+function newQuote(){activeId=null;['qName','qPhone','qEmail','qAddress','qNote','qNet'].forEach(id=>e(id).value='');e('qVat').value='23';e('qType').value='heat_pump';updatePrice();go('quote')}
+function saveLead(){let name=e('lName').value.trim(),phone=e('lPhone').value.trim(),mail=e('lEmail').value.trim();if(!name){alert('Zadaj meno alebo firmu.');return}if(!phone&&!mail){alert('Zadaj telefón alebo e-mail.');return}if(!selectedType){alert('Vyber, čo zákazník potrebuje.');return}
+ let r={id:'r_'+Date.now(),status:'lead',name,phone,email:mail,address:e('lAddress').value.trim(),type:selectedType,note:e('lNote').value.trim(),term:e('lTerm').value.trim(),created:Date.now(),updated:Date.now()};records.unshift(r);activeId=r.id;persist();showLead(r.id)}
+function renderHome(){let box=e('records');if(!records.length){box.innerHTML='<div class="sub" style="padding:18px;text-align:center">Zatiaľ bez dopytov a ponúk.</div>';return}box.innerHTML=records.slice(0,20).map(r=>'<div class="row" onclick="openRecord(\''+r.id+'\')"><div><b>'+safe(r.name)+'</b><small>'+typeLabel(r.type)+' · '+safe(r.address||r.phone||r.email)+'</small></div><span class="badge '+r.status+'">'+statusLabel(r.status)+'</span></div>').join('')}
+function safe(s){return String(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
+function openRecord(id){let r=records.find(x=>x.id===id);if(!r)return;activeId=id;if(r.status==='lead')showLead(id);else loadQuote(r)}
+function showLead(id){let r=records.find(x=>x.id===id);if(!r)return;activeId=id;e('leadInfo').innerHTML='<h2 style="margin-top:0">'+safe(r.name)+'</h2><div class="srow"><span>Kontakt</span><b>'+safe(r.phone||r.email)+'</b></div><div class="srow"><span>Typ</span><b>'+typeLabel(r.type)+'</b></div><div class="srow"><span>Adresa</span><b>'+safe(r.address||'—')+'</b></div><div class="srow"><span>Termín</span><b>'+safe(r.term||'—')+'</b></div><div style="margin-top:10px;color:#cfd3da">'+safe(r.note||'Bez poznámky')+'</div>';go('leadDetail')}
+function callCustomer(){let r=records.find(x=>x.id===activeId);if(r&&r.phone)location.href='tel:'+r.phone.replace(/\s/g,'')}
+function waCustomer(){let r=records.find(x=>x.id===activeId);if(!r||!r.phone){alert('Chýba telefón.');return}let p=r.phone.replace(/\s/g,'').replace(/^0/,'421');open('https://wa.me/'+p,'_blank')}
+function convertLead(){let r=records.find(x=>x.id===activeId);if(!r)return;loadQuote(r)}
+function loadQuote(r){activeId=r.id;e('qName').value=r.name||'';e('qPhone').value=r.phone||'';e('qEmail').value=r.email||'';e('qAddress').value=r.address||'';e('qType').value=r.type||'heat_pump';e('qNote').value=r.note||'';e('qNet').value=r.net||'';e('qVat').value=r.vat==null?23:r.vat;updatePrice();go('quote')}
+function updatePrice(){let net=+e('qNet').value||0,vat=+e('qVat').value||0,tax=net*vat/100;e('netOut').textContent=fmt(net);e('vatOut').textContent=fmt(tax);e('grossOut').textContent=fmt(net+tax)}
+function saveQuote(){let name=e('qName').value.trim();if(!name){alert('Zadaj zákazníka.');return}let r=records.find(x=>x.id===activeId);if(!r){r={id:'r_'+Date.now(),created:Date.now()};records.unshift(r);activeId=r.id}
+ Object.assign(r,{status:'draft',name,phone:e('qPhone').value.trim(),email:e('qEmail').value.trim(),address:e('qAddress').value.trim(),type:e('qType').value,note:e('qNote').value.trim(),net:+e('qNet').value||0,vat:+e('qVat').value||0,updated:Date.now()});persist();showSend(r)}
+function showSend(r){let gross=(r.net||0)*(1+(r.vat||0)/100);e('sendSummary').innerHTML='<h2 style="margin-top:0">'+safe(r.name)+'</h2><div class="srow"><span>'+typeLabel(r.type)+'</span><b>'+fmt(gross)+'</b></div><div class="sub">'+safe(r.note||'')+'</div>';go('send')}
+function msg(r){let gross=(r.net||0)*(1+(r.vat||0)/100);return 'Dobrý deň, posielame cenovú ponuku Spektra Install na '+typeLabel(r.type)+'. Cena spolu: '+fmt(gross)+'. Ďakujeme.'}
+function shareWA(){let r=records.find(x=>x.id===activeId);if(!r)return;let p=(r.phone||'').replace(/\s/g,'').replace(/^0/,'421');open('https://wa.me/'+p+'?text='+encodeURIComponent(msg(r)),'_blank');r.status='sent';persist()}
+function shareEmail(){let r=records.find(x=>x.id===activeId);if(!r)return;location.href='mailto:'+encodeURIComponent(r.email||'')+'?subject='+encodeURIComponent('Cenová ponuka Spektra Install')+'&body='+encodeURIComponent(msg(r));r.status='sent';persist()}
+async function shareSystem(){let r=records.find(x=>x.id===activeId);if(!r)return;if(navigator.share){await navigator.share({title:'Cenová ponuka Spektra Install',text:msg(r)});r.status='sent';persist()}else alert('Toto zariadenie nepodporuje systémové zdieľanie.')}
+function printOffer(){let r=records.find(x=>x.id===activeId);if(!r)return;let gross=(r.net||0)*(1+(r.vat||0)/100),w=open('','_blank');w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Ponuka</title><style>body{font-family:Arial;padding:35px;color:#111}h1{border-bottom:3px solid #e52424;padding-bottom:12px}.t{font-size:28px;font-weight:bold;margin-top:30px}.box{margin:20px 0;padding:15px;background:#f5f5f5}</style></head><body><h1>Spektra Install s.r.o. – Cenová ponuka</h1><h2>'+safe(r.name)+'</h2><div>'+safe(r.address||'')+'</div><div class="box"><b>'+typeLabel(r.type)+'</b><p>'+safe(r.note||'')+'</p></div><div>Cena bez DPH: '+fmt(r.net)+'</div><div>DPH '+r.vat+' %</div><div class="t">Spolu: '+fmt(gross)+'</div><script>print()<\/script></body></html>');w.document.close()}
+renderTypes();renderHome();
+</script>
+</body></html>
