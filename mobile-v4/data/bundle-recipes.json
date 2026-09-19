@@ -1,8 +1,8 @@
 {
-  "version": 3,
+  "version": 4,
   "updated_at": "2026-09-19",
   "source": "POHODA export Zásoby(2).xlsx",
-  "note": "Monoblok do 5 m je rozšírený o firemný štandard OHI, šróbenia, Cu tvarovky a mosadzné armatúry. Ceny sa vždy načítavajú z aktuálne synchronizovaných zásob POHODA.",
+  "note": "Monoblok do 5 m: ochrana proti zamrznutiu je štandardne riešená 2 ks nezamŕzavých ventilov + 4 ks šróbenia 1\". Ceny sa načítavajú z aktuálne synchronizovaných zásob POHODA.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -190,28 +190,6 @@
           "condition": "with_external_dhw_tank",
           "mapping_status": "mapped",
           "customer_group": "TÚV príslušenstvo"
-        },
-        {
-          "role": "freeze_protection",
-          "pohoda_code": null,
-          "pohoda_plu": null,
-          "expected_name": "Ochrana monobloku proti zamrznutiu",
-          "qty": null,
-          "unit": "súb.",
-          "required": true,
-          "mapping_status": "needs_rule",
-          "candidates": [
-            {
-              "pohoda_code": "803020",
-              "name": "Nemrznúca zmes TERMSOL EKO 20L"
-            },
-            {
-              "pohoda_code": "302363",
-              "pohoda_plu": "100130",
-              "name": "VAILLANT propylénglykol do -28 °C"
-            }
-          ],
-          "note": "Nie je možné univerzálne vložiť pevné množstvo glykolu. Voľba a množstvo závisia od výrobcu, objemu sústavy a spôsobu ochrany; alternatívou sú protimrazové ventily, ktoré v aktuálnom katalógu nie sú."
         },
         {
           "role": "power_cable_candidate",
@@ -406,6 +384,30 @@
           "required": true,
           "mapping_status": "mapped",
           "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "antifreeze_valve",
+          "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Nezamŕzavý / protimrazový ventil 1\"",
+          "qty": 2,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "needs_product",
+          "customer_group": "Ochrana monobloku proti zamrznutiu",
+          "note": "Firemný štandard 2 ks. V aktuálnom exporte Zásob nebola identifikovaná jednoznačná skladová karta; po doplnení produktu do POHODY sa sem priradí presný kód/ID."
+        },
+        {
+          "role": "antifreeze_valve_union_1in",
+          "pohoda_code": "5061001",
+          "pohoda_plu": "104102",
+          "expected_name": "Šróbenie V4300 1\", priame, 3-kusé, mosadz",
+          "qty": 4,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Ochrana monobloku proti zamrznutiu",
+          "note": "4 ks navyše pre 2 nezamŕzavé ventily. Sú samostatné od 6 ks šróbení 1\" pri vnútornej jednotke a anuloide."
         }
       ]
     },
