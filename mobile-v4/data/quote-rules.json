@@ -1,0 +1,145 @@
+{
+  "version": 1,
+  "updated_at": "2026-09-19",
+  "sizing": {
+    "watts_per_m2": [
+      {
+        "id": "low_energy",
+        "label": "Novostavba / veľmi dobre zateplený dom",
+        "value": 45
+      },
+      {
+        "id": "insulated",
+        "label": "Zateplený dom",
+        "value": 60
+      },
+      {
+        "id": "older",
+        "label": "Starší dom / slabšie zateplený",
+        "value": 95
+      },
+      {
+        "id": "poor",
+        "label": "Nezateplený / vysoká strata",
+        "value": 125
+      }
+    ],
+    "reserve_pct": {
+      "underfloor": 10,
+      "radiators": 15,
+      "high_temp_or_mountains": 20
+    },
+    "nominal_steps_kw": [
+      5,
+      7,
+      9,
+      12,
+      16
+    ]
+  },
+  "bundles": {
+    "hp_common_5m": {
+      "label": "Spoločný základ TČ do 5 m",
+      "customer_label": "Montážny materiál a hydraulické príslušenstvo do 5 m",
+      "components": [
+        "magnetický filter / odlučovač nečistôt",
+        "odlučovač vzduchu",
+        "poistný ventil vykurovania",
+        "expanzná nádoba vykurovania",
+        "expanzná nádoba TÚV",
+        "uzatváracie, plniace a vypúšťacie armatúry",
+        "spätné klapky podľa zapojenia",
+        "izolácia potrubia",
+        "elektro prívod a základné istenie podľa zariadenia",
+        "montážne drobnosti",
+        "jadrové vŕtanie / prestup podľa potreby"
+      ]
+    },
+    "hp_monoblock_5m": {
+      "label": "Monoblok do 5 m",
+      "extends": "hp_common_5m",
+      "customer_label": "Štandardná montáž monobloku do 5 m",
+      "components": [
+        "vonkajšie vodné potrubie s tepelnou izoláciou a UV ochranou",
+        "ochrana vonkajšieho vodného okruhu proti zamrznutiu podľa návrhu",
+        "antivibračné prvky / pripojenie",
+        "automatický prepúšťací ventil podľa hydrauliky"
+      ],
+      "installation_price_ex_vat": 600
+    },
+    "hp_split_5m": {
+      "label": "Split do 5 m",
+      "extends": "hp_common_5m",
+      "customer_label": "Štandardná montáž split systému do 5 m",
+      "components": [
+        "prepojovacie potrubie medzi vonkajšou a vnútornou jednotkou podľa konkrétneho modelu",
+        "izolácia prepojovacieho vedenia",
+        "komunikačný / napájací kábel podľa schémy výrobcu",
+        "odvod kondenzátu podľa dispozície",
+        "vákuovanie, tlaková skúška a spustenie podľa typu zariadenia"
+      ],
+      "installation_price_ex_vat": 600
+    },
+    "ac_single_split_5m": {
+      "label": "Klimatizácia single-split do 5 m",
+      "customer_label": "Štandardná montáž klimatizácie do 5 m",
+      "components": [
+        "Cu potrubie 1/4 + 3/8 do 5 m pre bežné výkony; rozmer overiť podľa modelu",
+        "izolácia potrubia",
+        "komunikačný kábel",
+        "napájací kábel podľa zariadenia",
+        "PVC kanál a tvarovky",
+        "odvod kondenzátu",
+        "konzola a silentbloky",
+        "montážny drobný materiál",
+        "chladivové montážne spotrebné materiály"
+      ],
+      "material_reference_cost_ex_vat": 225,
+      "installation_price_ex_vat": null,
+      "note": "Predajná cena montáže sa doplní v cenníku montážnych prác."
+    }
+  },
+  "equipment_rules": [
+    {
+      "category": "heat_pump",
+      "brand": "Midea",
+      "model_contains": "Nature",
+      "system_type": "monoblock",
+      "bundle": "hp_monoblock_5m"
+    },
+    {
+      "category": "heat_pump",
+      "brand": "Midea",
+      "model_contains": "Arctic monoblok",
+      "system_type": "monoblock",
+      "bundle": "hp_monoblock_5m"
+    },
+    {
+      "category": "heat_pump",
+      "brand": "Vaillant",
+      "model_contains": "aroTHERM plus",
+      "system_type": "monoblock",
+      "bundle": "hp_monoblock_5m"
+    },
+    {
+      "category": "heat_pump",
+      "brand": "Mitsubishi Electric",
+      "model_contains": "Zubadan PUZ-SHWM",
+      "system_type": "split",
+      "bundle": "hp_split_5m"
+    }
+  ],
+  "pdf": {
+    "show_internal_costs": false,
+    "consolidate_material_bundle": true,
+    "sections": [
+      "supplier_customer",
+      "scope",
+      "equipment",
+      "standard_installation",
+      "optional_extras",
+      "totals",
+      "notes"
+    ]
+  }
+}
