@@ -1,8 +1,8 @@
 {
-  "version": 2,
+  "version": 3,
   "updated_at": "2026-09-19",
   "source": "POHODA export Zásoby(2).xlsx",
-  "note": "Monoblok v1 je namapovaný na reálne skladové karty POHODA. Ceny sa neukladajú sem; aplikácia ich vždy vezme z aktuálne synchronizovaného katalógu. Split a klíma sa domapujú v ďalších krokoch.",
+  "note": "Monoblok do 5 m je rozšírený o firemný štandard OHI, šróbenia, Cu tvarovky a mosadzné armatúry. Ceny sa vždy načítavajú z aktuálne synchronizovaných zásob POHODA.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -84,14 +84,14 @@
         },
         {
           "role": "circulation_pump",
-          "pohoda_code": null,
-          "pohoda_plu": null,
-          "expected_name": "Obehové čerpadlo 25-60",
+          "pohoda_code": "115907",
+          "pohoda_plu": "103223",
+          "expected_name": "Obehove čerpdlo OHI PRO 25-60/180",
           "qty": 1,
           "unit": "ks",
-          "required": false,
+          "required": true,
           "default_enabled": true,
-          "mapping_status": "needs_choice",
+          "mapping_status": "mapped",
           "candidates": [
             {
               "pohoda_code": "OHI PRO 25-60/180",
@@ -104,7 +104,8 @@
               "name": "GRUNDFOS ALPHA1 25-60, 180 mm"
             }
           ],
-          "note": "Vybrať firemný štandard čerpadla."
+          "note": "Firemný štandard OHI PRO 25-60/180.",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
         },
         {
           "role": "automatic_bypass_valve",
@@ -280,6 +281,131 @@
           "mapping_status": "needs_service_card",
           "default_sell_price_ex_vat": 600,
           "note": "V POHODE vytvoriť službu, aby bola ponuka a doklady konzistentné."
+        },
+        {
+          "role": "pump_union_with_shutoff",
+          "pohoda_code": "110810001",
+          "pohoda_plu": "108196",
+          "expected_name": "Skrutkovanie k čerpadlu 1\"x6/4\", so vstavaným guľovým kohútikom, závitový, mosadz",
+          "qty": 2,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "copper_transition_28x1",
+          "pohoda_code": "124243G281",
+          "pohoda_plu": "101284",
+          "expected_name": "SANHA THERM 24243G prechodová vsuvka 28x1\"",
+          "qty": 8,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Potrubie a tvarovky"
+        },
+        {
+          "role": "copper_elbow_28",
+          "pohoda_code": "5090 028000000",
+          "pohoda_plu": "103740",
+          "expected_name": "Koleno 5090 90°, 28mm, meď",
+          "qty": 14,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Potrubie a tvarovky",
+          "note": "Bežný štandard 14 ks; pred výdajkou sa upraví podľa skutočnej trasy."
+        },
+        {
+          "role": "brass_union_1in",
+          "pohoda_code": "5061001",
+          "pohoda_plu": "104102",
+          "expected_name": "Šróbenie V4300 1\", priame, 3-kusé, mosadz",
+          "qty": 6,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo",
+          "note": "Pre napojenie vnútornej jednotky a hydraulického separátora/anuloidu."
+        },
+        {
+          "role": "brass_union_3_4in_dhw",
+          "pohoda_code": "50610034",
+          "pohoda_plu": "104091",
+          "expected_name": "Šróbenie V4300 3/4\", priame, 3-kusé, mosadz",
+          "qty": 4,
+          "unit": "ks",
+          "required": false,
+          "condition": "with_external_dhw_tank",
+          "mapping_status": "mapped",
+          "customer_group": "TÚV príslušenstvo"
+        },
+        {
+          "role": "automatic_air_vent_1_2",
+          "pohoda_code": "330030",
+          "pohoda_plu": null,
+          "expected_name": "Automatický odvzdušňovací ventil 1/2\"",
+          "qty": 2,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "drain_valve_1_2",
+          "pohoda_code": "46450012",
+          "pohoda_plu": "102398",
+          "expected_name": "Guľový kohút M1/2\" závitový, vypúšťací, páka, voda, mosadz/zliatina",
+          "qty": 2,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "brass_nipple_1in",
+          "pohoda_code": "06458006",
+          "pohoda_plu": "108449",
+          "expected_name": "Vsuvka M/M 1\" x 1\"",
+          "qty": 14,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "brass_tee_1x3_4x1",
+          "pohoda_code": "06413104",
+          "pohoda_plu": "108375",
+          "expected_name": "T-kus redukovaný F/F/F 1\" x 3/4\" x 1\"",
+          "qty": 12,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "brass_tee_3_4x1_2x3_4",
+          "pohoda_code": "06413102",
+          "pohoda_plu": "108373",
+          "expected_name": "T-kus redukovaný F/F/F 3/4\" x 1/2\" x 3/4\"",
+          "qty": 4,
+          "unit": "ks",
+          "required": false,
+          "condition": "with_external_dhw_tank",
+          "mapping_status": "mapped",
+          "customer_group": "TÚV príslušenstvo"
+        },
+        {
+          "role": "merabell_ready_1_2_0_8m",
+          "pohoda_code": "M0414",
+          "pohoda_plu": "250018",
+          "expected_name": "MERABELL READY! rúrka s koncovkami G1/2\"-G1/2\", 0,8 m, voda, plyn, nerez oceľ",
+          "qty": 2,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
         }
       ]
     },
