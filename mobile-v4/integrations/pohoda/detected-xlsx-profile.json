@@ -1,0 +1,107 @@
+{
+  "source_file": "Zásoby(2).xlsx",
+  "inspected_at": "2026-09-19",
+  "sheet": "Zásoby",
+  "source_rows": 14906,
+  "detected_headers": [
+    "X",
+    "Rezervované",
+    "Uložené",
+    "PLU",
+    "Názov",
+    "Mj",
+    "Predajná DPH",
+    "Nákupná",
+    "Predajná",
+    "Stav zásoby",
+    "Minlimit",
+    "Maxlimit",
+    "Objednať",
+    "Kód",
+    "Čiarkód",
+    "Marža",
+    "Rabat",
+    "RefSkSkup",
+    "Skupina",
+    "RefSklad",
+    "Sklad",
+    "Dodávateľ",
+    "mPohoda",
+    "Výrobca",
+    "Vytvorené",
+    "Labels",
+    "Štítky",
+    "Predajná_2",
+    "Rabat 20",
+    "Zľava 1",
+    "Zlava 10",
+    "Zlava 15",
+    "Zlava 20",
+    "Zlava 30",
+    "Zlava 5"
+  ],
+  "unique_fingerprints": 14863,
+  "duplicate_rows_by_fingerprint": 43,
+  "duplicate_fingerprint_groups": 14,
+  "plu": {
+    "nonempty": 9344,
+    "unique": 9243,
+    "duplicate_groups": 72
+  },
+  "code": {
+    "nonempty": 14840,
+    "unique": 14550,
+    "duplicate_groups": 263
+  },
+  "ean": {
+    "nonempty": 1632,
+    "unique": 1627,
+    "duplicate_groups": 5
+  },
+  "storage_counts": {
+    "Predaj": 14906
+  },
+  "top_suppliers": [
+    [
+      "HYDROUS s.r.o.",
+      2578
+    ],
+    [
+      "Ptáček - veľkoobchod, a. s.",
+      2218
+    ],
+    [
+      "HS Flamingo",
+      1311
+    ],
+    [
+      "ATRIA SK s.r.o.",
+      1154
+    ],
+    [
+      "Ptáček",
+      718
+    ],
+    [
+      "OdriStav, s.r.o.",
+      446
+    ],
+    [
+      "HYDROUS",
+      343
+    ],
+    [
+      "KLIMAS FASTENERS CZECH s.r.o.",
+      297
+    ],
+    [
+      "Plastové Nádrže s.r.o.",
+      238
+    ],
+    [
+      "KLIMAVEX a.s.",
+      223
+    ]
+  ],
+  "conclusion": "Export obsahuje opakované riadky a viac dodávateľov. Sync preto musí normalizovať a zlučovať riadky podľa stabilnej identity; pri XLSX fallbacku sa používa fingerprint a konflikty sa nesmú ticho prepísať."
+}
