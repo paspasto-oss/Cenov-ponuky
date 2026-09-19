@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "sheet": "Zásoby",
+  "source": "POHODA XLSX export",
+  "columns": {
+    "PLU": "plu",
+    "Názov": "name",
+    "Mj": "unit",
+    "Predajná DPH": "sell_price_inc_vat",
+    "Nákupná": "purchase_price_ex_vat",
+    "Predajná": "sell_price_ex_vat",
+    "Stav zásoby": "quantity_available",
+    "Minlimit": "min_limit",
+    "Maxlimit": "max_limit",
+    "Objednať": "quantity_to_order",
+    "Kód": "code",
+    "Čiarkód": "ean",
+    "Marža": "margin_pct",
+    "Rabat": "discount_pct",
+    "RefSkSkup": "stock_group_ref",
+    "Skupina": "stock_group",
+    "RefSklad": "storage_ref",
+    "Sklad": "storage_name",
+    "Dodávateľ": "supplier_name",
+    "Výrobca": "manufacturer",
+    "Vytvorené": "pohoda_created_at",
+    "Labels": "labels",
+    "Štítky": "tags"
+  },
+  "price_semantics": {
+    "purchase_price_ex_vat": "Nákupná",
+    "sell_price_ex_vat": "Predajná",
+    "sell_price_inc_vat": "Predajná DPH"
+  },
+  "xlsx_fallback_identity": {
+    "strategy": "sha256(normalize(PLU)|normalize(Kód)|normalize(RefSklad or Sklad)|normalize(Názov))",
+    "warning": "Dočasná identita. Po pripojení mServer/XML sa musí karta naviazať na stabilné POHODA stock ID."
+  },
+  "duplicate_policy": {
+    "merge_supplier_rows": true,
+    "conflicting_price_or_quantity": "block_and_review"
+  }
+}
