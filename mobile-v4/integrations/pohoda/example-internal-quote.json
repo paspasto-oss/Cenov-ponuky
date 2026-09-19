@@ -1,0 +1,41 @@
+{
+  "quote_no": "26NA-DEMO",
+  "customer_pdf_groups": [
+    {
+      "label": "Tepelné čerpadlo Midea Nature 12 kW",
+      "qty": 1,
+      "unit": "ks"
+    },
+    {
+      "label": "Hydraulické a montážne príslušenstvo do 5 m",
+      "qty": 1,
+      "unit": "súb."
+    },
+    {
+      "label": "Montáž a uvedenie do prevádzky",
+      "qty": 1,
+      "unit": "súb."
+    }
+  ],
+  "internal_items": [
+    {
+      "role": "device",
+      "pohoda_stock_id": "<doplní sync>",
+      "pohoda_code": "<reálny kód z POHODA>",
+      "storage": "<sklad z POHODA>",
+      "qty": 1,
+      "unit": "ks",
+      "customer_group": "Tepelné čerpadlo"
+    },
+    {
+      "role": "magnetic_filter",
+      "pohoda_stock_id": "<doplní sync>",
+      "pohoda_code": "<reálny kód z POHODA>",
+      "storage": "<sklad z POHODA>",
+      "qty": 1,
+      "unit": "ks",
+      "customer_group": "Hydraulické a montážne príslušenstvo do 5 m"
+    }
+  ],
+  "warning": "Demo zámerne neobsahuje vymyslené skladové kódy. Tie sa naplnia zo skutočného exportu Zásob POHODA."
+}
