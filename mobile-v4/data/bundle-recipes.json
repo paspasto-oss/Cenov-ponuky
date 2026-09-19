@@ -1,92 +1,285 @@
 {
-  "version": 1,
-  "note": "Kódy POHODA sa doplnia zo skutočného exportu Zásob. Neuvádzať vymyslené kódy.",
+  "version": 2,
+  "updated_at": "2026-09-19",
+  "source": "POHODA export Zásoby(2).xlsx",
+  "note": "Monoblok v1 je namapovaný na reálne skladové karty POHODA. Ceny sa neukladajú sem; aplikácia ich vždy vezme z aktuálne synchronizovaného katalógu. Split a klíma sa domapujú v ďalších krokoch.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
       "customer_label": "Hydraulické a montážne príslušenstvo pre monoblok do 5 m",
       "system_type": "monoblock",
       "max_route_m": 5,
+      "route_definition": "vzdialenosť medzi TČ a miestom napojenia; prívod + spiatočka = 2 × route_m",
       "items": [
         {
           "role": "magnetic_filter",
-          "pohoda_code": null,
+          "pohoda_code": "TOTAL FILTER TF1-1",
+          "pohoda_plu": null,
+          "expected_name": "Total Filter TF1 - 1\" komplet",
           "qty": 1,
           "unit": "ks",
-          "required": true
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
         },
         {
           "role": "air_separator",
           "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Odlučovač vzduchu 1\"",
           "qty": 1,
           "unit": "ks",
-          "required": true
+          "required": true,
+          "mapping_status": "needs_product",
+          "candidate_code": "INT_CLF 551005",
+          "candidate_name": "DISCAL® - odvzdušňovač, 3/4\" FF, s odtokom",
+          "note": "V exporte je len 3/4\" kandidát. Pre univerzálny DN25 balík doplniť/určiť 1\" kartu."
         },
         {
           "role": "heating_safety_valve",
-          "pohoda_code": null,
+          "pohoda_code": "150039533709300003",
+          "pohoda_plu": "102729",
+          "expected_name": "HERZ poistný ventil DN15 membránový, 2,5 bar",
           "qty": 1,
           "unit": "ks",
-          "required": true
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
         },
         {
           "role": "heating_expansion_vessel",
-          "pohoda_code": null,
+          "pohoda_code": "IMERA R24",
+          "pohoda_plu": "570010",
+          "expected_name": "Expanzná nádoba IMERA R5-50 24L",
           "qty": 1,
           "unit": "ks",
-          "required": true
+          "required": true,
+          "mapping_status": "mapped",
+          "note": "Použitá 24 l karta ako štandardná ~25 l expanzná nádoba ÚK.",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "heating_expansion_service_valve",
+          "pohoda_code": "1220502",
+          "pohoda_plu": "105047",
+          "expected_name": "HERZ servisný ventil DN20, PN10, pre expanzné nádoby",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "hydraulic_separator",
+          "pohoda_code": "606001",
+          "pohoda_plu": "100467",
+          "expected_name": "Hydraulický separátor CPN 70 2F - DN 25",
+          "qty": 1,
+          "unit": "ks",
+          "required": false,
+          "default_enabled": true,
+          "mapping_status": "mapped",
+          "note": "Štandard Spektra; technik môže vypnúť, ak konkrétna hydraulika separátor nevyžaduje.",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "circulation_pump",
+          "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Obehové čerpadlo 25-60",
+          "qty": 1,
+          "unit": "ks",
+          "required": false,
+          "default_enabled": true,
+          "mapping_status": "needs_choice",
+          "candidates": [
+            {
+              "pohoda_code": "OHI PRO 25-60/180",
+              "pohoda_plu": "108823",
+              "name": "Obehové čerpadlo OHI PRO 25-60/180"
+            },
+            {
+              "pohoda_code": "93074163",
+              "pohoda_plu": "103098",
+              "name": "GRUNDFOS ALPHA1 25-60, 180 mm"
+            }
+          ],
+          "note": "Vybrať firemný štandard čerpadla."
+        },
+        {
+          "role": "automatic_bypass_valve",
+          "pohoda_code": "1400432",
+          "pohoda_plu": "100682",
+          "expected_name": "Ventil prepúšťací priamy 3/4\" Herz",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "ball_valves_1in",
+          "pohoda_code": "154079591609750002",
+          "pohoda_plu": "102559",
+          "expected_name": "IVR 954 EVERLAST guľový kohút FF1\"",
+          "qty": 6,
+          "unit": "ks",
+          "qty_rule": "default 6 ks; pred exportom do Výdajky môže technik upraviť podľa schémy",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "copper_pipe_d28",
+          "pohoda_code": "138023023208850005",
+          "pohoda_plu": "105533",
+          "expected_name": "FEINROHREN rúrka DN28x1 tvrdá, meď",
+          "qty": null,
+          "unit": "m",
+          "qty_formula": "2 * route_m",
+          "qty_at_5m": 10,
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Potrubie a izolácia"
+        },
+        {
+          "role": "pipe_insulation_13x28",
+          "pohoda_code": "146026005900650034",
+          "pohoda_plu": "103984",
+          "expected_name": "ARMACELL TUBOLIT DG izolácia potrubia 13x28mm",
+          "qty": null,
+          "unit": "m",
+          "qty_formula": "2 * route_m",
+          "qty_at_5m": 10,
+          "required": true,
+          "mapping_status": "mapped",
+          "note": "Pre vonkajšiu časť treba doplniť UV/poverenostnú ochranu podľa spôsobu vedenia.",
+          "customer_group": "Potrubie a izolácia"
+        },
+        {
+          "role": "uv_weather_protection",
+          "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "UV / poveternostná ochrana vonkajšej izolácie",
+          "qty": null,
+          "unit": "súb.",
+          "required": true,
+          "mapping_status": "needs_product"
         },
         {
           "role": "dhw_expansion_vessel",
-          "pohoda_code": null,
+          "pohoda_code": "NP.CWU.08.IB",
+          "pohoda_plu": null,
+          "expected_name": "Expanzná nádoba na TÚV IBAIONDO 8L",
           "qty": 1,
           "unit": "ks",
-          "required": false
+          "required": false,
+          "condition": "with_external_dhw_tank",
+          "mapping_status": "mapped",
+          "customer_group": "TÚV príslušenstvo"
         },
         {
-          "role": "ball_valves",
-          "pohoda_code": null,
-          "qty": null,
+          "role": "dhw_safety_valve_8bar",
+          "pohoda_code": "417502",
+          "pohoda_plu": "108279",
+          "expected_name": "SLOVARM TE2852.1 poistný ventil DN15, 8bar, voda",
+          "qty": 1,
           "unit": "ks",
-          "qty_rule": "podľa hydraulickej schémy",
-          "required": true
-        },
-        {
-          "role": "pipe_outdoor",
-          "pohoda_code": null,
-          "qty": 5,
-          "unit": "m",
-          "required": true
-        },
-        {
-          "role": "pipe_insulation_outdoor",
-          "pohoda_code": null,
-          "qty": 5,
-          "unit": "m",
-          "required": true
+          "required": false,
+          "condition": "with_external_dhw_tank",
+          "mapping_status": "mapped",
+          "customer_group": "TÚV príslušenstvo"
         },
         {
           "role": "freeze_protection",
           "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Ochrana monobloku proti zamrznutiu",
           "qty": null,
           "unit": "súb.",
-          "qty_rule": "podľa návrhu systému",
-          "required": true
+          "required": true,
+          "mapping_status": "needs_rule",
+          "candidates": [
+            {
+              "pohoda_code": "803020",
+              "name": "Nemrznúca zmes TERMSOL EKO 20L"
+            },
+            {
+              "pohoda_code": "302363",
+              "pohoda_plu": "100130",
+              "name": "VAILLANT propylénglykol do -28 °C"
+            }
+          ],
+          "note": "Nie je možné univerzálne vložiť pevné množstvo glykolu. Voľba a množstvo závisia od výrobcu, objemu sústavy a spôsobu ochrany; alternatívou sú protimrazové ventily, ktoré v aktuálnom katalógu nie sú."
         },
         {
-          "role": "electrical_feed",
-          "pohoda_code": null,
-          "qty": null,
-          "unit": "súb.",
-          "qty_rule": "podľa príkonu a výrobcu",
-          "required": true
+          "role": "power_cable_candidate",
+          "pohoda_code": "KÁBEL0",
+          "pohoda_plu": "106383",
+          "expected_name": "Kábel pevný Cu CYKY-J 5x2,5",
+          "qty": 10,
+          "unit": "m",
+          "required": false,
+          "condition": "device_electrical_spec_allows",
+          "mapping_status": "conditional",
+          "note": "Elektrika bude modelovo závislá; nepoužívať automaticky pre každý monoblok."
         },
         {
-          "role": "installation_consumables",
+          "role": "breaker_b16_3p_candidate",
+          "pohoda_code": "ISTIČ",
+          "pohoda_plu": "106384",
+          "expected_name": "Istič charakteristika B, 16 A, 3pól",
+          "qty": 2,
+          "unit": "ks",
+          "required": false,
+          "condition": "3_phase_device_and_spec_allows",
+          "mapping_status": "conditional"
+        },
+        {
+          "role": "rcd",
           "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Prúdový chránič podľa zariadenia",
+          "qty": 2,
+          "unit": "ks",
+          "required": false,
+          "condition": "according_to_device",
+          "mapping_status": "needs_product",
+          "note": "V aktuálnom exporte sa nenašla jednoznačná skladová karta RCD."
+        },
+        {
+          "role": "electrical_enclosure_candidate",
+          "pohoda_code": "ROZVODNICA0",
+          "pohoda_plu": "106387",
+          "expected_name": "Rozvodnica na povrch 8 modulov IP65",
+          "qty": 1,
+          "unit": "ks",
+          "required": false,
+          "condition": "new_enclosure_required",
+          "mapping_status": "conditional"
+        },
+        {
+          "role": "core_drilling_service",
+          "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Jadrové vŕtanie / prestup",
           "qty": 1,
           "unit": "súb.",
-          "required": true
+          "required": false,
+          "mapping_status": "needs_service_card",
+          "note": "V POHODE vytvoriť službu s vlastným kódom."
+        },
+        {
+          "role": "installation_service",
+          "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Montáž tepelného čerpadla do 5 m",
+          "qty": 1,
+          "unit": "súb.",
+          "required": true,
+          "mapping_status": "needs_service_card",
+          "default_sell_price_ex_vat": 600,
+          "note": "V POHODE vytvoriť službu, aby bola ponuka a doklady konzistentné."
         }
       ]
     },
@@ -95,6 +288,7 @@
       "customer_label": "Montážne príslušenstvo pre split do 5 m",
       "system_type": "split",
       "max_route_m": 5,
+      "status": "pending_mapping",
       "items": [
         {
           "role": "magnetic_filter",
@@ -129,7 +323,6 @@
           "pohoda_code": null,
           "qty": 5,
           "unit": "m",
-          "qty_rule": "rozmer podľa konkrétneho modelu",
           "required": true
         },
         {
@@ -158,7 +351,6 @@
           "pohoda_code": null,
           "qty": null,
           "unit": "súb.",
-          "qty_rule": "podľa príkonu a výrobcu",
           "required": true
         },
         {
@@ -175,13 +367,13 @@
       "customer_label": "Montážny materiál klimatizácie do 5 m",
       "system_type": "single_split_ac",
       "max_route_m": 5,
+      "status": "pending_mapping",
       "items": [
         {
           "role": "copper_pipe_liquid",
           "pohoda_code": null,
           "qty": 5,
           "unit": "m",
-          "qty_rule": "rozmer podľa modelu",
           "required": true
         },
         {
@@ -189,7 +381,6 @@
           "pohoda_code": null,
           "qty": 5,
           "unit": "m",
-          "qty_rule": "rozmer podľa modelu",
           "required": true
         },
         {
