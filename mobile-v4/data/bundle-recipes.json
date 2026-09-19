@@ -1,0 +1,254 @@
+{
+  "version": 1,
+  "note": "Kódy POHODA sa doplnia zo skutočného exportu Zásob. Neuvádzať vymyslené kódy.",
+  "bundles": [
+    {
+      "key": "hp_monoblock_5m",
+      "customer_label": "Hydraulické a montážne príslušenstvo pre monoblok do 5 m",
+      "system_type": "monoblock",
+      "max_route_m": 5,
+      "items": [
+        {
+          "role": "magnetic_filter",
+          "pohoda_code": null,
+          "qty": 1,
+          "unit": "ks",
+          "required": true
+        },
+        {
+          "role": "air_separator",
+          "pohoda_code": null,
+          "qty": 1,
+          "unit": "ks",
+          "required": true
+        },
+        {
+          "role": "heating_safety_valve",
+          "pohoda_code": null,
+          "qty": 1,
+          "unit": "ks",
+          "required": true
+        },
+        {
+          "role": "heating_expansion_vessel",
+          "pohoda_code": null,
+          "qty": 1,
+          "unit": "ks",
+          "required": true
+        },
+        {
+          "role": "dhw_expansion_vessel",
+          "pohoda_code": null,
+          "qty": 1,
+          "unit": "ks",
+          "required": false
+        },
+        {
+          "role": "ball_valves",
+          "pohoda_code": null,
+          "qty": null,
+          "unit": "ks",
+          "qty_rule": "podľa hydraulickej schémy",
+          "required": true
+        },
+        {
+          "role": "pipe_outdoor",
+          "pohoda_code": null,
+          "qty": 5,
+          "unit": "m",
+          "required": true
+        },
+        {
+          "role": "pipe_insulation_outdoor",
+          "pohoda_code": null,
+          "qty": 5,
+          "unit": "m",
+          "required": true
+        },
+        {
+          "role": "freeze_protection",
+          "pohoda_code": null,
+          "qty": null,
+          "unit": "súb.",
+          "qty_rule": "podľa návrhu systému",
+          "required": true
+        },
+        {
+          "role": "electrical_feed",
+          "pohoda_code": null,
+          "qty": null,
+          "unit": "súb.",
+          "qty_rule": "podľa príkonu a výrobcu",
+          "required": true
+        },
+        {
+          "role": "installation_consumables",
+          "pohoda_code": null,
+          "qty": 1,
+          "unit": "súb.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "key": "hp_split_5m",
+      "customer_label": "Montážne príslušenstvo pre split do 5 m",
+      "system_type": "split",
+      "max_route_m": 5,
+      "items": [
+        {
+          "role": "magnetic_filter",
+          "pohoda_code": null,
+          "qty": 1,
+          "unit": "ks",
+          "required": true
+        },
+        {
+          "role": "air_separator",
+          "pohoda_code": null,
+          "qty": 1,
+          "unit": "ks",
+          "required": true
+        },
+        {
+          "role": "heating_safety_valve",
+          "pohoda_code": null,
+          "qty": 1,
+          "unit": "ks",
+          "required": true
+        },
+        {
+          "role": "heating_expansion_vessel",
+          "pohoda_code": null,
+          "qty": 1,
+          "unit": "ks",
+          "required": true
+        },
+        {
+          "role": "refrigerant_pipe_pair",
+          "pohoda_code": null,
+          "qty": 5,
+          "unit": "m",
+          "qty_rule": "rozmer podľa konkrétneho modelu",
+          "required": true
+        },
+        {
+          "role": "refrigerant_pipe_insulation",
+          "pohoda_code": null,
+          "qty": 5,
+          "unit": "m",
+          "required": true
+        },
+        {
+          "role": "communication_cable",
+          "pohoda_code": null,
+          "qty": 5,
+          "unit": "m",
+          "required": true
+        },
+        {
+          "role": "condensate_drain",
+          "pohoda_code": null,
+          "qty": 5,
+          "unit": "m",
+          "required": false
+        },
+        {
+          "role": "electrical_feed",
+          "pohoda_code": null,
+          "qty": null,
+          "unit": "súb.",
+          "qty_rule": "podľa príkonu a výrobcu",
+          "required": true
+        },
+        {
+          "role": "installation_consumables",
+          "pohoda_code": null,
+          "qty": 1,
+          "unit": "súb.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "key": "ac_single_split_5m",
+      "customer_label": "Montážny materiál klimatizácie do 5 m",
+      "system_type": "single_split_ac",
+      "max_route_m": 5,
+      "items": [
+        {
+          "role": "copper_pipe_liquid",
+          "pohoda_code": null,
+          "qty": 5,
+          "unit": "m",
+          "qty_rule": "rozmer podľa modelu",
+          "required": true
+        },
+        {
+          "role": "copper_pipe_gas",
+          "pohoda_code": null,
+          "qty": 5,
+          "unit": "m",
+          "qty_rule": "rozmer podľa modelu",
+          "required": true
+        },
+        {
+          "role": "pipe_insulation",
+          "pohoda_code": null,
+          "qty": 10,
+          "unit": "m",
+          "required": true
+        },
+        {
+          "role": "communication_cable",
+          "pohoda_code": null,
+          "qty": 5,
+          "unit": "m",
+          "required": true
+        },
+        {
+          "role": "power_cable",
+          "pohoda_code": null,
+          "qty": 5,
+          "unit": "m",
+          "required": true
+        },
+        {
+          "role": "condensate_drain",
+          "pohoda_code": null,
+          "qty": 5,
+          "unit": "m",
+          "required": true
+        },
+        {
+          "role": "pvc_trunking",
+          "pohoda_code": null,
+          "qty": 5,
+          "unit": "m",
+          "required": true
+        },
+        {
+          "role": "outdoor_bracket",
+          "pohoda_code": null,
+          "qty": 1,
+          "unit": "ks",
+          "required": true
+        },
+        {
+          "role": "anti_vibration_set",
+          "pohoda_code": null,
+          "qty": 1,
+          "unit": "súb.",
+          "required": true
+        },
+        {
+          "role": "installation_consumables",
+          "pohoda_code": null,
+          "qty": 1,
+          "unit": "súb.",
+          "required": true
+        }
+      ]
+    }
+  ]
+}
