@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "source_of_truth": "POHODA",
+  "sync": {
+    "stock_export": "listStockRequest / stock.xsd",
+    "transport": [
+      "POHODA mServer",
+      "XML file exchange"
+    ],
+    "app_table": "pohoda_stocks"
+  },
+  "documents": [
+    {
+      "action": "export_offer",
+      "app_source": "quote + quote_items",
+      "pohoda_agenda": "Vydané ponuky",
+      "xsd": "offer.xsd",
+      "stock_lines": true
+    },
+    {
+      "action": "customer_order",
+      "app_source": "approved quote",
+      "pohoda_agenda": "Prijaté objednávky",
+      "xsd": "order.xsd",
+      "order_type": "received",
+      "stock_lines": true
+    },
+    {
+      "action": "supplier_purchase_order",
+      "app_source": "shortage grouped by supplier",
+      "pohoda_agenda": "Vydané objednávky",
+      "xsd": "order.xsd",
+      "order_type": "issued",
+      "stock_lines": true
+    },
+    {
+      "action": "stock_issue",
+      "app_source": "actual issued quote/job items",
+      "pohoda_agenda": "Výdajky",
+      "xsd": "vydejka.xsd",
+      "stock_lines": true
+    },
+    {
+      "action": "stock_receipt",
+      "app_source": "delivered supplier order",
+      "pohoda_agenda": "Príjemky",
+      "xsd": "prijemka.xsd",
+      "stock_lines": true,
+      "may_link_to": "Vydaná objednávka"
+    }
+  ],
+  "item_identity_priority": [
+    "pohoda_stock_id",
+    "pohoda_code",
+    "ean"
+  ],
+  "rules": {
+    "customer_pdf_can_group_items": true,
+    "pohoda_export_must_use_atomic_stock_items": true,
+    "price_snapshot_on_quote": true,
+    "block_unmapped_stock_export": true,
+    "never_reduce_stock_on_draft_quote": true
+  }
+}
