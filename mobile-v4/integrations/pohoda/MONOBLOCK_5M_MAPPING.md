@@ -53,3 +53,14 @@ Na základe aktuálneho montážneho štandardu boli pridané:
 - MERABELL READY! G1/2"-G1/2", 0,8 m: `M0414`, PLU `250018`, 2 ks
 
 V hlavnom sprievodcovi pribudla voľba **externý zásobník TÚV / bez externého zásobníka**. TÚV šróbenia a redukované T-kusy sa vložia len pri externom zásobníku.
+
+
+## Ochrana monobloku proti zamrznutiu
+
+Firemný štandard bol upravený na:
+- nezamŕzavý / protimrazový ventil 1" – **2 ks**,
+- šróbenie mosadz 1" `5061001` – **4 ks navyše** pre tieto dva ventily.
+
+Tieto 4 ks sú samostatné od 6 ks šróbení 1" používaných pri vnútornej jednotke a hydraulickom separátore. Celková potreba skladovej karty `5061001` v štandardnom monoblokovom BOM je teda **10 ks**, ak sa použijú všetky uvedené vetvy.
+
+Pôvodný všeobecný riadok ochrany proti zamrznutiu (glykol / iná metóda) bol zo štandardného BOM odstránený, aby sa nepridával súčasne s nezamŕzavými ventilmi. Presnú skladovú kartu nezamŕzavého ventilu ešte treba doplniť do POHODY alebo identifikovať v ďalšej aktualizácii zásob.
