@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111216">
+<title>Spektra Ponuky – Aktualizácia zásob</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#0f1012;--p:#181a1f;--p2:#21242a;--line:#343943;--t:#f7f7f8;--m:#a7adb6;--r:#e52424;--g:#1f9d63;--a:#d29b24;--b:#3388cc}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding-bottom:86px}
+button,input{font:inherit}button{cursor:pointer}.wrap{max-width:1120px;margin:auto;padding:14px}.head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.brand{display:flex;align-items:center;gap:10px}.logo{width:38px;height:38px;border:5px solid var(--r);border-right-color:transparent;border-radius:50%}.head h1{font-size:21px;margin:0}.sub{color:var(--m);font-size:12px}.pill{padding:6px 9px;border:1px solid var(--line);border-radius:999px;font-size:11px;color:#d8dbe0}
+.card{background:var(--p);border:1px solid #292d34;border-radius:16px;padding:15px;margin-bottom:12px}.card h2{font-size:17px;margin:0 0 10px}.btn{border:0;border-radius:11px;background:#2b2f37;color:#fff;padding:11px 14px;font-weight:800}.btn.primary{background:var(--r)}.btn.green{background:var(--g)}.btn.ghost{background:transparent;border:1px solid var(--line)}.btn:disabled{opacity:.45;cursor:not-allowed}.row{display:flex;align-items:center;justify-content:space-between;gap:12px}.drop{border:1.5px dashed #505661;border-radius:14px;padding:24px;text-align:center;background:#14161a}.drop.drag{border-color:var(--r);background:#211517}.drop input{display:none}.drop b{display:block;font-size:16px;margin-bottom:5px}.drop small{color:var(--m)}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.stat{background:#15171b;border:1px solid #2e323a;border-radius:13px;padding:12px}.stat small{display:block;color:var(--m);font-size:11px}.stat strong{display:block;font-size:22px;margin-top:5px}.stat.new strong{color:#8be7b4}.stat.price strong{color:#ffc55d}.stat.stock strong{color:#84c7ff}.stat.off strong{color:#ff9595}.stat.conf strong{color:#ff6b6b}
+.progress{height:8px;background:#2b2f36;border-radius:999px;overflow:hidden}.bar{height:100%;width:0;background:linear-gradient(90deg,var(--r),#ff564f);transition:width .2s}.statusline{display:flex;justify-content:space-between;gap:8px;margin-top:8px;font-size:12px;color:var(--m)}
+.tabs{display:flex;gap:7px;overflow:auto;padding-bottom:4px}.tab{white-space:nowrap;border:1px solid var(--line);background:#20232a;color:#d4d7dc;border-radius:999px;padding:8px 11px;font-size:12px}.tab.on{background:#fff;color:#111;border-color:#fff}.tableWrap{overflow:auto;border:1px solid #2f343c;border-radius:12px}.tbl{width:100%;border-collapse:collapse;min-width:820px;font-size:12px}.tbl th{position:sticky;top:0;background:#22252b;color:#bfc4cc;text-align:left;padding:9px;border-bottom:1px solid #3a3f47}.tbl td{padding:8px 9px;border-bottom:1px solid #292d34}.tbl tr:last-child td{border-bottom:0}.chg{font-size:10px;border-radius:999px;padding:4px 7px}.chg.new{background:#153b2b;color:#8cedb9}.chg.price{background:#463617;color:#ffd374}.chg.stock{background:#17374b;color:#92d2ff}.chg.meta{background:#34313e;color:#d4c3ff}.chg.removed{background:#422020;color:#ffabab}.chg.conflict{background:#541d1d;color:#ff8e8e}.money{text-align:right}.actions{display:flex;gap:8px;flex-wrap:wrap}.notice{padding:11px 12px;border-radius:11px;background:#171f26;border:1px solid #294156;color:#b9dfff;font-size:12px}.warn{background:#251d12;border-color:#5a431b;color:#ffd98f}.ok{background:#13241b;border-color:#26583a;color:#9fe2b8}
+.nav{position:fixed;left:0;right:0;bottom:0;background:rgba(17,18,22,.98);border-top:1px solid #333842;padding:8px 10px calc(8px + env(safe-area-inset-bottom));display:flex;justify-content:center;z-index:50}.nav .btn{width:min(500px,100%)}.hidden{display:none!important}
+@media(max-width:780px){.grid{grid-template-columns:repeat(2,1fr)}.row{align-items:flex-start;flex-direction:column}.actions{width:100%}.actions .btn{flex:1}.wrap{padding:10px}.drop{padding:20px 12px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div class="brand"><div class="logo"></div><div><h1>Aktualizácia zásob</h1><div class="sub">POHODA → Spektra Ponuky</div></div></div>
+    <div id="dbState" class="pill">Lokálny režim</div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div><h2>1. Nahraj aktuálny export Zásoby.xlsx</h2><div class="sub">Aplikácia nič neprepíše, kým nepotvrdíš náhľad zmien.</div></div>
+      <div class="actions"><button class="btn ghost" onclick="resetBaseline()">Vymazať lokálny baseline</button></div>
+    </div>
+    <label id="drop" class="drop" style="display:block;margin-top:12px">
+      <input id="fileInput" type="file" accept=".xlsx,.xls">
+      <b>Vybrať Zásoby.xlsx</b>
+      <small>alebo súbor sem presuň</small>
+    </label>
+    <div id="fileInfo" class="sub" style="margin-top:8px"></div>
+  </div>
+
+  <div id="processCard" class="card hidden">
+    <h2>Načítavanie a porovnanie</h2>
+    <div class="progress"><div id="bar" class="bar"></div></div>
+    <div class="statusline"><span id="processText">Čakám…</span><span id="processPct">0 %</span></div>
+  </div>
+
+  <div id="summaryCard" class="card hidden">
+    <div class="row"><div><h2>2. Náhľad zmien</h2><div id="baselineInfo" class="sub"></div></div><div id="syncWarning" class="pill"></div></div>
+    <div class="grid" style="margin-top:12px">
+      <div class="stat new"><small>Nové produkty</small><strong id="nNew">0</strong></div>
+      <div class="stat price"><small>Zmenené ceny</small><strong id="nPrice">0</strong></div>
+      <div class="stat stock"><small>Zmeny stavu</small><strong id="nStock">0</strong></div>
+      <div class="stat off"><small>Deaktivované</small><strong id="nRemoved">0</strong></div>
+      <div class="stat"><small>Zmenené údaje</small><strong id="nMeta">0</strong></div>
+      <div class="stat conf"><small>Konflikty</small><strong id="nConflict">0</strong></div>
+      <div class="stat"><small>Načítané riadky</small><strong id="nRows">0</strong></div>
+      <div class="stat"><small>Unikátne zásoby</small><strong id="nUnique">0</strong></div>
+    </div>
+    <div id="firstImport" class="notice hidden" style="margin-top:12px">Toto je prvý import na tomto zariadení. Všetky zásoby budú označené ako nové a po potvrdení sa uložia ako lokálny baseline.</div>
+    <div id="conflictWarning" class="notice warn hidden" style="margin-top:12px">Súbor obsahuje konfliktné duplikáty. Aktualizáciu môžeš prezrieť, ale pred produkčným zápisom do spoločnej databázy sa tieto konflikty musia vyriešiť.</div>
+  </div>
+
+  <div id="detailCard" class="card hidden">
+    <div class="tabs">
+      <button class="tab on" data-tab="all" onclick="setTab('all',this)">Všetko</button>
+      <button class="tab" data-tab="new" onclick="setTab('new',this)">Nové</button>
+      <button class="tab" data-tab="price" onclick="setTab('price',this)">Cena</button>
+      <button class="tab" data-tab="stock" onclick="setTab('stock',this)">Sklad</button>
+      <button class="tab" data-tab="meta" onclick="setTab('meta',this)">Údaje</button>
+      <button class="tab" data-tab="removed" onclick="setTab('removed',this)">Deaktivované</button>
+      <button class="tab" data-tab="conflict" onclick="setTab('conflict',this)">Konflikty</button>
+    </div>
+    <div class="tableWrap" style="margin-top:10px">
+      <table class="tbl"><thead><tr><th>Zmena</th><th>PLU / Kód</th><th>Názov</th><th>Sklad</th><th>Nákupná</th><th>Predajná</th><th>Stav</th><th>Dodávateľ</th></tr></thead><tbody id="tbody"></tbody></table>
+    </div>
+    <div id="limitInfo" class="sub" style="margin-top:8px"></div>
+  </div>
+
+  <div id="applyCard" class="card hidden">
+    <h2>3. Použiť aktualizáciu</h2>
+    <div class="notice">V tejto MVP verzii sa aktualizovaný katalóg uloží do localStorage prehliadača. Po pripojení Supabase/bridge sa toto tlačidlo zmení na zápis do spoločnej databázy a bude dostupný Martine aj technikom na všetkých zariadeniach.</div>
+    <div class="actions" style="margin-top:12px">
+      <button id="applyBtn" class="btn green" onclick="applySync()">Použiť aktualizáciu</button>
+      <button class="btn ghost" onclick="exportNormalized()">Exportovať normalizovaný JSON</button>
+    </div>
+    <div id="applyResult" class="sub" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<div class="nav"><button class="btn primary" onclick="location.href='../index.html'">← Späť do Spektra Ponuky</button></div>
+
+<script>
+const BASE_KEY='spektra_pohoda_stock_baseline_v1';
+const META_KEY='spektra_pohoda_stock_meta_v1';
+let normalized=[], changes=[], conflicts=[], activeTab='all', sourceRows=0, filename='';
+
+const aliases={
+  'PLU':'plu','Názov':'name','Mj':'unit','Predajná DPH':'sell_price_inc_vat','Nákupná':'purchase_price_ex_vat',
+  'Predajná':'sell_price_ex_vat','Stav zásoby':'quantity_available','Minlimit':'min_limit','Maxlimit':'max_limit',
+  'Objednať':'quantity_to_order','Kód':'code','Čiarkód':'ean','Marža':'margin_pct','Rabat':'discount_pct',
+  'RefSkSkup':'stock_group_ref','Skupina':'stock_group','RefSklad':'storage_ref','Sklad':'storage_name',
+  'Dodávateľ':'supplier_name','Výrobca':'manufacturer','Vytvorené':'pohoda_created_at','Labels':'labels','Štítky':'tags',
+  'mPohoda':'mpohoda','Rezervované':'reserved','Uložené':'saved_at'
+};
+const numFields=new Set(['sell_price_inc_vat','purchase_price_ex_vat','sell_price_ex_vat','quantity_available','min_limit','max_limit','quantity_to_order','margin_pct','discount_pct']);
+function s(v){return v==null?'':String(v).trim()}
+function norm(v){return s(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ')}
+function n(v){if(v==null||v==='')return null;let x=Number(String(v).replace(',','.'));return Number.isFinite(x)?x:null}
+function fingerprint(r){return [norm(r.plu),norm(r.code),norm(r.storage_ref||r.storage_name),norm(r.name)].join('|')}
+function money(v){return v==null?'—':new Intl.NumberFormat('sk-SK',{style:'currency',currency:'EUR'}).format(v)}
+function qty(v){return v==null?'—':new Intl.NumberFormat('sk-SK',{maximumFractionDigits:3}).format(v)}
+function esc(x){return s(x).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
+function setProgress(p,text){document.getElementById('processCard').classList.remove('hidden');document.getElementById('bar').style.width=p+'%';document.getElementById('processPct').textContent=p+' %';document.getElementById('processText').textContent=text}
+function baseline(){try{return JSON.parse(localStorage.getItem(BASE_KEY)||'[]')}catch(e){return []}}
+function baselineMap(){return new Map(baseline().map(x=>[x.fingerprint,x]))}
+
+async function handleFile(file){
+  if(!file)return;filename=file.name;document.getElementById('fileInfo').textContent=file.name+' · '+Math.round(file.size/1024)+' kB';
+  setProgress(8,'Načítavam Excel…');
+  try{
+    const buf=await file.arrayBuffer();setProgress(22,'Čítam hárok Zásoby…');
+    const wb=XLSX.read(buf,{type:'array',cellDates:false});
+    const ws=wb.Sheets['Zásoby']||wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{defval:null,raw:true});sourceRows=rows.length;setProgress(40,'Normalizujem '+sourceRows.toLocaleString('sk-SK')+' riadkov…');
+    await new Promise(r=>setTimeout(r,10));
+    const merged=new Map(), localConf=[];
+    rows.forEach((raw,idx)=>{
+      const x={};Object.entries(raw).forEach(([k,v])=>{const key=aliases[s(k)]||null;if(key)x[key]=numFields.has(key)?n(v):s(v)});
+      if(!x.name)return;
+      x.source_row=idx+2;x.fingerprint=fingerprint(x);x.suppliers=x.supplier_name?[x.supplier_name]:[];
+      if(!merged.has(x.fingerprint)){merged.set(x.fingerprint,x);return}
+      const prev=merged.get(x.fingerprint);
+      if(x.supplier_name&&!prev.suppliers.includes(x.supplier_name))prev.suppliers.push(x.supplier_name);
+      const core=['purchase_price_ex_vat','sell_price_ex_vat','sell_price_inc_vat','quantity_available','unit'];
+      const bad=core.some(k=>prev[k]!=null&&x[k]!=null&&String(prev[k])!==String(x[k]));
+      if(bad)localConf.push({fingerprint:x.fingerprint,a:prev,b:x,reason:'Rovnaká identita, rozdielna cena/množstvo/MJ'});
+    });
+    normalized=[...merged.values()];conflicts=localConf;setProgress(62,'Porovnávam s poslednou synchronizáciou…');
+    await new Promise(r=>setTimeout(r,10));buildChanges();setProgress(100,'Hotovo');
+    setTimeout(()=>document.getElementById('processCard').classList.add('hidden'),450);renderSummary();renderTable();
+  }catch(err){setProgress(100,'Chyba: '+err.message);alert('Súbor sa nepodarilo načítať: '+err.message)}
+}
+function same(a,b,k){const av=a?.[k],bv=b?.[k];if(av==null&&bv==null)return true;if(typeof av==='number'||typeof bv==='number')return Math.abs(Number(av||0)-Number(bv||0))<0.0001;return s(av)===s(bv)}
+function buildChanges(){
+  changes=[];const old=baselineMap(), seen=new Set(), conflictSet=new Set(conflicts.map(c=>c.fingerprint));
+  normalized.forEach(x=>{
+    seen.add(x.fingerprint);
+    if(conflictSet.has(x.fingerprint)){changes.push({type:'conflict',item:x,old:old.get(x.fingerprint)||null});return}
+    const o=old.get(x.fingerprint);
+    if(!o){changes.push({type:'new',item:x,old:null});return}
+    const price=!same(o,x,'purchase_price_ex_vat')||!same(o,x,'sell_price_ex_vat')||!same(o,x,'sell_price_inc_vat');
+    const stock=!same(o,x,'quantity_available');
+    const meta=!same(o,x,'name')||!same(o,x,'unit')||!same(o,x,'code')||!same(o,x,'ean')||!same(o,x,'storage_name')||!same(o,x,'manufacturer')||JSON.stringify(o.suppliers||[])!==JSON.stringify(x.suppliers||[]);
+    if(price)changes.push({type:'price',item:x,old:o});
+    if(stock)changes.push({type:'stock',item:x,old:o});
+    if(meta)changes.push({type:'meta',item:x,old:o});
+  });
+  old.forEach((o,k)=>{if(!seen.has(k))changes.push({type:'removed',item:o,old:o})});
+}
+function count(type){return changes.filter(x=>x.type===type).length}
+function renderSummary(){
+  const hasBase=baseline().length>0;
+  document.getElementById('summaryCard').classList.remove('hidden');document.getElementById('detailCard').classList.remove('hidden');document.getElementById('applyCard').classList.remove('hidden');
+  document.getElementById('nNew').textContent=count('new');document.getElementById('nPrice').textContent=count('price');document.getElementById('nStock').textContent=count('stock');document.getElementById('nRemoved').textContent=count('removed');document.getElementById('nMeta').textContent=count('meta');document.getElementById('nConflict').textContent=count('conflict');document.getElementById('nRows').textContent=sourceRows.toLocaleString('sk-SK');document.getElementById('nUnique').textContent=normalized.length.toLocaleString('sk-SK');
+  document.getElementById('firstImport').classList.toggle('hidden',hasBase);document.getElementById('conflictWarning').classList.toggle('hidden',!conflicts.length);
+  const meta=JSON.parse(localStorage.getItem(META_KEY)||'null');document.getElementById('baselineInfo').textContent=meta?'Posledný baseline: '+new Date(meta.applied_at).toLocaleString('sk-SK')+' · '+meta.count.toLocaleString('sk-SK')+' zásob':'Na tomto zariadení ešte nie je baseline.';
+  document.getElementById('syncWarning').textContent=conflicts.length?'Skontrolovať konflikty':'Pripravené na aktualizáciu';
+}
+function typeLabel(t){return {new:'Nový',price:'Cena',stock:'Sklad',meta:'Údaje',removed:'Deaktivovať',conflict:'Konflikt'}[t]||t}
+function renderTable(){
+  let data=activeTab==='all'?changes:changes.filter(x=>x.type===activeTab);
+  const byFp=new Map();data.forEach(c=>{const k=c.type+'|'+c.item.fingerprint;if(!byFp.has(k))byFp.set(k,c)});data=[...byFp.values()];
+  const limit=250,show=data.slice(0,limit);document.getElementById('tbody').innerHTML=show.map(c=>{const x=c.item,o=c.old;
+    let buy=money(x.purchase_price_ex_vat),sell=money(x.sell_price_ex_vat),stock=qty(x.quantity_available);
+    if(c.type==='price'&&o){buy=money(o.purchase_price_ex_vat)+' → <b>'+money(x.purchase_price_ex_vat)+'</b>';sell=money(o.sell_price_ex_vat)+' → <b>'+money(x.sell_price_ex_vat)+'</b>'}
+    if(c.type==='stock'&&o)stock=qty(o.quantity_available)+' → <b>'+qty(x.quantity_available)+'</b>';
+    return '<tr><td><span class="chg '+c.type+'">'+typeLabel(c.type)+'</span></td><td>'+esc(x.plu||'')+'<br><span class="sub">'+esc(x.code||'')+'</span></td><td>'+esc(x.name)+'</td><td>'+esc(x.storage_name||'')+'</td><td class="money">'+buy+'</td><td class="money">'+sell+'</td><td class="money">'+stock+'</td><td>'+esc((x.suppliers||[]).join(', ')||x.supplier_name||'')+'</td></tr>'
+  }).join('')||'<tr><td colspan="8" style="text-align:center;color:#999;padding:25px">Bez zmien v tejto skupine.</td></tr>';
+  document.getElementById('limitInfo').textContent=data.length>limit?'Zobrazených prvých '+limit+' z '+data.length.toLocaleString('sk-SK')+' záznamov.':'Záznamov: '+data.length.toLocaleString('sk-SK');
+}
+function setTab(t,btn){activeTab=t;document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));btn.classList.add('on');renderTable()}
+function applySync(){
+  if(!normalized.length)return;
+  const conflictSet=new Set(conflicts.map(c=>c.fingerprint));
+  const clean=normalized.filter(x=>!conflictSet.has(x.fingerprint)).map(x=>({...x,active:true,last_seen_at:new Date().toISOString()}));
+  localStorage.setItem(BASE_KEY,JSON.stringify(clean));localStorage.setItem(META_KEY,JSON.stringify({applied_at:new Date().toISOString(),filename,count:clean.length,source_rows:sourceRows,conflicts:conflicts.length}));
+  document.getElementById('applyResult').textContent='Aktualizácia uložená. Baseline obsahuje '+clean.length.toLocaleString('sk-SK')+' zásob. Konfliktné zásoby neboli aplikované.';
+  renderSummary();
+}
+function resetBaseline(){if(confirm('Naozaj vymazať lokálny baseline zásob?')){localStorage.removeItem(BASE_KEY);localStorage.removeItem(META_KEY);location.reload()}}
+function exportNormalized(){if(!normalized.length)return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({source:filename,created_at:new Date().toISOString(),rows:normalized,conflicts},null,2)],{type:'application/json'}));a.download='pohoda-zasoby-normalized.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),300)}
+const fi=document.getElementById('fileInput'),drop=document.getElementById('drop');fi.addEventListener('change',e=>handleFile(e.target.files[0]));['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));drop.addEventListener('drop',e=>handleFile(e.dataTransfer.files[0]));
+const meta=JSON.parse(localStorage.getItem(META_KEY)||'null');if(meta)document.getElementById('fileInfo').textContent='Posledná lokálna aktualizácia: '+new Date(meta.applied_at).toLocaleString('sk-SK')+' · '+meta.count.toLocaleString('sk-SK')+' zásob';
+</script>
+</body>
+</html>
