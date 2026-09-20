@@ -69,3 +69,22 @@ Pôvodný všeobecný riadok ochrany proti zamrznutiu (glykol / iná metóda) bo
 ## Konsolidácia rovnakých skladových položiek
 
 Rovnaké POHODA skladové karty sa v internom BOM spájajú do jedného riadku. Napríklad šróbenie mosadz 1" `5061001` je teraz jedna skladová položka **10 ks** namiesto dvoch samostatných riadkov 6 + 4 ks. Rovnaké pravidlo bude aplikácia používať aj pre ďalšie duplicity.
+
+
+## Ďalšie položky monobloku a spoločný elektroštandard
+
+Pridané do monobloku:
+- antivibračný montblok 600 mm `900218400100000213` – 2 ks,
+- termomanometer radiálny 0–4 bar, 1/2" ` TM.R-80-4` – 1 ks,
+- IVR 954 EVERLAST FF1/2" `154079591609750000` – 2 ks pre dopúšťanie vykurovania,
+- MERABELL READY 1/2", 0,8 m `M0414` – celkom 3 ks (z toho 1 ks pre dopúšťanie).
+
+Spoločný elektrobalík pre všetky tepelné čerpadlá:
+- rozvodnica na povrch 12 modulov IP65 `ROZVODNICA` – 1 ks,
+- istič B16 3P `ISTIČ` – 2 ks,
+- CYKY-J 5x2,5 `KÁBEL0` – 12 m,
+- kábel 4x0,75 – 10 m – presná POHODA karta chýba,
+- káblové vývodky / prechodky – 5 ks – presná POHODA karta chýba,
+- inštalačná lišta 40x40 – 10 m – presná karta chýba; v katalógu je iba 40x25 `LIŠTA`, preto sa nezamení automaticky.
+
+Elektrobalík je uložený samostatne ako `hp_electrical_standard` a aplikácia ho automaticky pridá ku každému tepelnému čerpadlu, teda neskôr aj ku splitovým zostavám.
