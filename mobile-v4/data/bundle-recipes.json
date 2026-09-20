@@ -1,8 +1,8 @@
 {
-  "version": 4,
-  "updated_at": "2026-09-19",
+  "version": 5,
+  "updated_at": "2026-09-20",
   "source": "POHODA export Zásoby(2).xlsx",
-  "note": "Monoblok do 5 m: ochrana proti zamrznutiu je štandardne riešená 2 ks nezamŕzavých ventilov + 4 ks šróbenia 1\". Ceny sa načítavajú z aktuálne synchronizovaných zásob POHODA.",
+  "note": "Monoblok do 5 m: duplicitné skladové položky sa konsolidujú. Šróbenie mosadz 1\" je jedna položka 10 ks.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -299,12 +299,12 @@
           "pohoda_code": "5061001",
           "pohoda_plu": "104102",
           "expected_name": "Šróbenie V4300 1\", priame, 3-kusé, mosadz",
-          "qty": 6,
+          "qty": 10,
           "unit": "ks",
           "required": true,
           "mapping_status": "mapped",
           "customer_group": "Hydraulické a montážne príslušenstvo",
-          "note": "Pre napojenie vnútornej jednotky a hydraulického separátora/anuloidu."
+          "note": "Spolu 10 ks: 6 ks pre vnútornú jednotku/anuloid + 4 ks pre 2 nezamŕzavé ventily."
         },
         {
           "role": "brass_union_3_4in_dhw",
@@ -396,18 +396,6 @@
           "mapping_status": "needs_product",
           "customer_group": "Ochrana monobloku proti zamrznutiu",
           "note": "Firemný štandard 2 ks. V aktuálnom exporte Zásob nebola identifikovaná jednoznačná skladová karta; po doplnení produktu do POHODY sa sem priradí presný kód/ID."
-        },
-        {
-          "role": "antifreeze_valve_union_1in",
-          "pohoda_code": "5061001",
-          "pohoda_plu": "104102",
-          "expected_name": "Šróbenie V4300 1\", priame, 3-kusé, mosadz",
-          "qty": 4,
-          "unit": "ks",
-          "required": true,
-          "mapping_status": "mapped",
-          "customer_group": "Ochrana monobloku proti zamrznutiu",
-          "note": "4 ks navyše pre 2 nezamŕzavé ventily. Sú samostatné od 6 ks šróbení 1\" pri vnútornej jednotke a anuloide."
         }
       ]
     },
