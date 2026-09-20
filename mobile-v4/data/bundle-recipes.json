@@ -1,8 +1,8 @@
 {
-  "version": 14,
+  "version": 15,
   "updated_at": "2026-09-20",
   "source": "POHODA export Zásoby(2).xlsx",
-  "note": "Montáž: monoblok 900/600 € (ŠTANDARD/EKONOM), split 1050/750 €. Split má +150 € za chladiarenské práce; chladivové potrubie je samostatný materiál z POHODY.",
+  "note": "Monoblok: presne pomenovaný protimrazový WFV-25 M, doplnený HERZ DN15 privzdušňovací/odvzdušňovací ventil a UV ochrana namapovaná na alu pásku ART01412.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -159,13 +159,15 @@
         },
         {
           "role": "uv_weather_protection",
-          "pohoda_code": null,
-          "pohoda_plu": null,
-          "expected_name": "UV / poveternostná ochrana vonkajšej izolácie",
-          "qty": null,
-          "unit": "súb.",
+          "pohoda_code": "ART01412",
+          "pohoda_plu": "104242",
+          "expected_name": "Alumíniová lepiaca páska 48mm x 50m",
+          "qty": 1,
+          "unit": "ks",
           "required": true,
-          "mapping_status": "needs_product"
+          "mapping_status": "mapped",
+          "customer_group": "Potrubie a izolácia",
+          "note": "Použiť na UV/poveternostnú ochranu vonkajšej izolácie."
         },
         {
           "role": "dhw_expansion_vessel",
@@ -370,13 +372,13 @@
           "role": "antifreeze_valve",
           "pohoda_code": null,
           "pohoda_plu": null,
-          "expected_name": "Nezamŕzavý / protimrazový ventil 1\"",
+          "expected_name": "Protimrazový ventil WFV-25 M, PN 10, kvs 68",
           "qty": 2,
           "unit": "ks",
           "required": true,
           "mapping_status": "needs_product",
           "customer_group": "Ochrana monobloku proti zamrznutiu",
-          "note": "Firemný štandard 2 ks. V aktuálnom exporte Zásob nebola identifikovaná jednoznačná skladová karta; po doplnení produktu do POHODY sa sem priradí presný kód/ID."
+          "note": "Presný názov firemného štandardu potvrdený. Po objavení karty v POHODE sa doplní kód/PLU."
         },
         {
           "role": "anti_vibration_base",
@@ -485,6 +487,18 @@
           "mapping_status": "mapped_needs_compatibility_check",
           "customer_group": "TÚV príslušenstvo",
           "note": "Servo prepínacieho ventilu TÚV. Pred ostrým použitím potvrdiť kompatibilitu s ventilom 601072."
+        },
+        {
+          "role": "freeze_air_admission_vent",
+          "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "HERZ ventil DN15 privzdušňovací a odvzdušňovací, so spätným ventilom, závitový, mosadz/EPDM",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "needs_product",
+          "customer_group": "Ochrana monobloku proti zamrznutiu",
+          "note": "Súčasť zostavy ochrany monobloku proti zamrznutiu. Po novom exporte POHODY priradiť presnú kartu."
         }
       ]
     },
