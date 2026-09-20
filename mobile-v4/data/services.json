@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "updated_at": "2026-09-20",
   "services": [
     {
@@ -117,6 +117,25 @@
         "prvé spustenie a základná kontrola funkcie"
       ],
       "note": "Cena 600 € bez DPH je pracovná ekonomická cena nadväzujúca na doterajšiu sadzbu. Ak má byť iná, stačí zmeniť jednu hodnotu."
+    },
+    {
+      "id": "hp_annual_service",
+      "name": "Ročná servisná prehliadka tepelného čerpadla",
+      "default_price_inc_vat": 150,
+      "vat_pct": 23,
+      "default_price_ex_vat": 121.95,
+      "billing": "yearly_when_service_is_performed",
+      "optional_in_initial_quote": true,
+      "warranty_note": "Ročná prehliadka môže byť podmienkou predĺženej záruky podľa konkrétneho výrobcu a záručného programu.",
+      "scope": [
+        "kontrola prevádzkových parametrov zariadenia",
+        "kontrola hydraulickej časti, filtrov, čerpadiel a expanzných nádob",
+        "kontrola elektrických spojov a istenia",
+        "kontrola chybovej histórie a nastavení regulácie",
+        "kontrola vonkajšej jednotky a výmenníka",
+        "pri split systéme kontrola chladivového okruhu v rozsahu predpísanom výrobcom",
+        "servisný protokol / záznam o ročnej prehliadke"
+      ]
     }
   ]
 }
