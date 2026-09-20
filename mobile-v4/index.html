@@ -96,10 +96,10 @@
       <h2>Typ montáže</h2>
       <div class="choiceGrid" style="grid-template-columns:1fr 1fr">
         <button id="tierStandard" class="choice on" onclick="setInstallationTier('standard')">
-          <span>★</span><b>ŠTANDARD</b><small style="display:block;margin-top:4px;color:#bbb">900 € bez DPH</small>
+          <span>★</span><b>ŠTANDARD</b><small id="standardTierPrice" style="display:block;margin-top:4px;color:#bbb">900 € bez DPH</small>
         </button>
         <button id="tierEconomy" class="choice" onclick="setInstallationTier('economy')">
-          <span>€</span><b>EKONOM</b><small style="display:block;margin-top:4px;color:#bbb">600 € bez DPH</small>
+          <span>€</span><b>EKONOM</b><small id="economyTierPrice" style="display:block;margin-top:4px;color:#bbb">600 € bez DPH</small>
         </button>
       </div>
       <div id="economyChecklist" class="hidden" style="margin-top:12px">
@@ -324,7 +324,7 @@ function buildBOM(){
        let st=stockByRecipe(r),qty=recipeQty(r);
        let defaultPrice=r.default_sell_price_ex_vat!=null?+r.default_sell_price_ex_vat:null;
        if(r.role==='installation_service'){
-         defaultPrice=current.installation_tier==='economy'?600:900;
+         defaultPrice=installationPrice(current.installation_tier||'standard');
        }
        items.push({
          role:r.role,
@@ -372,12 +372,20 @@ function buildBOM(){
  items=consolidateBOM(items);
  current.items=items;current.system_type=systemType(d);current.bundle_key=key;current.device=recommendation;current.route_m=5;current.updated=Date.now()
 }
+function installationPrice(tier){
+  const isSplit=current?.system_type==='split'||systemType(recommendation||{})==='split';
+  if(isSplit) return tier==='economy'?750:1050;
+  return tier==='economy'?600:900;
+}
 function syncInstallationTierUI(){
   const tier=current?.installation_tier||'standard';
   const st=document.getElementById('tierStandard'), ec=document.getElementById('tierEconomy'), box=document.getElementById('economyChecklist');
   if(st)st.classList.toggle('on',tier==='standard');
   if(ec)ec.classList.toggle('on',tier==='economy');
   if(box)box.classList.toggle('hidden',tier!=='economy');
+  const sp=document.getElementById('standardTierPrice'), ep=document.getElementById('economyTierPrice');
+  if(sp)sp.textContent=installationPrice('standard')+' € bez DPH';
+  if(ep)ep.textContent=installationPrice('economy')+' € bez DPH';
 }
 function setInstallationTier(tier){
   if(tier==='economy'){
@@ -455,7 +463,7 @@ function renderFinal(){
  const scope=install?.work_scope?.length?'<div style="margin-top:12px"><b>Montáž zahŕňa:</b><ul style="margin:7px 0 0 18px;padding:0">'+install.work_scope.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>':'';
  const optional=flush?'<div class="srow" style="margin-top:10px"><span>Preplach + cleaner + inhibitor</span><b>'+€(flush.price)+'</b></div>':'';
  const annual=current.optional_services?.annual_service!==false?'<div class="srow" style="margin-top:10px"><span>Ročná servisná prehliadka</span><b>150 € s DPH / rok</b></div><div class="sub">Účtuje sa pri vykonaní servisu. Podmienky predĺženej záruky určuje výrobca.</div>':'';
- document.getElementById('finalSummary').innerHTML='<h2 style="margin-top:0">'+esc(current.customer.name)+'</h2><div class="sub">'+esc(current.customer.address)+'</div><div style="margin-top:14px"><b>'+esc(current.device.brand+' '+current.device.model+' '+(current.device.variant||''))+'</b></div><div class="srow"><span>Typ montáže</span><b>'+(current.installation_tier==='economy'?'EKONOM – 600 €':'ŠTANDARD – 900 €')+'</b></div>'+optional+annual+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+ (current.price_complete?€(current.total):'Cena ešte nie je kompletná') +'</span></div>'
+ document.getElementById('finalSummary').innerHTML='<h2 style="margin-top:0">'+esc(current.customer.name)+'</h2><div class="sub">'+esc(current.customer.address)+'</div><div style="margin-top:14px"><b>'+esc(current.device.brand+' '+current.device.model+' '+(current.device.variant||''))+'</b></div><div class="srow"><span>Typ montáže</span><b>'+(current.installation_tier==='economy'?'EKONOM – '+installationPrice('economy')+' €':'ŠTANDARD – '+installationPrice('standard')+' €')+'</b></div>'+optional+annual+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+ (current.price_complete?€(current.total):'Cena ešte nie je kompletná') +'</span></div>'
 }
 function openQuote(id){let q=quotes.find(x=>x.id===id);if(!q)return;current=JSON.parse(JSON.stringify(q));if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true};if(current.optional_services.annual_service===undefined)current.optional_services.annual_service=true;if(!current.installation_tier)current.installation_tier='standard';category=current.category||'heat_pump';brand=current.brand||'';recommendation=current.device||null;document.getElementById('cName').value=current.customer.name||'';document.getElementById('cPhone').value=current.customer.phone||'';document.getElementById('cEmail').value=current.customer.email||'';document.getElementById('cAddress').value=current.customer.address||'';document.getElementById('cNote').value=current.customer.note||'';renderRecommendation();renderFinal();go('step4')}
 function message(){return 'Dobrý deň, posielame cenovú ponuku Spektra Install na '+(current.device?.brand||'')+' '+(current.device?.model||'')+'. '+(current.price_complete?'Cena spolu s DPH: '+€(current.total)+'.':'Cena bude doplnená po kontrole.')+' Ďakujeme.'}
