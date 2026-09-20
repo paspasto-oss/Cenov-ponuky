@@ -1,8 +1,8 @@
 {
-  "version": 5,
+  "version": 6,
   "updated_at": "2026-09-20",
   "source": "POHODA export Zásoby(2).xlsx",
-  "note": "Monoblok do 5 m: duplicitné skladové položky sa konsolidujú. Šróbenie mosadz 1\" je jedna položka 10 ks.",
+  "note": "Monoblok BOM rozšírený o antivibračné podstavce, termomanometer a dopúšťanie. Elektro je samostatný spoločný balík pre všetky tepelné čerpadlá.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -192,29 +192,6 @@
           "customer_group": "TÚV príslušenstvo"
         },
         {
-          "role": "power_cable_candidate",
-          "pohoda_code": "KÁBEL0",
-          "pohoda_plu": "106383",
-          "expected_name": "Kábel pevný Cu CYKY-J 5x2,5",
-          "qty": 10,
-          "unit": "m",
-          "required": false,
-          "condition": "device_electrical_spec_allows",
-          "mapping_status": "conditional",
-          "note": "Elektrika bude modelovo závislá; nepoužívať automaticky pre každý monoblok."
-        },
-        {
-          "role": "breaker_b16_3p_candidate",
-          "pohoda_code": "ISTIČ",
-          "pohoda_plu": "106384",
-          "expected_name": "Istič charakteristika B, 16 A, 3pól",
-          "qty": 2,
-          "unit": "ks",
-          "required": false,
-          "condition": "3_phase_device_and_spec_allows",
-          "mapping_status": "conditional"
-        },
-        {
           "role": "rcd",
           "pohoda_code": null,
           "pohoda_plu": null,
@@ -225,17 +202,6 @@
           "condition": "according_to_device",
           "mapping_status": "needs_product",
           "note": "V aktuálnom exporte sa nenašla jednoznačná skladová karta RCD."
-        },
-        {
-          "role": "electrical_enclosure_candidate",
-          "pohoda_code": "ROZVODNICA0",
-          "pohoda_plu": "106387",
-          "expected_name": "Rozvodnica na povrch 8 modulov IP65",
-          "qty": 1,
-          "unit": "ks",
-          "required": false,
-          "condition": "new_enclosure_required",
-          "mapping_status": "conditional"
         },
         {
           "role": "core_drilling_service",
@@ -378,12 +344,13 @@
           "role": "merabell_ready_1_2_0_8m",
           "pohoda_code": "M0414",
           "pohoda_plu": "250018",
-          "expected_name": "MERABELL READY! rúrka s koncovkami G1/2\"-G1/2\", 0,8 m, voda, plyn, nerez oceľ",
-          "qty": 2,
+          "expected_name": "MERABELL READY! rúrka s koncovkami G1/2\"-G1/2\", 0,8 m",
+          "qty": 3,
           "unit": "ks",
           "required": true,
           "mapping_status": "mapped",
-          "customer_group": "Hydraulické a montážne príslušenstvo"
+          "customer_group": "Hydraulické a montážne príslušenstvo",
+          "note": "Spolu 3 ks: pôvodné 2 ks + 1 ks pre dopúšťanie vykurovania."
         },
         {
           "role": "antifreeze_valve",
@@ -396,6 +363,40 @@
           "mapping_status": "needs_product",
           "customer_group": "Ochrana monobloku proti zamrznutiu",
           "note": "Firemný štandard 2 ks. V aktuálnom exporte Zásob nebola identifikovaná jednoznačná skladová karta; po doplnení produktu do POHODY sa sem priradí presný kód/ID."
+        },
+        {
+          "role": "anti_vibration_base",
+          "pohoda_code": "900218400100000213",
+          "pohoda_plu": "106708",
+          "expected_name": "Antivibračný montblok pre umiestnenie na zem 600 mm",
+          "qty": 2,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Montážne príslušenstvo"
+        },
+        {
+          "role": "thermomanometer",
+          "pohoda_code": " TM.R-80-4",
+          "pohoda_plu": "108311",
+          "expected_name": "TERMOMANOMETER, radiál, 0-4 bar, 1/2\"",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo",
+          "note": "Predvolený štandard pre vykurovaciu sústavu; pri konkrétnej zostave možno zmeniť typ/orientáciu."
+        },
+        {
+          "role": "heating_fill_valve_1_2",
+          "pohoda_code": "154079591609750000",
+          "pohoda_plu": "102560",
+          "expected_name": "IVR 954 EVERLAST guľový kohút FF1/2\", voda",
+          "qty": 2,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Dopúšťanie vykurovania"
         }
       ]
     },
@@ -554,6 +555,98 @@
           "qty": 1,
           "unit": "súb.",
           "required": true
+        }
+      ]
+    },
+    {
+      "key": "hp_electrical_standard",
+      "customer_label": "Elektroinštalačný materiál pre tepelné čerpadlo",
+      "system_type": "heat_pump_common",
+      "items": [
+        {
+          "role": "electrical_enclosure_12m",
+          "pohoda_code": "ROZVODNICA",
+          "pohoda_plu": "106386",
+          "expected_name": "Rozvodnica na povrch 12 modulov IP65",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Elektroinštalačný materiál"
+        },
+        {
+          "role": "breaker_b16_3p",
+          "pohoda_code": "ISTIČ",
+          "pohoda_plu": "106384",
+          "expected_name": "Istič charakteristika B, 16 A, 3-pól",
+          "qty": 2,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Elektroinštalačný materiál",
+          "note": "Firemný cenový štandard; pred realizáciou overiť istenie podľa konkrétneho zariadenia a projektu."
+        },
+        {
+          "role": "power_cable_cyky_5x2_5",
+          "pohoda_code": "KÁBEL0",
+          "pohoda_plu": "106383",
+          "expected_name": "Kábel pevný Cu CYKY-J 5x2,5",
+          "qty": 12,
+          "unit": "m",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Elektroinštalačný materiál"
+        },
+        {
+          "role": "control_cable_4x0_75",
+          "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Ovládací / komunikačný kábel 4x0,75",
+          "qty": 10,
+          "unit": "m",
+          "required": true,
+          "mapping_status": "needs_product",
+          "customer_group": "Elektroinštalačný materiál",
+          "note": "V aktuálnom exporte POHODY nebola nájdená presná skladová karta 4x0,75."
+        },
+        {
+          "role": "cable_glands",
+          "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Káblové vývodky / prechodky",
+          "qty": 5,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "needs_product",
+          "customer_group": "Elektroinštalačný materiál",
+          "note": "Treba doplniť presný typ a skladovú kartu POHODA."
+        },
+        {
+          "role": "installation_trunking_40x40",
+          "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Inštalačná PVC lišta 40x40",
+          "qty": 10,
+          "unit": "m",
+          "required": true,
+          "mapping_status": "needs_product",
+          "customer_group": "Elektroinštalačný materiál",
+          "candidate_code": "LIŠTA",
+          "candidate_name": "lišta inštalačná PVC 40x25 biela",
+          "note": "V exporte nie je presná 40x40. Existuje 40x25 (LIŠTA), ale bez potvrdenia sa automaticky nezamení."
+        },
+        {
+          "role": "rcd",
+          "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Prúdový chránič podľa konkrétneho zariadenia",
+          "qty": 2,
+          "unit": "ks",
+          "required": false,
+          "condition": "according_to_device",
+          "mapping_status": "needs_product",
+          "customer_group": "Elektroinštalačný materiál",
+          "note": "Technické overenie podľa výrobcu/projektu; nie je súčasťou pevného cenového štandardu, kým nebude určený presný typ."
         }
       ]
     }
