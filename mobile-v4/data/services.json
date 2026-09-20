@@ -17,7 +17,10 @@
         "napustenie vykurovacieho systému vodou",
         "odvzdušnenie systému",
         "prvé spustenie a základná kontrola funkcie"
-      ]
+      ],
+      "workers": 2,
+      "hours_per_worker": 10,
+      "total_man_hours": 20
     },
     {
       "id": "hp_install_split_5m",
@@ -35,7 +38,10 @@
         "napustenie vykurovacieho systému vodou",
         "odvzdušnenie systému",
         "prvé spustenie a základná kontrola funkcie"
-      ]
+      ],
+      "workers": 2,
+      "hours_per_worker": 10,
+      "total_man_hours": 20
     },
     {
       "id": "hp_flush_cleaner_inhibitor",
