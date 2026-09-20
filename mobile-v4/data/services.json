@@ -1,11 +1,11 @@
 {
-  "version": 4,
+  "version": 5,
   "updated_at": "2026-09-20",
   "services": [
     {
       "id": "hp_install_monoblock_5m",
       "name": "Montáž monoblokového tepelného čerpadla do 5 m",
-      "default_price_ex_vat": 600,
+      "default_price_ex_vat": 900,
       "pohoda_code": null,
       "labor_scope": [
         "dovoz zariadenia na miesto realizácie",
@@ -25,7 +25,7 @@
     {
       "id": "hp_install_split_5m",
       "name": "Montáž split tepelného čerpadla do 5 m",
-      "default_price_ex_vat": 600,
+      "default_price_ex_vat": 1050,
       "pohoda_code": null,
       "labor_scope": [
         "dovoz zariadenia na miesto realizácie",
@@ -60,7 +60,7 @@
     {
       "id": "hp_install_standard",
       "name": "Montáž tepelného čerpadla – ŠTANDARD",
-      "default_price_ex_vat": 900,
+      "default_price_ex_vat": null,
       "workers": 2,
       "hours_per_worker": 10,
       "total_man_hours": 20,
@@ -83,12 +83,13 @@
         "napustenie systému vodou",
         "odvzdušnenie",
         "prvé spustenie a základná kontrola funkcie"
-      ]
+      ],
+      "note": "Nepoužívať ako cenu. Monoblok ŠTANDARD 900 €, split ŠTANDARD 1050 € bez DPH."
     },
     {
       "id": "hp_install_economy",
       "name": "Montáž tepelného čerpadla – EKONOM",
-      "default_price_ex_vat": 600,
+      "default_price_ex_vat": null,
       "workers": 2,
       "hours_per_worker": null,
       "total_man_hours": null,
@@ -116,7 +117,7 @@
         "odvzdušnenie",
         "prvé spustenie a základná kontrola funkcie"
       ],
-      "note": "Cena 600 € bez DPH je pracovná ekonomická cena nadväzujúca na doterajšiu sadzbu. Ak má byť iná, stačí zmeniť jednu hodnotu."
+      "note": "Nepoužívať ako cenu. Monoblok EKONOM 600 €, split EKONOM 750 € bez DPH."
     },
     {
       "id": "hp_annual_service",
@@ -164,7 +165,7 @@
       "id": "hp_install_split_economy",
       "name": "Montáž split tepelného čerpadla – EKONOM",
       "system_type": "split",
-      "default_price_ex_vat": 600,
+      "default_price_ex_vat": 750,
       "prerequisites": [
         "hotový betónový podstavec / pripravené miesto pre vonkajšiu jednotku",
         "prestup cez stenu je už vyvŕtaný",
@@ -185,5 +186,17 @@
         "prvé spustenie a základná kontrola funkcie"
       ]
     }
-  ]
+  ],
+  "pricing_policy": {
+    "monoblock": {
+      "standard_ex_vat": 900,
+      "economy_ex_vat": 600
+    },
+    "split": {
+      "standard_ex_vat": 1050,
+      "economy_ex_vat": 750
+    },
+    "split_installation_surcharge_ex_vat": 150,
+    "rationale": "Hydraulické a vodné napojenie je približne rovnaké. Split má navyše chladivovú trasu, pertlovanie, kontrolu spojov a vákuovanie. Materiál chladivového potrubia sa oceňuje samostatne z POHODY."
+  }
 }
