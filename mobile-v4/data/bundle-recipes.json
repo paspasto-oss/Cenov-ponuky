@@ -1,8 +1,8 @@
 {
-  "version": 13,
+  "version": 14,
   "updated_at": "2026-09-20",
   "source": "POHODA export Zásoby(2).xlsx",
-  "note": "Montáž TČ: 2 montéri × 10 h = 20 človekohodín. Preplach je samostatná služba 350–450 € bez DPH.",
+  "note": "Montáž: monoblok 900/600 € (ŠTANDARD/EKONOM), split 1050/750 €. Split má +150 € za chladiarenské práce; chladivové potrubie je samostatný materiál z POHODY.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -728,7 +728,7 @@
           "unit": "súb.",
           "required": true,
           "mapping_status": "needs_service_card",
-          "default_sell_price_ex_vat": 900,
+          "default_sell_price_ex_vat": 1050,
           "visible_to_customer": true,
           "work_scope": [
             "dovoz zariadenia na miesto realizácie",
@@ -749,10 +749,10 @@
           "total_man_hours": 20,
           "installation_tiers": {
             "standard": {
-              "price_ex_vat": 900
+              "price_ex_vat": 1050
             },
             "economy": {
-              "price_ex_vat": 600
+              "price_ex_vat": 750
             }
           }
         },
