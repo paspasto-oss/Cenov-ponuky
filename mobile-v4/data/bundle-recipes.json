@@ -1,8 +1,8 @@
 {
-  "version": 9,
+  "version": 10,
   "updated_at": "2026-09-20",
   "source": "POHODA export Zásoby(2).xlsx",
-  "note": "Split: štandardná chladivová trasa 3/8\"x5/8\" 5 m. Monoblok aj split: prestup Ø80 mm cez stenu do 50 cm a pri externom TÚV prepínací ventil + servo.",
+  "note": "Montáž monobloku a splitu má definovaný rozsah prác. Pridaná samostatná voliteľná služba pre preplach kúrenia s cleanerom a inhibitorom (2 montéri x 10 h, default 400 € bez DPH).",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -207,13 +207,26 @@
           "role": "installation_service",
           "pohoda_code": null,
           "pohoda_plu": null,
-          "expected_name": "Montáž tepelného čerpadla do 5 m",
+          "expected_name": "Montáž monoblokového tepelného čerpadla do 5 m",
           "qty": 1,
           "unit": "súb.",
           "required": true,
           "mapping_status": "needs_service_card",
           "default_sell_price_ex_vat": 600,
-          "note": "V POHODE vytvoriť službu, aby bola ponuka a doklady konzistentné."
+          "note": "Cena montáže je samostatná služba. Materiál sa oceňuje položkovo na pozadí z POHODY.",
+          "visible_to_customer": true,
+          "work_scope": [
+            "dovoz zariadenia na miesto realizácie",
+            "osadenie vonkajšej jednotky na antivibračné podstavce",
+            "osadenie vnútornej jednotky / hydraulických komponentov",
+            "montáž potrubia k jednotkám a uchytenie na objímky",
+            "lisovanie hydraulických spojov",
+            "montáž elektroinštalácie a pripojenie zariadenia",
+            "napustenie vykurovacieho systému vodou",
+            "odvzdušnenie systému",
+            "prvé spustenie a základná kontrola funkcie"
+          ],
+          "customer_group": "Montáž a uvedenie do prevádzky"
         },
         {
           "role": "pump_union_with_shutoff",
@@ -704,7 +717,22 @@
           "unit": "súb.",
           "required": true,
           "mapping_status": "needs_service_card",
-          "default_sell_price_ex_vat": 600
+          "default_sell_price_ex_vat": 600,
+          "visible_to_customer": true,
+          "work_scope": [
+            "dovoz zariadenia na miesto realizácie",
+            "osadenie vonkajšej jednotky na antivibračné podstavce",
+            "osadenie vnútornej jednotky",
+            "montáž potrubia k jednotkám a uchytenie na objímky",
+            "pertlovanie a montáž chladivových spojov",
+            "montáž elektroinštalácie a pripojenie zariadenia",
+            "vákuovanie chladivového okruhu",
+            "napustenie vykurovacieho systému vodou",
+            "odvzdušnenie systému",
+            "prvé spustenie a základná kontrola funkcie"
+          ],
+          "customer_group": "Montáž a uvedenie do prevádzky",
+          "note": "Cena montáže je samostatná služba. Materiál sa oceňuje položkovo na pozadí z POHODY."
         },
         {
           "role": "dhw_expansion_vessel",
@@ -1011,6 +1039,40 @@
           "mapping_status": "needs_product",
           "customer_group": "Elektroinštalačný materiál",
           "note": "Technické overenie podľa výrobcu/projektu; nie je súčasťou pevného cenového štandardu, kým nebude určený presný typ."
+        }
+      ]
+    },
+    {
+      "key": "hp_optional_services",
+      "customer_label": "Voliteľné služby",
+      "system_type": "heat_pump_optional",
+      "items": [
+        {
+          "role": "heating_system_flush_cleaner_inhibitor",
+          "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Preplach vykurovacieho systému + cleaner + inhibitor",
+          "qty": 1,
+          "unit": "súb.",
+          "required": false,
+          "mapping_status": "needs_service_and_material_cards",
+          "default_sell_price_ex_vat": 400,
+          "price_min_ex_vat": 350,
+          "price_max_ex_vat": 450,
+          "labor_workers": 2,
+          "labor_hours_per_worker": 10,
+          "total_man_hours": 20,
+          "visible_to_customer": true,
+          "customer_group": "Voliteľné služby",
+          "work_scope": [
+            "preplach existujúceho vykurovacieho systému",
+            "aplikácia čistiaceho prípravku (cleaner)",
+            "preplach a odstránenie uvoľnených nečistôt",
+            "opätovné napustenie systému",
+            "aplikácia inhibítora korózie",
+            "odvzdušnenie a kontrola systému"
+          ],
+          "note": "Predvolená cena 400 € bez DPH, odporúčaný rozsah 350–450 € podľa veľkosti a znečistenia systému. Cleaner a inhibitor sa po doplnení kariet do POHODY budú účtovať ako samostatné materiálové položky alebo zahrnuté podľa firemného pravidla."
         }
       ]
     }
