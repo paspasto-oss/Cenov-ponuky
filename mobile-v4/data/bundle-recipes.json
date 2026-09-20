@@ -1,8 +1,8 @@
 {
-  "version": 7,
+  "version": 8,
   "updated_at": "2026-09-20",
   "source": "POHODA export Zásoby(2).xlsx",
-  "note": "TÚV balík monobloku rozšírený o šróbenia 3/4, IVR 3/4, vsuvky 3/4, redukované T-kusy a M/F kolená 3/4.",
+  "note": "Monoblok uzavretý. Split základ bol pripravený z rovnakých hydraulických štandardov a čaká na doplnenie nových POHODA kariet pre chladivové potrubia, izolácie, komunikačný kábel a služby.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -439,82 +439,377 @@
     },
     {
       "key": "hp_split_5m",
-      "customer_label": "Montážne príslušenstvo pre split do 5 m",
+      "customer_label": "Hydraulické, chladivové a montážne príslušenstvo pre split do 5 m",
       "system_type": "split",
       "max_route_m": 5,
-      "status": "pending_mapping",
+      "status": "base_mapped_waiting_for_new_pohoda_export",
       "items": [
         {
           "role": "magnetic_filter",
-          "pohoda_code": null,
+          "pohoda_code": "TOTAL FILTER TF1-1",
+          "pohoda_plu": null,
+          "expected_name": "Total Filter TF1 - 1\" komplet",
           "qty": 1,
           "unit": "ks",
-          "required": true
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
         },
         {
           "role": "air_separator",
           "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Odlučovač vzduchu 1\"",
           "qty": 1,
           "unit": "ks",
-          "required": true
+          "required": true,
+          "mapping_status": "needs_product",
+          "candidate_code": "INT_CLF 551005",
+          "candidate_name": "DISCAL® - odvzdušňovač, 3/4\" FF, s odtokom",
+          "note": "Po doplnení správnej 1\" karty do POHODY namapovať."
         },
         {
           "role": "heating_safety_valve",
-          "pohoda_code": null,
+          "pohoda_code": "150039533709300003",
+          "pohoda_plu": "102729",
+          "expected_name": "HERZ poistný ventil DN15 membránový, 2,5 bar",
           "qty": 1,
           "unit": "ks",
-          "required": true
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
         },
         {
           "role": "heating_expansion_vessel",
-          "pohoda_code": null,
+          "pohoda_code": "IMERA R24",
+          "pohoda_plu": "570010",
+          "expected_name": "Expanzná nádoba IMERA R5-50 24L",
           "qty": 1,
           "unit": "ks",
-          "required": true
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
         },
         {
-          "role": "refrigerant_pipe_pair",
+          "role": "heating_expansion_service_valve",
+          "pohoda_code": "1220502",
+          "pohoda_plu": "105047",
+          "expected_name": "HERZ servisný ventil DN20, PN10, pre expanzné nádoby",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "hydraulic_separator",
+          "pohoda_code": "606001",
+          "pohoda_plu": "100467",
+          "expected_name": "Hydraulický separátor CPN 70 2F - DN 25",
+          "qty": 1,
+          "unit": "ks",
+          "required": false,
+          "default_enabled": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "circulation_pump",
+          "pohoda_code": "115907",
+          "pohoda_plu": "103223",
+          "expected_name": "Obehové čerpadlo OHI PRO 25-60/180",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "default_enabled": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "pump_union_with_shutoff",
+          "pohoda_code": "110810001",
+          "pohoda_plu": "108196",
+          "expected_name": "Skrutkovanie k čerpadlu 1\"x6/4\" so vstavaným guľovým kohútikom",
+          "qty": 2,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "automatic_bypass_valve",
+          "pohoda_code": "1400432",
+          "pohoda_plu": "100682",
+          "expected_name": "Ventil prepúšťací priamy 3/4\" Herz",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "ball_valves_1in",
+          "pohoda_code": "154079591609750002",
+          "pohoda_plu": "102559",
+          "expected_name": "IVR 954 EVERLAST guľový kohút FF1\"",
+          "qty": 6,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "brass_union_1in",
+          "pohoda_code": "5061001",
+          "pohoda_plu": "104102",
+          "expected_name": "Šróbenie V4300 1\", priame, 3-kusé, mosadz",
+          "qty": 6,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo",
+          "note": "Split nemá protimrazové ventily na vodnom okruhu vonku, preto základ 6 ks."
+        },
+        {
+          "role": "automatic_air_vent_1_2",
+          "pohoda_code": "330030",
+          "pohoda_plu": null,
+          "expected_name": "Automatický odvzdušňovací ventil 1/2\"",
+          "qty": 2,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "drain_valve_1_2",
+          "pohoda_code": "46450012",
+          "pohoda_plu": "102398",
+          "expected_name": "Guľový kohút M1/2\" vypúšťací",
+          "qty": 2,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "brass_nipple_1in",
+          "pohoda_code": "06458006",
+          "pohoda_plu": "108449",
+          "expected_name": "Vsuvka M/M 1\" x 1\"",
+          "qty": 14,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "brass_tee_1x3_4x1",
+          "pohoda_code": "06413104",
+          "pohoda_plu": "108375",
+          "expected_name": "T-kus redukovaný F/F/F 1\" x 3/4\" x 1\"",
+          "qty": 12,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "merabell_ready_1_2_0_8m",
+          "pohoda_code": "M0414",
+          "pohoda_plu": "250018",
+          "expected_name": "MERABELL READY! G1/2\"-G1/2\", 0,8 m",
+          "qty": 3,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "heating_fill_valve_1_2",
+          "pohoda_code": "154079591609750000",
+          "pohoda_plu": "102560",
+          "expected_name": "IVR 954 EVERLAST guľový kohút FF1/2\"",
+          "qty": 2,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Dopúšťanie vykurovania"
+        },
+        {
+          "role": "thermomanometer",
+          "pohoda_code": " TM.R-80-4",
+          "pohoda_plu": "108311",
+          "expected_name": "TERMOMANOMETER radiál 0-4 bar, 1/2\"",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické a montážne príslušenstvo"
+        },
+        {
+          "role": "refrigerant_pipe_liquid",
           "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Chladivové Cu potrubie – kvapalinová vetva",
           "qty": 5,
           "unit": "m",
-          "required": true
+          "required": true,
+          "mapping_status": "model_dependent",
+          "qty_formula": "route_m",
+          "note": "Priemer podľa konkrétneho modelu TČ."
+        },
+        {
+          "role": "refrigerant_pipe_gas",
+          "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Chladivové Cu potrubie – plynová vetva",
+          "qty": 5,
+          "unit": "m",
+          "required": true,
+          "mapping_status": "model_dependent",
+          "qty_formula": "route_m",
+          "note": "Priemer podľa konkrétneho modelu TČ."
         },
         {
           "role": "refrigerant_pipe_insulation",
           "pohoda_code": null,
-          "qty": 5,
+          "pohoda_plu": null,
+          "expected_name": "Izolácia chladivového potrubia",
+          "qty": 10,
           "unit": "m",
-          "required": true
+          "required": true,
+          "mapping_status": "model_dependent",
+          "note": "Rozmer podľa konkrétneho priemeru potrubia."
         },
         {
-          "role": "communication_cable",
+          "role": "communication_cable_split",
           "pohoda_code": null,
-          "qty": 5,
+          "pohoda_plu": null,
+          "expected_name": "Prepojovací / komunikačný kábel split",
+          "qty": 10,
           "unit": "m",
-          "required": true
+          "required": true,
+          "mapping_status": "model_dependent",
+          "note": "Počet žíl a prierez podľa konkrétneho výrobcu/modelu."
         },
         {
           "role": "condensate_drain",
           "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Odvod kondenzátu vnútornej jednotky",
           "qty": 5,
           "unit": "m",
-          "required": false
+          "required": false,
+          "mapping_status": "needs_product"
         },
         {
-          "role": "electrical_feed",
+          "role": "core_drilling_service",
           "pohoda_code": null,
-          "qty": null,
-          "unit": "súb.",
-          "required": true
-        },
-        {
-          "role": "installation_consumables",
-          "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Jadrové vŕtanie / prestup",
           "qty": 1,
           "unit": "súb.",
-          "required": true
+          "required": false,
+          "mapping_status": "needs_service_card"
+        },
+        {
+          "role": "installation_service",
+          "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Montáž split tepelného čerpadla do 5 m",
+          "qty": 1,
+          "unit": "súb.",
+          "required": true,
+          "mapping_status": "needs_service_card",
+          "default_sell_price_ex_vat": 600
+        },
+        {
+          "role": "dhw_expansion_vessel",
+          "pohoda_code": "NP.CWU.08.IB",
+          "pohoda_plu": null,
+          "expected_name": "Expanzná nádoba na TÚV IBAIONDO 8L",
+          "qty": 1,
+          "unit": "ks",
+          "required": false,
+          "condition": "with_external_dhw_tank",
+          "mapping_status": "mapped",
+          "customer_group": "TÚV príslušenstvo"
+        },
+        {
+          "role": "dhw_safety_valve_8bar",
+          "pohoda_code": "417502",
+          "pohoda_plu": "108279",
+          "expected_name": "SLOVARM TE2852.1 poistný ventil DN15, 8bar, voda",
+          "qty": 1,
+          "unit": "ks",
+          "required": false,
+          "condition": "with_external_dhw_tank",
+          "mapping_status": "mapped",
+          "customer_group": "TÚV príslušenstvo"
+        },
+        {
+          "role": "brass_union_3_4in_dhw",
+          "pohoda_code": "50610034",
+          "pohoda_plu": "104091",
+          "expected_name": "Šróbenie V4300 3/4\", mosadz",
+          "qty": 4,
+          "unit": "ks",
+          "required": false,
+          "condition": "with_external_dhw_tank",
+          "mapping_status": "mapped",
+          "customer_group": "TÚV príslušenstvo"
+        },
+        {
+          "role": "dhw_ball_valve_3_4",
+          "pohoda_code": "154079591609750001",
+          "pohoda_plu": "102564",
+          "expected_name": "IVR 954 EVERLAST guľový kohút FF3/4\"",
+          "qty": 4,
+          "unit": "ks",
+          "required": false,
+          "condition": "with_external_dhw_tank",
+          "mapping_status": "mapped",
+          "customer_group": "TÚV príslušenstvo"
+        },
+        {
+          "role": "dhw_brass_nipple_3_4",
+          "pohoda_code": "06458005",
+          "pohoda_plu": "108448",
+          "expected_name": "Vsuvka M/M 3/4\" x 3/4\"",
+          "qty": 8,
+          "unit": "ks",
+          "required": false,
+          "condition": "with_external_dhw_tank",
+          "mapping_status": "mapped",
+          "customer_group": "TÚV príslušenstvo"
+        },
+        {
+          "role": "brass_tee_3_4x1_2x3_4",
+          "pohoda_code": "06413102",
+          "pohoda_plu": "108373",
+          "expected_name": "T-kus redukovaný 3/4\" x 1/2\" x 3/4\"",
+          "qty": 2,
+          "unit": "ks",
+          "required": false,
+          "condition": "with_external_dhw_tank",
+          "mapping_status": "mapped",
+          "customer_group": "TÚV príslušenstvo"
+        },
+        {
+          "role": "dhw_mf_elbow_3_4",
+          "pohoda_code": "06409205",
+          "pohoda_plu": "108351",
+          "expected_name": "Koleno M/F 3/4\" x 3/4\"",
+          "qty": 4,
+          "unit": "ks",
+          "required": false,
+          "condition": "with_external_dhw_tank",
+          "mapping_status": "mapped",
+          "customer_group": "TÚV príslušenstvo"
         }
-      ]
+      ],
+      "route_definition": "vzdialenosť medzi vonkajšou a vnútornou jednotkou; chladivové potrubie = route_m pre každú vetvu"
     },
     {
       "key": "ac_single_split_5m",
