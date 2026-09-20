@@ -1,8 +1,8 @@
 {
-  "version": 10,
+  "version": 11,
   "updated_at": "2026-09-20",
   "source": "POHODA export Zásoby(2).xlsx",
-  "note": "Montáž monobloku a splitu má definovaný rozsah prác. Pridaná samostatná voliteľná služba pre preplach kúrenia s cleanerom a inhibitorom (2 montéri x 10 h, default 400 € bez DPH).",
+  "note": "Montáž TČ: 2 montéri × 10 h = 20 človekohodín. Preplach je samostatná služba 350–450 € bez DPH.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -213,7 +213,7 @@
           "required": true,
           "mapping_status": "needs_service_card",
           "default_sell_price_ex_vat": 600,
-          "note": "Cena montáže je samostatná služba. Materiál sa oceňuje položkovo na pozadí z POHODY.",
+          "note": "Cena montáže je samostatná služba. Materiál sa oceňuje položkovo na pozadí z POHODY. Kalkulačný čas montáže: 2 montéri × 10 hodín = 20 človekohodín. Nezamieňať s cenou voliteľného preplachu.",
           "visible_to_customer": true,
           "work_scope": [
             "dovoz zariadenia na miesto realizácie",
@@ -226,7 +226,10 @@
             "odvzdušnenie systému",
             "prvé spustenie a základná kontrola funkcie"
           ],
-          "customer_group": "Montáž a uvedenie do prevádzky"
+          "customer_group": "Montáž a uvedenie do prevádzky",
+          "labor_workers": 2,
+          "labor_hours_per_worker": 10,
+          "total_man_hours": 20
         },
         {
           "role": "pump_union_with_shutoff",
@@ -732,7 +735,10 @@
             "prvé spustenie a základná kontrola funkcie"
           ],
           "customer_group": "Montáž a uvedenie do prevádzky",
-          "note": "Cena montáže je samostatná služba. Materiál sa oceňuje položkovo na pozadí z POHODY."
+          "note": "Cena montáže je samostatná služba. Materiál sa oceňuje položkovo na pozadí z POHODY. Kalkulačný čas montáže: 2 montéri × 10 hodín = 20 človekohodín. Nezamieňať s cenou voliteľného preplachu.",
+          "labor_workers": 2,
+          "labor_hours_per_worker": 10,
+          "total_man_hours": 20
         },
         {
           "role": "dhw_expansion_vessel",
@@ -1072,7 +1078,7 @@
             "aplikácia inhibítora korózie",
             "odvzdušnenie a kontrola systému"
           ],
-          "note": "Predvolená cena 400 € bez DPH, odporúčaný rozsah 350–450 € podľa veľkosti a znečistenia systému. Cleaner a inhibitor sa po doplnení kariet do POHODY budú účtovať ako samostatné materiálové položky alebo zahrnuté podľa firemného pravidla."
+          "note": "Predvolená cena 400 € bez DPH, odporúčaný rozsah 350–450 € podľa veľkosti a znečistenia systému. Cleaner a inhibitor sa po doplnení kariet do POHODY budú účtovať ako samostatné materiálové položky alebo zahrnuté podľa firemného pravidla. Cena 350–450 € je cena služby preplachu, nie montáže TČ."
         }
       ]
     }
