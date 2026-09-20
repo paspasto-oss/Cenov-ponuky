@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "updated_at": "2026-09-20",
+  "services": [
+    {
+      "id": "hp_install_monoblock_5m",
+      "name": "Montáž monoblokového tepelného čerpadla do 5 m",
+      "default_price_ex_vat": 600,
+      "pohoda_code": null,
+      "labor_scope": [
+        "dovoz zariadenia na miesto realizácie",
+        "osadenie vonkajšej jednotky na antivibračné podstavce",
+        "osadenie vnútornej jednotky / hydraulických komponentov",
+        "montáž potrubia k jednotkám a uchytenie na objímky",
+        "lisovanie hydraulických spojov",
+        "montáž elektroinštalácie a pripojenie zariadenia",
+        "napustenie vykurovacieho systému vodou",
+        "odvzdušnenie systému",
+        "prvé spustenie a základná kontrola funkcie"
+      ]
+    },
+    {
+      "id": "hp_install_split_5m",
+      "name": "Montáž split tepelného čerpadla do 5 m",
+      "default_price_ex_vat": 600,
+      "pohoda_code": null,
+      "labor_scope": [
+        "dovoz zariadenia na miesto realizácie",
+        "osadenie vonkajšej jednotky na antivibračné podstavce",
+        "osadenie vnútornej jednotky",
+        "montáž potrubia k jednotkám a uchytenie na objímky",
+        "pertlovanie a montáž chladivových spojov",
+        "montáž elektroinštalácie a pripojenie zariadenia",
+        "vákuovanie chladivového okruhu",
+        "napustenie vykurovacieho systému vodou",
+        "odvzdušnenie systému",
+        "prvé spustenie a základná kontrola funkcie"
+      ]
+    },
+    {
+      "id": "hp_flush_cleaner_inhibitor",
+      "name": "Preplach vykurovania + cleaner + inhibitor",
+      "default_price_ex_vat": 400,
+      "price_range_ex_vat": [
+        350,
+        450
+      ],
+      "workers": 2,
+      "hours_per_worker": 10,
+      "total_man_hours": 20,
+      "pohoda_code": null,
+      "optional": true
+    }
+  ]
+}
