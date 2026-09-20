@@ -1,5 +1,5 @@
 {
-  "version": 11,
+  "version": 12,
   "updated_at": "2026-09-20",
   "source": "POHODA export Zásoby(2).xlsx",
   "note": "Montáž TČ: 2 montéri × 10 h = 20 človekohodín. Preplach je samostatná služba 350–450 € bez DPH.",
@@ -212,8 +212,8 @@
           "unit": "súb.",
           "required": true,
           "mapping_status": "needs_service_card",
-          "default_sell_price_ex_vat": 600,
-          "note": "Cena montáže je samostatná služba. Materiál sa oceňuje položkovo na pozadí z POHODY. Kalkulačný čas montáže: 2 montéri × 10 hodín = 20 človekohodín. Nezamieňať s cenou voliteľného preplachu.",
+          "default_sell_price_ex_vat": 900,
+          "note": "Cena montáže je samostatná služba. Materiál sa oceňuje položkovo na pozadí z POHODY. Kalkulačný čas montáže: 2 montéri × 10 hodín = 20 človekohodín. Nezamieňať s cenou voliteľného preplachu. Montáž má dve úrovne: ŠTANDARD 900 € bez DPH a EKONOM 600 € bez DPH pri splnení prípravných podmienok zákazníkom.",
           "visible_to_customer": true,
           "work_scope": [
             "dovoz zariadenia na miesto realizácie",
@@ -229,7 +229,15 @@
           "customer_group": "Montáž a uvedenie do prevádzky",
           "labor_workers": 2,
           "labor_hours_per_worker": 10,
-          "total_man_hours": 20
+          "total_man_hours": 20,
+          "installation_tiers": {
+            "standard": {
+              "price_ex_vat": 900
+            },
+            "economy": {
+              "price_ex_vat": 600
+            }
+          }
         },
         {
           "role": "pump_union_with_shutoff",
@@ -720,7 +728,7 @@
           "unit": "súb.",
           "required": true,
           "mapping_status": "needs_service_card",
-          "default_sell_price_ex_vat": 600,
+          "default_sell_price_ex_vat": 900,
           "visible_to_customer": true,
           "work_scope": [
             "dovoz zariadenia na miesto realizácie",
@@ -735,10 +743,18 @@
             "prvé spustenie a základná kontrola funkcie"
           ],
           "customer_group": "Montáž a uvedenie do prevádzky",
-          "note": "Cena montáže je samostatná služba. Materiál sa oceňuje položkovo na pozadí z POHODY. Kalkulačný čas montáže: 2 montéri × 10 hodín = 20 človekohodín. Nezamieňať s cenou voliteľného preplachu.",
+          "note": "Cena montáže je samostatná služba. Materiál sa oceňuje položkovo na pozadí z POHODY. Kalkulačný čas montáže: 2 montéri × 10 hodín = 20 človekohodín. Nezamieňať s cenou voliteľného preplachu. Montáž má dve úrovne: ŠTANDARD 900 € bez DPH a EKONOM 600 € bez DPH pri splnení prípravných podmienok zákazníkom.",
           "labor_workers": 2,
           "labor_hours_per_worker": 10,
-          "total_man_hours": 20
+          "total_man_hours": 20,
+          "installation_tiers": {
+            "standard": {
+              "price_ex_vat": 900
+            },
+            "economy": {
+              "price_ex_vat": 600
+            }
+          }
         },
         {
           "role": "dhw_expansion_vessel",
