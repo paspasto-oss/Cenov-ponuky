@@ -100,3 +100,10 @@ Pri externom zásobníku TÚV sa navyše automaticky pridajú:
 - koleno M/F 3/4" x 3/4" `06409205` – 4 ks.
 
 Pôvodné množstvo redukovaného T-kusu bolo upravené na 2 ks podľa aktuálneho firemného štandardu.
+
+
+## Ochrana proti zamrznutiu – doplnenie
+
+- Protimrazový ventil: **WFV-25 M, PN 10, kvs 68** – 2 ks. Kód/PLU doplníme po objavení novej karty v POHODE.
+- HERZ ventil DN15 privzdušňovací a odvzdušňovací so spätným ventilom – 1 ks. Kód/PLU doplníme po objavení novej karty v POHODE.
+- UV ochrana vonkajšej izolácie: **Alumíniová lepiaca páska 48 mm x 50 m**, kód `ART01412`, PLU `104242` – 1 ks.
