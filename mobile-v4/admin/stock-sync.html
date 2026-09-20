@@ -35,6 +35,14 @@ button,input{font:inherit}button{cursor:pointer}.wrap{max-width:1120px;margin:au
       <small>alebo súbor sem presuň</small>
     </label>
     <div id="fileInfo" class="sub" style="margin-top:8px"></div>
+    <div class="field" style="margin-top:12px">
+      <label>Typ importu</label>
+      <select id="syncMode">
+        <option value="auto" selected>Automaticky rozpoznať</option>
+        <option value="partial">Doplnenie / zmenené karty – nič nedeaktivovať</option>
+        <option value="full">Úplný export zásob – chýbajúce karty deaktivovať</option>
+      </select>
+    </div>
   </div>
 
   <div id="processCard" class="card hidden">
@@ -91,7 +99,7 @@ button,input{font:inherit}button{cursor:pointer}.wrap{max-width:1120px;margin:au
 <script>
 const BASE_KEY='spektra_pohoda_stock_baseline_v1';
 const META_KEY='spektra_pohoda_stock_meta_v1';
-let normalized=[], changes=[], conflicts=[], activeTab='all', sourceRows=0, filename='';
+let normalized=[], changes=[], conflicts=[], activeTab='all', sourceRows=0, filename='', effectiveMode='partial';
 
 const aliases={
   'PLU':'plu','Názov':'name','Mj':'unit','Predajná DPH':'sell_price_inc_vat','Nákupná':'purchase_price_ex_vat',
@@ -120,7 +128,11 @@ async function handleFile(file){
     const buf=await file.arrayBuffer();setProgress(22,'Čítam hárok Zásoby…');
     const wb=XLSX.read(buf,{type:'array',cellDates:false});
     const ws=wb.Sheets['Zásoby']||wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(ws,{defval:null,raw:true});sourceRows=rows.length;setProgress(40,'Normalizujem '+sourceRows.toLocaleString('sk-SK')+' riadkov…');
+    const rows=XLSX.utils.sheet_to_json(ws,{defval:null,raw:true});sourceRows=rows.length;
+    const requested=document.getElementById('syncMode').value;
+    const baseCount=baseline().length;
+    effectiveMode=requested==='auto' ? ((sourceRows<1000 || (baseCount&&sourceRows<Math.max(500,baseCount*0.5)))?'partial':'full') : requested;
+    setProgress(40,'Normalizujem '+sourceRows.toLocaleString('sk-SK')+' riadkov…');
     await new Promise(r=>setTimeout(r,10));
     const merged=new Map(), localConf=[];
     rows.forEach((raw,idx)=>{
@@ -154,7 +166,7 @@ function buildChanges(){
     if(stock)changes.push({type:'stock',item:x,old:o});
     if(meta)changes.push({type:'meta',item:x,old:o});
   });
-  old.forEach((o,k)=>{if(!seen.has(k))changes.push({type:'removed',item:o,old:o})});
+  if(effectiveMode==='full') old.forEach((o,k)=>{if(!seen.has(k))changes.push({type:'removed',item:o,old:o})});
 }
 function count(type){return changes.filter(x=>x.type===type).length}
 function renderSummary(){
@@ -163,7 +175,7 @@ function renderSummary(){
   document.getElementById('nNew').textContent=count('new');document.getElementById('nPrice').textContent=count('price');document.getElementById('nStock').textContent=count('stock');document.getElementById('nRemoved').textContent=count('removed');document.getElementById('nMeta').textContent=count('meta');document.getElementById('nConflict').textContent=count('conflict');document.getElementById('nRows').textContent=sourceRows.toLocaleString('sk-SK');document.getElementById('nUnique').textContent=normalized.length.toLocaleString('sk-SK');
   document.getElementById('firstImport').classList.toggle('hidden',hasBase);document.getElementById('conflictWarning').classList.toggle('hidden',!conflicts.length);
   const meta=JSON.parse(localStorage.getItem(META_KEY)||'null');document.getElementById('baselineInfo').textContent=meta?'Posledný baseline: '+new Date(meta.applied_at).toLocaleString('sk-SK')+' · '+meta.count.toLocaleString('sk-SK')+' zásob':'Na tomto zariadení ešte nie je baseline.';
-  document.getElementById('syncWarning').textContent=conflicts.length?'Skontrolovať konflikty':'Pripravené na aktualizáciu';
+  document.getElementById('syncWarning').textContent=(effectiveMode==='partial'?'ČIASTOČNÝ import · ':'ÚPLNÝ import · ')+(conflicts.length?'skontrolovať konflikty':'pripravené');
 }
 function typeLabel(t){return {new:'Nový',price:'Cena',stock:'Sklad',meta:'Údaje',removed:'Deaktivovať',conflict:'Konflikt'}[t]||t}
 function renderTable(){
@@ -182,8 +194,14 @@ function applySync(){
   if(!normalized.length)return;
   const conflictSet=new Set(conflicts.map(c=>c.fingerprint));
   const clean=normalized.filter(x=>!conflictSet.has(x.fingerprint)).map(x=>({...x,active:true,last_seen_at:new Date().toISOString()}));
-  localStorage.setItem(BASE_KEY,JSON.stringify(clean));localStorage.setItem(META_KEY,JSON.stringify({applied_at:new Date().toISOString(),filename,count:clean.length,source_rows:sourceRows,conflicts:conflicts.length}));
-  document.getElementById('applyResult').textContent='Aktualizácia uložená. Baseline obsahuje '+clean.length.toLocaleString('sk-SK')+' zásob. Konfliktné zásoby neboli aplikované.';
+  let finalRows=clean;
+  if(effectiveMode==='partial'){
+    const merged=new Map(baseline().map(x=>[x.fingerprint,x]));
+    clean.forEach(x=>merged.set(x.fingerprint,x));
+    finalRows=[...merged.values()];
+  }
+  localStorage.setItem(BASE_KEY,JSON.stringify(finalRows));localStorage.setItem(META_KEY,JSON.stringify({applied_at:new Date().toISOString(),filename,count:finalRows.length,source_rows:sourceRows,conflicts:conflicts.length,mode:effectiveMode}));
+  document.getElementById('applyResult').textContent='Aktualizácia uložená ('+(effectiveMode==='partial'?'čiastočný':'úplný')+' import). Baseline obsahuje '+finalRows.length.toLocaleString('sk-SK')+' zásob. Konfliktné zásoby neboli aplikované.';
   renderSummary();
 }
 function resetBaseline(){if(confirm('Naozaj vymazať lokálny baseline zásob?')){localStorage.removeItem(BASE_KEY);localStorage.removeItem(META_KEY);location.reload()}}
