@@ -1,5 +1,5 @@
 {
-  "version": 12,
+  "version": 13,
   "updated_at": "2026-09-20",
   "source": "POHODA export Zásoby(2).xlsx",
   "note": "Montáž TČ: 2 montéri × 10 h = 20 človekohodín. Preplach je samostatná služba 350–450 € bez DPH.",
@@ -1095,6 +1095,24 @@
             "odvzdušnenie a kontrola systému"
           ],
           "note": "Predvolená cena 400 € bez DPH, odporúčaný rozsah 350–450 € podľa veľkosti a znečistenia systému. Cleaner a inhibitor sa po doplnení kariet do POHODY budú účtovať ako samostatné materiálové položky alebo zahrnuté podľa firemného pravidla. Cena 350–450 € je cena služby preplachu, nie montáže TČ."
+        },
+        {
+          "role": "annual_service",
+          "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Ročná servisná prehliadka tepelného čerpadla",
+          "qty": 1,
+          "unit": "rok",
+          "required": false,
+          "mapping_status": "needs_service_card",
+          "default_sell_price_ex_vat": 121.95,
+          "default_sell_price_inc_vat": 150,
+          "vat_pct": 23,
+          "visible_to_customer": true,
+          "customer_group": "Servis a záruka",
+          "charge_mode": "future_annual_service",
+          "include_in_initial_total": false,
+          "note": "150 € s DPH za každú vykonanú ročnú prehliadku. V úvodnej ponuke sa zobrazuje informačne a nezvyšuje cenu montáže. Povinnosť pre predĺženú záruku závisí od výrobcu/programu."
         }
       ]
     }
