@@ -88,3 +88,15 @@ Spoločný elektrobalík pre všetky tepelné čerpadlá:
 - inštalačná lišta 40x40 – 10 m – presná karta chýba; v katalógu je iba 40x25 `LIŠTA`, preto sa nezamení automaticky.
 
 Elektrobalík je uložený samostatne ako `hp_electrical_standard` a aplikácia ho automaticky pridá ku každému tepelnému čerpadlu, teda neskôr aj ku splitovým zostavám.
+
+
+## TÚV – rozšírený štandard armatúr
+
+Pri externom zásobníku TÚV sa navyše automaticky pridajú:
+- šróbenie mosadz 3/4" `50610034` – 4 ks,
+- IVR 954 EVERLAST FF3/4" `154079591609750001` – 4 ks,
+- vsuvka M/M 3/4" `06458005` – 8 ks,
+- T-kus redukovaný 3/4" x 1/2" x 3/4" `06413102` – 2 ks,
+- koleno M/F 3/4" x 3/4" `06409205` – 4 ks.
+
+Pôvodné množstvo redukovaného T-kusu bolo upravené na 2 ks podľa aktuálneho firemného štandardu.
