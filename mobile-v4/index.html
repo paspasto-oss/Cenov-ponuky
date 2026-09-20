@@ -242,6 +242,25 @@ function recipeName(r,stock){
  return stock?.name||r.expected_name||roleLabels[r.role]||r.role
 }
 function bundleKeyFor(d){let st=systemType(d);return st==='monoblock'?'hp_monoblock_5m':st==='split'?'hp_split_5m':st==='single_split_ac'?'ac_single_split_5m':null}
+function consolidateBOM(items){
+  const out=[], byKey=new Map();
+  for(const i of items){
+    const key=i.pohoda?.code||i.pohoda_code||null;
+    if(!key){out.push(i);continue}
+    if(!byKey.has(key)){
+      const copy={...i};
+      byKey.set(key,copy); out.push(copy);
+    }else{
+      const x=byKey.get(key);
+      x.qty=(+x.qty||0)+(+i.qty||0);
+      const notes=[x.note,i.note].filter(Boolean);
+      x.note=[...new Set(notes)].join(' ');
+      x.visible=x.visible||i.visible;
+      if(x.customer_group!==i.customer_group) x.customer_group='Hydraulické a montážne príslušenstvo';
+    }
+  }
+  return out
+}
 function buildBOM(){
  let d=recommendation,stock=findStockForDevice(d),items=[];
  items.push({role:'device',name:(d.brand+' '+d.model+' '+(d.variant||'')).trim(),qty:1,unit:'ks',pohoda:stock,price:stock?.sell_price_ex_vat??d.sell_price_ex_vat??null,cost:stock?.purchase_price_ex_vat??d.purchase_price_ex_vat??null,visible:true,mapping_status:stock?'mapped':'unmapped'});
@@ -273,6 +292,7 @@ function buildBOM(){
    roles.forEach(role=>{let st=roleToStock(role),q=roleQty[role]||[1,'ks'];items.push({role,name:roleLabels[role]||role,qty:q[0],unit:q[1],pohoda:st,price:st?.sell_price_ex_vat??null,cost:st?.purchase_price_ex_vat??null,visible:false,mapping_status:st?'mapped':'unmapped'})});
    items.push({role:'installation',name:category==='air_conditioning'?'Montáž klimatizácie do 5 m':'Montáž a uvedenie do prevádzky',qty:1,unit:'súb.',pohoda:null,price:category==='heat_pump'?600:null,cost:null,visible:true,mapping_status:'service'});
  }
+ items=consolidateBOM(items);
  current.items=items;current.system_type=systemType(d);current.bundle_key=key;current.device=recommendation;current.route_m=5;current.updated=Date.now()
 }
 function renderRecommendation(){
