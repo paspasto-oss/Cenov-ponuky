@@ -1,8 +1,8 @@
 {
-  "version": 8,
+  "version": 9,
   "updated_at": "2026-09-20",
   "source": "POHODA export Zásoby(2).xlsx",
-  "note": "Monoblok uzavretý. Split základ bol pripravený z rovnakých hydraulických štandardov a čaká na doplnenie nových POHODA kariet pre chladivové potrubia, izolácie, komunikačný kábel a služby.",
+  "note": "Split: štandardná chladivová trasa 3/8\"x5/8\" 5 m. Monoblok aj split: prestup Ø80 mm cez stenu do 50 cm a pri externom TÚV prepínací ventil + servo.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -202,17 +202,6 @@
           "condition": "according_to_device",
           "mapping_status": "needs_product",
           "note": "V aktuálnom exporte sa nenašla jednoznačná skladová karta RCD."
-        },
-        {
-          "role": "core_drilling_service",
-          "pohoda_code": null,
-          "pohoda_plu": null,
-          "expected_name": "Jadrové vŕtanie / prestup",
-          "qty": 1,
-          "unit": "súb.",
-          "required": false,
-          "mapping_status": "needs_service_card",
-          "note": "V POHODE vytvoriť službu s vlastným kódom."
         },
         {
           "role": "installation_service",
@@ -434,6 +423,44 @@
           "condition": "with_external_dhw_tank",
           "mapping_status": "mapped",
           "customer_group": "TÚV príslušenstvo"
+        },
+        {
+          "role": "wall_penetration_80mm_50cm",
+          "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Prieraz / jadrové vŕtanie cez stenu Ø80 mm, hrúbka do 50 cm",
+          "qty": 1,
+          "unit": "súb.",
+          "required": true,
+          "mapping_status": "needs_service_card",
+          "customer_group": "Montážne práce",
+          "note": "Štandardne 1 prestup cez stenu; vytvoriť službu v POHODE."
+        },
+        {
+          "role": "dhw_changeover_valve",
+          "pohoda_code": "601072",
+          "pohoda_plu": "100626",
+          "expected_name": "3-cestný zónový ventil WZP3-25M",
+          "qty": 1,
+          "unit": "ks",
+          "required": false,
+          "condition": "with_external_dhw_tank",
+          "mapping_status": "mapped_needs_compatibility_check",
+          "customer_group": "TÚV príslušenstvo",
+          "note": "Prepínací ventil TÚV. Pred ostrým použitím potvrdiť, že zvolený ventil je samostatné teleso kompatibilné s vybraným servom."
+        },
+        {
+          "role": "dhw_changeover_servo",
+          "pohoda_code": "415001",
+          "pohoda_plu": "100627",
+          "expected_name": "Servomotor SL 10 - 230 / 120 s",
+          "qty": 1,
+          "unit": "ks",
+          "required": false,
+          "condition": "with_external_dhw_tank",
+          "mapping_status": "mapped_needs_compatibility_check",
+          "customer_group": "TÚV príslušenstvo",
+          "note": "Servo prepínacieho ventilu TÚV. Pred ostrým použitím potvrdiť kompatibilitu s ventilom 601072."
         }
       ]
     },
@@ -648,41 +675,6 @@
           "customer_group": "Hydraulické a montážne príslušenstvo"
         },
         {
-          "role": "refrigerant_pipe_liquid",
-          "pohoda_code": null,
-          "pohoda_plu": null,
-          "expected_name": "Chladivové Cu potrubie – kvapalinová vetva",
-          "qty": 5,
-          "unit": "m",
-          "required": true,
-          "mapping_status": "model_dependent",
-          "qty_formula": "route_m",
-          "note": "Priemer podľa konkrétneho modelu TČ."
-        },
-        {
-          "role": "refrigerant_pipe_gas",
-          "pohoda_code": null,
-          "pohoda_plu": null,
-          "expected_name": "Chladivové Cu potrubie – plynová vetva",
-          "qty": 5,
-          "unit": "m",
-          "required": true,
-          "mapping_status": "model_dependent",
-          "qty_formula": "route_m",
-          "note": "Priemer podľa konkrétneho modelu TČ."
-        },
-        {
-          "role": "refrigerant_pipe_insulation",
-          "pohoda_code": null,
-          "pohoda_plu": null,
-          "expected_name": "Izolácia chladivového potrubia",
-          "qty": 10,
-          "unit": "m",
-          "required": true,
-          "mapping_status": "model_dependent",
-          "note": "Rozmer podľa konkrétneho priemeru potrubia."
-        },
-        {
           "role": "communication_cable_split",
           "pohoda_code": null,
           "pohoda_plu": null,
@@ -702,16 +694,6 @@
           "unit": "m",
           "required": false,
           "mapping_status": "needs_product"
-        },
-        {
-          "role": "core_drilling_service",
-          "pohoda_code": null,
-          "pohoda_plu": null,
-          "expected_name": "Jadrové vŕtanie / prestup",
-          "qty": 1,
-          "unit": "súb.",
-          "required": false,
-          "mapping_status": "needs_service_card"
         },
         {
           "role": "installation_service",
@@ -807,6 +789,56 @@
           "condition": "with_external_dhw_tank",
           "mapping_status": "mapped",
           "customer_group": "TÚV príslušenstvo"
+        },
+        {
+          "role": "refrigerant_pipe_pair_3_8_5_8",
+          "pohoda_code": "2RGC2GRE#GC075AE100",
+          "pohoda_plu": "104991",
+          "expected_name": "Predizolované Cu potrubie 3/8\"x5/8\"",
+          "qty": 5,
+          "unit": "m",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Chladivová trasa",
+          "note": "Cenový štandard pre všetky split TČ: 3/8\"x5/8\". Pri menších modeloch zostáva rezerva."
+        },
+        {
+          "role": "wall_penetration_80mm_50cm",
+          "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "Prieraz / jadrové vŕtanie cez stenu Ø80 mm, hrúbka do 50 cm",
+          "qty": 1,
+          "unit": "súb.",
+          "required": true,
+          "mapping_status": "needs_service_card",
+          "customer_group": "Montážne práce",
+          "note": "Štandardne 1 prestup cez stenu; vytvoriť službu v POHODE."
+        },
+        {
+          "role": "dhw_changeover_valve",
+          "pohoda_code": "601072",
+          "pohoda_plu": "100626",
+          "expected_name": "3-cestný zónový ventil WZP3-25M",
+          "qty": 1,
+          "unit": "ks",
+          "required": false,
+          "condition": "with_external_dhw_tank",
+          "mapping_status": "mapped_needs_compatibility_check",
+          "customer_group": "TÚV príslušenstvo",
+          "note": "Prepínací ventil TÚV. Pred ostrým použitím potvrdiť, že zvolený ventil je samostatné teleso kompatibilné s vybraným servom."
+        },
+        {
+          "role": "dhw_changeover_servo",
+          "pohoda_code": "415001",
+          "pohoda_plu": "100627",
+          "expected_name": "Servomotor SL 10 - 230 / 120 s",
+          "qty": 1,
+          "unit": "ks",
+          "required": false,
+          "condition": "with_external_dhw_tank",
+          "mapping_status": "mapped_needs_compatibility_check",
+          "customer_group": "TÚV príslušenstvo",
+          "note": "Servo prepínacieho ventilu TÚV. Pred ostrým použitím potvrdiť kompatibilitu s ventilom 601072."
         }
       ],
       "route_definition": "vzdialenosť medzi vonkajšou a vnútornou jednotkou; chladivové potrubie = route_m pre každú vetvu"
