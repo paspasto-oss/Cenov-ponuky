@@ -25,3 +25,11 @@ Po vytvorení chýbajúcich skladových kariet v POHODE a nahratí nového `Zás
 6. prípadné ďalšie modelovo špecifické elektro položky.
 
 Spoločný `hp_electrical_standard` sa už automaticky pridáva ku každému TČ.
+
+
+## Doplnenie splitového štandardu
+
+- Chladivová trasa sa pre cenotvorbu štandardizuje na **predizolované Cu 3/8\" x 5/8\" – 5 m**, POHODA kód `2RGC2GRE#GC075AE100`, PLU `104991`. Pri menších modeloch je zámerne ponechaná cenová rezerva.
+- Prestup cez stenu: **Ø80 mm, hrúbka steny do 50 cm – 1 súb.**. Vytvoriť samostatnú službu v POHODE.
+- Pri externom zásobníku TÚV sa do splitu aj monobloku pridá **prepínací ventil + servo**.
+- Aktuálni kandidáti z POHODY: ventil `601072` (WZP3-25M) + servo `415001` (SL 10 230 V / 120 s). Pred ostrým použitím potvrdiť ich vzájomnú kompatibilitu; po novom exporte zásob môžeme mapovanie zmeniť bez zásahu do starých ponúk.
