@@ -1,8 +1,8 @@
 {
-  "version": 6,
+  "version": 7,
   "updated_at": "2026-09-20",
   "source": "POHODA export Zásoby(2).xlsx",
-  "note": "Monoblok BOM rozšírený o antivibračné podstavce, termomanometer a dopúšťanie. Elektro je samostatný spoločný balík pre všetky tepelné čerpadlá.",
+  "note": "TÚV balík monobloku rozšírený o šróbenia 3/4, IVR 3/4, vsuvky 3/4, redukované T-kusy a M/F kolená 3/4.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -333,12 +333,13 @@
           "pohoda_code": "06413102",
           "pohoda_plu": "108373",
           "expected_name": "T-kus redukovaný F/F/F 3/4\" x 1/2\" x 3/4\"",
-          "qty": 4,
+          "qty": 2,
           "unit": "ks",
           "required": false,
           "condition": "with_external_dhw_tank",
           "mapping_status": "mapped",
-          "customer_group": "TÚV príslušenstvo"
+          "customer_group": "TÚV príslušenstvo",
+          "note": "Aktuálny štandard TÚV: 2 ks."
         },
         {
           "role": "merabell_ready_1_2_0_8m",
@@ -397,6 +398,42 @@
           "required": true,
           "mapping_status": "mapped",
           "customer_group": "Dopúšťanie vykurovania"
+        },
+        {
+          "role": "dhw_ball_valve_3_4",
+          "pohoda_code": "154079591609750001",
+          "pohoda_plu": "102564",
+          "expected_name": "IVR 954 EVERLAST guľový kohút FF3/4\", voda",
+          "qty": 4,
+          "unit": "ks",
+          "required": false,
+          "condition": "with_external_dhw_tank",
+          "mapping_status": "mapped",
+          "customer_group": "TÚV príslušenstvo"
+        },
+        {
+          "role": "dhw_brass_nipple_3_4",
+          "pohoda_code": "06458005",
+          "pohoda_plu": "108448",
+          "expected_name": "Vsuvka M/M 3/4\" x 3/4\"",
+          "qty": 8,
+          "unit": "ks",
+          "required": false,
+          "condition": "with_external_dhw_tank",
+          "mapping_status": "mapped",
+          "customer_group": "TÚV príslušenstvo"
+        },
+        {
+          "role": "dhw_mf_elbow_3_4",
+          "pohoda_code": "06409205",
+          "pohoda_plu": "108351",
+          "expected_name": "Koleno M/F 3/4\" x 3/4\"",
+          "qty": 4,
+          "unit": "ks",
+          "required": false,
+          "condition": "with_external_dhw_tank",
+          "mapping_status": "mapped",
+          "customer_group": "TÚV príslušenstvo"
         }
       ]
     },
