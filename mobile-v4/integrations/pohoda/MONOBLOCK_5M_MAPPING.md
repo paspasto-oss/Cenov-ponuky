@@ -64,3 +64,8 @@ Firemný štandard bol upravený na:
 Tieto 4 ks sú samostatné od 6 ks šróbení 1" používaných pri vnútornej jednotke a hydraulickom separátore. Celková potreba skladovej karty `5061001` v štandardnom monoblokovom BOM je teda **10 ks**, ak sa použijú všetky uvedené vetvy.
 
 Pôvodný všeobecný riadok ochrany proti zamrznutiu (glykol / iná metóda) bol zo štandardného BOM odstránený, aby sa nepridával súčasne s nezamŕzavými ventilmi. Presnú skladovú kartu nezamŕzavého ventilu ešte treba doplniť do POHODY alebo identifikovať v ďalšej aktualizácii zásob.
+
+
+## Konsolidácia rovnakých skladových položiek
+
+Rovnaké POHODA skladové karty sa v internom BOM spájajú do jedného riadku. Napríklad šróbenie mosadz 1" `5061001` je teraz jedna skladová položka **10 ks** namiesto dvoch samostatných riadkov 6 + 4 ks. Rovnaké pravidlo bude aplikácia používať aj pre ďalšie duplicity.
