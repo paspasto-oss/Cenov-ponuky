@@ -265,26 +265,34 @@ function buildBOM(){
  let d=recommendation,stock=findStockForDevice(d),items=[];
  items.push({role:'device',name:(d.brand+' '+d.model+' '+(d.variant||'')).trim(),qty:1,unit:'ks',pohoda:stock,price:stock?.sell_price_ex_vat??d.sell_price_ex_vat??null,cost:stock?.purchase_price_ex_vat??d.purchase_price_ex_vat??null,visible:true,mapping_status:stock?'mapped':'unmapped'});
  let key=bundleKeyFor(d),recipe=bundleRecipes.find(b=>b.key===key);
- if(recipe&&recipe.items&&recipe.items.length){
-   recipe.items.forEach(r=>{
-     if(r.condition==='with_external_dhw_tank'&&!current.building.with_external_dhw_tank)return;
-     if(r.condition==='device_electrical_spec_allows'||r.condition==='3_phase_device_and_spec_allows'||r.condition==='according_to_device'||r.condition==='new_enclosure_required')return;
-     if(r.required===false&&r.default_enabled!==true&&r.role!=='installation_service')return;
-     let st=stockByRecipe(r),qty=recipeQty(r);
-     let defaultPrice=r.default_sell_price_ex_vat!=null?+r.default_sell_price_ex_vat:null;
-     items.push({
-       role:r.role,
-       name:recipeName(r,st),
-       qty:qty,
-       unit:r.unit||'ks',
-       pohoda:st,
-       pohoda_code:r.pohoda_code||null,
-       mapping_status:r.mapping_status|| (st?'mapped':'unmapped'),
-       price:st?.sell_price_ex_vat??defaultPrice,
-       cost:st?.purchase_price_ex_vat??null,
-       visible:r.role==='installation_service',
-       customer_group:r.customer_group||recipe.customer_label,
-       note:r.note||''
+ const recipes=[];
+ if(recipe) recipes.push(recipe);
+ if(category==='heat_pump'){
+   const electricalRecipe=bundleRecipes.find(b=>b.key==='hp_electrical_standard');
+   if(electricalRecipe) recipes.push(electricalRecipe);
+ }
+ if(recipes.length){
+   recipes.forEach(activeRecipe=>{
+     (activeRecipe.items||[]).forEach(r=>{
+       if(r.condition==='with_external_dhw_tank'&&!current.building.with_external_dhw_tank)return;
+       if(r.condition==='device_electrical_spec_allows'||r.condition==='3_phase_device_and_spec_allows'||r.condition==='according_to_device'||r.condition==='new_enclosure_required')return;
+       if(r.required===false&&r.default_enabled!==true&&r.role!=='installation_service')return;
+       let st=stockByRecipe(r),qty=recipeQty(r);
+       let defaultPrice=r.default_sell_price_ex_vat!=null?+r.default_sell_price_ex_vat:null;
+       items.push({
+         role:r.role,
+         name:recipeName(r,st),
+         qty:qty,
+         unit:r.unit||'ks',
+         pohoda:st,
+         pohoda_code:r.pohoda_code||null,
+         mapping_status:r.mapping_status|| (st?'mapped':'unmapped'),
+         price:st?.sell_price_ex_vat??defaultPrice,
+         cost:st?.purchase_price_ex_vat??null,
+         visible:r.role==='installation_service',
+         customer_group:r.customer_group||activeRecipe.customer_label,
+         note:r.note||''
+       })
      })
    })
  }else{
