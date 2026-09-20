@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "updated_at": "2026-09-20",
   "services": [
     {
@@ -135,6 +135,54 @@
         "kontrola vonkajšej jednotky a výmenníka",
         "pri split systéme kontrola chladivového okruhu v rozsahu predpísanom výrobcom",
         "servisný protokol / záznam o ročnej prehliadke"
+      ]
+    },
+    {
+      "id": "hp_install_monoblock_economy",
+      "name": "Montáž monoblokového tepelného čerpadla – EKONOM",
+      "system_type": "monoblock",
+      "default_price_ex_vat": 600,
+      "prerequisites": [
+        "hotový betónový podstavec / pripravené miesto pre vonkajšiu jednotku",
+        "prestup cez stenu je už vyvŕtaný",
+        "pripravené miesto v kotolni na montáž",
+        "elektroinštalácia pre obe jednotky je hotová vrátane istenia",
+        "napájacie a komunikačné káble sú vyvedené k vonkajšej aj vnútornej jednotke"
+      ],
+      "scope": [
+        "dovoz zariadenia",
+        "osadenie jednotiek na pripravené miesto",
+        "montáž hydraulického potrubia a uchytenie na objímky",
+        "lisovanie spojov",
+        "pripojenie na pripravenú elektroinštaláciu",
+        "napustenie systému vodou",
+        "odvzdušnenie",
+        "prvé spustenie a základná kontrola funkcie"
+      ]
+    },
+    {
+      "id": "hp_install_split_economy",
+      "name": "Montáž split tepelného čerpadla – EKONOM",
+      "system_type": "split",
+      "default_price_ex_vat": 600,
+      "prerequisites": [
+        "hotový betónový podstavec / pripravené miesto pre vonkajšiu jednotku",
+        "prestup cez stenu je už vyvŕtaný",
+        "pripravené miesto v kotolni na montáž",
+        "elektroinštalácia pre obe jednotky je hotová vrátane istenia",
+        "napájacie a komunikačné káble sú vyvedené k vonkajšej aj vnútornej jednotke"
+      ],
+      "scope": [
+        "dovoz zariadenia",
+        "osadenie jednotiek na pripravené miesto",
+        "montáž chladivového a hydraulického potrubia",
+        "uchytenie potrubí na objímky",
+        "pertlovanie chladivových spojov",
+        "pripojenie na pripravenú elektroinštaláciu",
+        "vákuovanie chladivového okruhu",
+        "napustenie systému vodou",
+        "odvzdušnenie",
+        "prvé spustenie a základná kontrola funkcie"
       ]
     }
   ]
