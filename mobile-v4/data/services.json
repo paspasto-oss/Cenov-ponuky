@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "updated_at": "2026-09-20",
   "services": [
     {
@@ -56,6 +56,67 @@
       "total_man_hours": 20,
       "pohoda_code": null,
       "optional": true
+    },
+    {
+      "id": "hp_install_standard",
+      "name": "Montáž tepelného čerpadla – ŠTANDARD",
+      "default_price_ex_vat": 900,
+      "workers": 2,
+      "hours_per_worker": 10,
+      "total_man_hours": 20,
+      "pohoda_code": null,
+      "optional": false,
+      "applies_to": [
+        "monoblock",
+        "split"
+      ],
+      "prerequisites": [],
+      "scope": [
+        "dovoz zariadenia na miesto realizácie",
+        "osadenie vonkajšej jednotky na antivibračné podstavce / pripravené miesto",
+        "osadenie vnútornej jednotky a hydraulických komponentov",
+        "vyhotovenie prestupu cez stenu podľa potreby",
+        "montáž potrubí a uchytenie na objímky",
+        "lisovanie hydraulických spojov alebo pertlovanie pri splite",
+        "montáž potrebnej elektroinštalácie a pripojenie zariadení",
+        "pri splite vákuovanie chladivového okruhu",
+        "napustenie systému vodou",
+        "odvzdušnenie",
+        "prvé spustenie a základná kontrola funkcie"
+      ]
+    },
+    {
+      "id": "hp_install_economy",
+      "name": "Montáž tepelného čerpadla – EKONOM",
+      "default_price_ex_vat": 600,
+      "workers": 2,
+      "hours_per_worker": null,
+      "total_man_hours": null,
+      "pohoda_code": null,
+      "optional": false,
+      "applies_to": [
+        "monoblock",
+        "split"
+      ],
+      "prerequisites": [
+        "zákazník má hotový betónový podstavec / pripravené miesto pre vonkajšiu jednotku",
+        "prestup cez stenu je už vyvŕtaný",
+        "v kotolni je pripravené miesto na montáž vnútornej jednotky a hydrauliky",
+        "elektroinštalácia je pripravená pre obe jednotky vrátane istenia",
+        "napájacie a komunikačné káble sú vyvedené k vonkajšej aj vnútornej jednotke"
+      ],
+      "scope": [
+        "dovoz zariadenia na miesto realizácie",
+        "osadenie jednotiek na zákazníkom pripravené miesta",
+        "montáž potrubí a uchytenie na objímky",
+        "lisovanie hydraulických spojov alebo pertlovanie pri splite",
+        "pripojenie na pripravenú elektroinštaláciu",
+        "pri splite vákuovanie chladivového okruhu",
+        "napustenie systému vodou",
+        "odvzdušnenie",
+        "prvé spustenie a základná kontrola funkcie"
+      ],
+      "note": "Cena 600 € bez DPH je pracovná ekonomická cena nadväzujúca na doterajšiu sadzbu. Ak má byť iná, stačí zmeniť jednu hodnotu."
     }
   ]
 }
