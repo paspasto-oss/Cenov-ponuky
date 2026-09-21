@@ -446,7 +446,13 @@ function renderRecommendation(){
  document.getElementById('calcNotice').textContent=category==='heat_pump'?(current.building.known_loss?'Zadaná tepelná strata: '+required+' kW. Navrhnutá výkonová trieda: '+target+' kW.':'Orientačný návrhový výkon po rezerve: '+required+' kW. Navrhnutá výkonová trieda: '+target+' kW.'):'Pre túto kategóriu sa výkon vyberie podľa konkrétneho modelu a priestoru.';
  document.getElementById('recommendation').innerHTML='<div class="title"><div><h3>'+esc(d.brand+' '+d.model)+'</h3><div class="sub">'+esc(d.variant||'')+(current.system_type?' · '+esc(current.system_type):'')+'</div></div><div class="kw">'+(d.power_kw||target||'—')+' kW</div></div>';
  let alt=deviceCatalog.filter(x=>catalogCategory(x)===category&&x.brand===brand&&x.id!==d.id).slice(0,4);document.getElementById('alternatives').innerHTML=alt.length?'<div class="sub">Alternatívy:</div>'+alt.map(x=>'<div class="row" onclick="pickAlternative(\''+x.id+'\')"><div><b>'+esc(x.model+' '+(x.variant||''))+'</b><small>'+((x.power_kw||'—')+' kW')+'</small></div><span>Vybrať ›</span></div>').join(''):'';
- document.getElementById('bomItems').innerHTML=current.items.map(i=>'<div class="item"><div><b>'+esc(i.name)+'</b><small>'+i.qty+' '+esc(i.unit)+(i.pohoda?' · POHODA: '+esc(i.pohoda.code||i.pohoda.plu||'namapované'):' · zatiaľ bez POHODA väzby')+'</small></div><div>'+eur(i.price)+'</div></div>').join('');
+ document.getElementById('bomItems').innerHTML=current.items.map(i=>{
+   let link='';
+   if(i.pohoda) link=' · POHODA: '+esc(i.pohoda.code||i.pohoda.plu||'namapované');
+   else if(i.pohoda_code) link=' · POHODA kód: '+esc(i.pohoda_code)+' · čaká na synchronizáciu ceny';
+   else link=' · bez POHODA kódu';
+   return '<div class="item"><div><b>'+esc(i.name)+'</b><small>'+i.qty+' '+esc(i.unit)+link+'</small></div><div>'+eur(i.price)+'</div></div>'
+ }).join('');
  let net=0,missing=false;current.items.forEach(i=>{if(i.price==null)missing=true;else net+=(+i.price||0)*(+i.qty||0)});current.net=net;current.vat_pct=23;current.vat=net*.23;current.total=net*1.23;
  let dev=current.items[0]?.price,install=current.items.slice(1).reduce((a,i)=>a+(i.price==null?0:(+i.price||0)*(+i.qty||0)),0);document.getElementById('devicePrice').textContent=eur(dev);document.getElementById('installPrice').textContent=eur(install);document.getElementById('netPrice').textContent=missing?'Neúplná cena':eur(net);document.getElementById('vatPrice').textContent=missing?'—':eur(current.vat);document.getElementById('grossPrice').textContent=missing?'—':eur(current.total);document.getElementById('priceWarning').classList.toggle('hidden',!missing);current.price_complete=!missing
 }
