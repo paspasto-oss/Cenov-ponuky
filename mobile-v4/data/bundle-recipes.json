@@ -1,8 +1,8 @@
 {
-  "version": 15,
-  "updated_at": "2026-09-20",
+  "version": 16,
+  "updated_at": "2026-09-21",
   "source": "POHODA export Zásoby(2).xlsx",
-  "note": "Monoblok: presne pomenovaný protimrazový WFV-25 M, doplnený HERZ DN15 privzdušňovací/odvzdušňovací ventil a UV ochrana namapovaná na alu pásku ART01412.",
+  "note": "Odporúčané množstvá: monoblok WFV-25 M 2 ks, HERZ DN15 privzdušňovací/odvzdušňovací 1 ks, alu UV páska 1 ks; split bez protimrazových ventilov, alu UV páska 1 ks.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -167,7 +167,8 @@
           "required": true,
           "mapping_status": "mapped",
           "customer_group": "Potrubie a izolácia",
-          "note": "Použiť na UV/poveternostnú ochranu vonkajšej izolácie."
+          "note": "1 rolka ako štandardná rezerva na UV/poveternostnú ochranu vonkajšej izolácie monobloku.",
+          "recommended_qty": 1
         },
         {
           "role": "dhw_expansion_vessel",
@@ -378,7 +379,8 @@
           "required": true,
           "mapping_status": "needs_product",
           "customer_group": "Ochrana monobloku proti zamrznutiu",
-          "note": "Presný názov firemného štandardu potvrdený. Po objavení karty v POHODE sa doplní kód/PLU."
+          "note": "Štandard Spektra pre monoblok: 2 ks protimrazového ventilu WFV-25 M, jeden na prívod a jeden na spiatočku.",
+          "recommended_qty": 2
         },
         {
           "role": "anti_vibration_base",
@@ -498,7 +500,8 @@
           "required": true,
           "mapping_status": "needs_product",
           "customer_group": "Ochrana monobloku proti zamrznutiu",
-          "note": "Súčasť zostavy ochrany monobloku proti zamrznutiu. Po novom exporte POHODY priradiť presnú kartu."
+          "note": "Štandard Spektra pre monoblok: 1 ks HERZ DN15 privzdušňovací/odvzdušňovací ventil so spätným ventilom.",
+          "recommended_qty": 1
         }
       ]
     },
@@ -903,6 +906,19 @@
           "mapping_status": "mapped_needs_compatibility_check",
           "customer_group": "TÚV príslušenstvo",
           "note": "Servo prepínacieho ventilu TÚV. Pred ostrým použitím potvrdiť kompatibilitu s ventilom 601072."
+        },
+        {
+          "role": "uv_weather_protection",
+          "pohoda_code": "ART01412",
+          "pohoda_plu": "104242",
+          "expected_name": "Alumíniová lepiaca páska 48mm x 50m",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "recommended_qty": 1,
+          "mapping_status": "mapped",
+          "customer_group": "Chladivová trasa",
+          "note": "1 rolka ako rezerva na UV ochranu exponovanej izolácie a spojov chladivovej trasy. Protimrazové ventily sa pri štandardnom splite nepridávajú."
         }
       ],
       "route_definition": "vzdialenosť medzi vonkajšou a vnútornou jednotkou; chladivové potrubie = route_m pre každú vetvu"
