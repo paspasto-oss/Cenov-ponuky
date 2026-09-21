@@ -29,6 +29,25 @@ window.SpektraDB = (() => {
     return user;
   }
 
+  async function signUp(email, password, displayName) {
+    if (!client) await init();
+    const { data, error } = await client.auth.signUp({
+      email, password,
+      options:{ data:{ display_name: displayName || email.split('@')[0] } }
+    });
+    if (error) throw error;
+    user = data.user || null;
+    return { user:data.user, session:data.session };
+  }
+
+  async function getProfile() {
+    if (!client || !user) return null;
+    const { data, error } = await client.from('app_users')
+      .select('user_id,display_name,role,active').eq('user_id',user.id).single();
+    if (error) throw error;
+    return data;
+  }
+
   async function signOut() {
     if (!client) return;
     await client.auth.signOut();
@@ -157,5 +176,5 @@ window.SpektraDB = (() => {
     return { remote_id:remoteId, remote_customer_id:customerId };
   }
 
-  return { configured, init, signIn, signOut, isAuthenticated, getUser, listStocks, upsertStocks, listQuotes, saveQuote };
+  return { configured, init, signIn, signUp, signOut, isAuthenticated, getUser, getProfile, listStocks, upsertStocks, listQuotes, saveQuote };
 })();
