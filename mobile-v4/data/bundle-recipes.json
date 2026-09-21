@@ -1,8 +1,8 @@
 {
-  "version": 16,
+  "version": 17,
   "updated_at": "2026-09-21",
   "source": "POHODA export Zásoby(2).xlsx",
-  "note": "Odporúčané množstvá: monoblok WFV-25 M 2 ks, HERZ DN15 privzdušňovací/odvzdušňovací 1 ks, alu UV páska 1 ks; split bez protimrazových ventilov, alu UV páska 1 ks.",
+  "note": "HERZ DN15 privzdušňovací/odvzdušňovací ventil je súčasť ÚK, preto zostáva v monobloku aj splite. Protimrazové WFV ventily len monoblok.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -919,6 +919,19 @@
           "mapping_status": "mapped",
           "customer_group": "Chladivová trasa",
           "note": "1 rolka ako rezerva na UV ochranu exponovanej izolácie a spojov chladivovej trasy. Protimrazové ventily sa pri štandardnom splite nepridávajú."
+        },
+        {
+          "role": "freeze_air_admission_vent",
+          "pohoda_code": null,
+          "pohoda_plu": null,
+          "expected_name": "HERZ ventil DN15 privzdušňovací a odvzdušňovací, so spätným ventilom, závitový, mosadz/EPDM",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "recommended_qty": 1,
+          "mapping_status": "needs_product",
+          "customer_group": "Hydraulické a montážne príslušenstvo",
+          "note": "Súčasť vykurovacieho okruhu (ÚK), preto sa používa pri monobloku aj splite. Po novom exporte POHODY doplniť presný kód/PLU."
         }
       ],
       "route_definition": "vzdialenosť medzi vonkajšou a vnútornou jednotkou; chladivové potrubie = route_m pre každú vetvu"
