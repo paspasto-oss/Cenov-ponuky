@@ -143,7 +143,7 @@
       <h2>Cena</h2>
       <div class="priceBox"><div class="pbox"><small>Zariadenie bez DPH</small><strong id="devicePrice">—</strong></div><div class="pbox"><small>Montáž + materiál bez DPH</small><strong id="installPrice">—</strong></div></div>
       <div class="summary" style="margin-top:9px"><div class="srow"><span>Spolu bez DPH</span><b id="netPrice">—</b></div><div class="srow"><span>DPH 23 %</span><b id="vatPrice">—</b></div><div class="srow total"><span>Spolu s DPH</span><span id="grossPrice">—</span></div></div>
-      <div id="priceWarning" class="notice warn hidden" style="margin-top:9px">V katalógu ešte chýba cena jednej alebo viacerých položiek. Ponuku môžeš uložiť ako rozpracovanú, ale pred odoslaním treba ceny doplniť zo synchronizovaných zásob POHODY.</div>
+      <div id="priceWarning" class="notice warn hidden" style="margin-top:9px">Cena je neúplná. Chýba cena zariadenia alebo niektorých skladových položiek. Najprv otvor <b>Zásoby</b> a nahraj aktuálny export z POHODY; potom sa ceny a väzby doplnia podľa kódov.</div>
     </div>
     <div class="grid2"><button class="btn ghost" onclick="saveDraft()">Uložiť rozpracovanú</button><button class="btn primary" onclick="finishQuote()">Pokračovať na PDF / zdieľanie →</button></div>
   </section>
@@ -226,10 +226,22 @@ const esc=x=>s(x).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'
 function go(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('on'));document.getElementById(id).classList.add('on');window.scrollTo(0,0)}
 function persist(){localStorage.setItem(QUOTES_KEY,JSON.stringify(quotes));renderHome()}
 async function loadConfig(){
-  try{const r=await fetch('data/device-catalog.json');const j=await r.json();deviceCatalog=j.devices||[]}catch(e){deviceCatalog=fallbackDevices}
-  try{const r=await fetch('data/bundle-recipes.json');const j=await r.json();bundleRecipes=j.bundles||[]}catch(e){bundleRecipes=[]}
+  let configOk=true;
+  try{
+    const r=await fetch('data/device-catalog.json?v=20260921-2',{cache:'no-store'});
+    if(!r.ok) throw new Error('device-catalog '+r.status);
+    const j=await r.json();deviceCatalog=j.devices||[];
+  }catch(e){deviceCatalog=fallbackDevices;configOk=false;console.error('Device catalog load failed:',e)}
+  try{
+    const r=await fetch('data/bundle-recipes.json?v=20260921-2',{cache:'no-store'});
+    if(!r.ok) throw new Error('bundle-recipes '+r.status);
+    const j=await r.json();bundleRecipes=j.bundles||[];
+  }catch(e){bundleRecipes=[];configOk=false;console.error('Bundle recipes load failed:',e)}
   if(!deviceCatalog.length)deviceCatalog=fallbackDevices;
-  document.getElementById('catalogState').textContent=stocks.length?'Katalóg POHODA: '+stocks.length.toLocaleString('sk-SK')+' zásob':'Katalóg POHODA: nenahraný';
+  const state=document.getElementById('catalogState');
+  if(!configOk) state.textContent='Konfigurácia: núdzový režim';
+  else if(stocks.length) state.textContent='Katalóg POHODA: '+stocks.length.toLocaleString('sk-SK')+' zásob';
+  else state.textContent='POHODA zásoby: treba nahrať';
 }
 function renderHome(){
  document.getElementById('stAll').textContent=quotes.length;document.getElementById('stDraft').textContent=quotes.filter(q=>q.status==='draft').length;document.getElementById('stSent').textContent=quotes.filter(q=>q.status==='sent').length;document.getElementById('stApproved').textContent=quotes.filter(q=>q.status==='approved').length;
@@ -454,7 +466,7 @@ function renderRecommendation(){
    return '<div class="item"><div><b>'+esc(i.name)+'</b><small>'+i.qty+' '+esc(i.unit)+link+'</small></div><div>'+eur(i.price)+'</div></div>'
  }).join('');
  let net=0,missing=false;current.items.forEach(i=>{if(i.price==null)missing=true;else net+=(+i.price||0)*(+i.qty||0)});current.net=net;current.vat_pct=23;current.vat=net*.23;current.total=net*1.23;
- let dev=current.items[0]?.price,install=current.items.slice(1).reduce((a,i)=>a+(i.price==null?0:(+i.price||0)*(+i.qty||0)),0);document.getElementById('devicePrice').textContent=eur(dev);document.getElementById('installPrice').textContent=eur(install);document.getElementById('netPrice').textContent=missing?'Neúplná cena':eur(net);document.getElementById('vatPrice').textContent=missing?'—':eur(current.vat);document.getElementById('grossPrice').textContent=missing?'—':eur(current.total);document.getElementById('priceWarning').classList.toggle('hidden',!missing);current.price_complete=!missing
+ let dev=current.items[0]?.price,install=current.items.slice(1).reduce((a,i)=>a+(i.price==null?0:(+i.price||0)*(+i.qty||0)),0);document.getElementById('devicePrice').textContent=eur(dev);document.getElementById('installPrice').textContent=missing?eur(install)+' (známe položky)':eur(install);document.getElementById('netPrice').textContent=missing?'Neúplná cena':eur(net);document.getElementById('vatPrice').textContent=missing?'—':eur(current.vat);document.getElementById('grossPrice').textContent=missing?'—':eur(current.total);document.getElementById('priceWarning').classList.toggle('hidden',!missing);current.price_complete=!missing
 }
 function pickAlternative(id){let d=deviceCatalog.find(x=>x.id===id);if(!d)return;recommendation=d;buildBOM();renderRecommendation()}
 function upsertCurrent(){let i=quotes.findIndex(q=>q.id===current.id);if(i>=0)quotes[i]=JSON.parse(JSON.stringify(current));else quotes.push(JSON.parse(JSON.stringify(current)));persist()}
