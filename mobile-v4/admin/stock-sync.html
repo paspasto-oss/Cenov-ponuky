@@ -16,12 +16,28 @@ button,input{font:inherit}button{cursor:pointer}.wrap{max-width:1120px;margin:au
 .nav{position:fixed;left:0;right:0;bottom:0;background:rgba(17,18,22,.98);border-top:1px solid #333842;padding:8px 10px calc(8px + env(safe-area-inset-bottom));display:flex;justify-content:center;z-index:50}.nav .btn{width:min(500px,100%)}.hidden{display:none!important}
 @media(max-width:780px){.grid{grid-template-columns:repeat(2,1fr)}.row{align-items:flex-start;flex-direction:column}.actions{width:100%}.actions .btn{flex:1}.wrap{padding:10px}.drop{padding:20px 12px}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../supabase-config.js"></script>
+<script src="../js/db.js"></script>
 </head>
 <body>
 <div class="wrap">
   <div class="head">
     <div class="brand"><div class="logo"></div><div><h1>Aktualizácia zásob</h1><div class="sub">POHODA → Spektra Ponuky</div></div></div>
-    <div id="dbState" class="pill">Lokálny režim</div>
+    <div id="dbState" class="pill">Kontrolujem databázu…</div>
+  </div>
+
+  <div id="authCard" class="card hidden">
+    <h2>Prihlásenie do Spektra databázy</h2>
+    <div class="grid" style="grid-template-columns:1fr 1fr">
+      <div class="field"><label>E-mail</label><input id="authEmail" type="email" placeholder="email"></div>
+      <div class="field"><label>Heslo</label><input id="authPassword" type="password" placeholder="heslo"></div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" onclick="loginOnline()">Prihlásiť</button>
+      <button class="btn ghost" onclick="registerOnline()">Prvý účet / registrácia</button>
+    </div>
+    <div id="authMsg" class="sub" style="margin-top:8px"></div>
   </div>
 
   <div class="card">
@@ -196,6 +212,10 @@ async function applySync(){
   try{
     const conflictSet=new Set(conflicts.map(c=>c.fingerprint));
     const clean=normalized.filter(x=>!conflictSet.has(x.fingerprint)).map(x=>({...x,active:true,last_seen_at:new Date().toISOString()}));
+    if(window.SpektraDB?.isAuthenticated()){
+      const uploaded=await SpektraDB.upsertStocks(clean);
+      document.getElementById('applyResult').textContent='Online databáza: nahraných '+uploaded.toLocaleString('sk-SK')+' zásob. Ukladám lokálnu cache…';
+    }
     if(effectiveMode==='partial'){
       await SpektraStockDB.merge(clean);
     }else{
@@ -216,9 +236,52 @@ async function applySync(){
 async function resetBaseline(){if(confirm('Naozaj vymazať lokálnu databázu zásob?')){await SpektraStockDB.clear();location.reload()}}
 function exportNormalized(){if(!normalized.length)return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({source:filename,created_at:new Date().toISOString(),rows:normalized,conflicts},null,2)],{type:'application/json'}));a.download='pohoda-zasoby-normalized.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),300)}
 const fi=document.getElementById('fileInput'),drop=document.getElementById('drop');fi.addEventListener('change',e=>handleFile(e.target.files[0]));['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));drop.addEventListener('drop',e=>handleFile(e.dataTransfer.files[0]));
-(async()=>{
+async function refreshOnlineState(){
   try{
-    baselineRows=await SpektraStockDB.getAll();
+    const state=await SpektraDB.init();
+    const authCard=document.getElementById('authCard');
+    const dbState=document.getElementById('dbState');
+    if(state.online&&state.authenticated){
+      const p=await SpektraDB.getProfile();
+      dbState.textContent='ONLINE · '+(p?.display_name||'používateľ')+' · '+(p?.role||'');
+      authCard.classList.add('hidden');
+      try{
+        const onlineStocks=await SpektraDB.listStocks();
+        if(onlineStocks.length){
+          baselineRows=onlineStocks.map(x=>({...x,fingerprint:x.fingerprint,suppliers:x.supplier_name?[x.supplier_name]:[]}));
+          baselineMeta={applied_at:new Date().toISOString(),filename:'Supabase',count:baselineRows.length,mode:'online'};
+          await SpektraStockDB.replaceAll(baselineRows);
+          await SpektraStockDB.setMeta('stock_sync',baselineMeta);
+        }
+      }catch(e){console.error('Online stock load failed',e)}
+    }else{
+      dbState.textContent='Offline cache';
+      authCard.classList.remove('hidden');
+    }
+  }catch(e){
+    console.error(e);
+    document.getElementById('dbState').textContent='Offline cache';
+    document.getElementById('authCard').classList.remove('hidden');
+  }
+}
+async function loginOnline(){
+  try{
+    await SpektraDB.signIn(document.getElementById('authEmail').value,document.getElementById('authPassword').value);
+    document.getElementById('authMsg').textContent='Prihlásenie úspešné.';
+    await refreshOnlineState();renderSummary();
+  }catch(e){document.getElementById('authMsg').textContent='Chyba: '+e.message}
+}
+async function registerOnline(){
+  try{
+    const r=await SpektraDB.signUp(document.getElementById('authEmail').value,document.getElementById('authPassword').value,'Spektra');
+    document.getElementById('authMsg').textContent=r.session?'Účet vytvorený a prihlásený.':'Účet vytvorený. Ak Supabase vyžaduje potvrdenie e-mailu, potvrď ho a potom sa prihlás.';
+    await refreshOnlineState();
+  }catch(e){document.getElementById('authMsg').textContent='Chyba: '+e.message}
+}
+(async()=>{
+  await refreshOnlineState();
+  try{
+    if(!baselineRows.length) baselineRows=await SpektraStockDB.getAll();
     baselineMeta=await SpektraStockDB.getMeta('stock_sync');
     if(baselineMeta)document.getElementById('fileInfo').textContent='Posledná lokálna aktualizácia: '+new Date(baselineMeta.applied_at).toLocaleString('sk-SK')+' · '+baselineRows.length.toLocaleString('sk-SK')+' zásob';
   }catch(err){console.error('IndexedDB init failed',err)}
