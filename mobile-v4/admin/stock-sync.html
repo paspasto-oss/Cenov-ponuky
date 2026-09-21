@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111216">
 <title>Spektra Ponuky – Aktualizácia zásob</title>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>\n<script src="../js/idb-stock.js"></script>
 <style>
 :root{--bg:#0f1012;--p:#181a1f;--p2:#21242a;--line:#343943;--t:#f7f7f8;--m:#a7adb6;--r:#e52424;--g:#1f9d63;--a:#d29b24;--b:#3388cc}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding-bottom:86px}
@@ -85,7 +85,7 @@ button,input{font:inherit}button{cursor:pointer}.wrap{max-width:1120px;margin:au
 
   <div id="applyCard" class="card hidden">
     <h2>3. Použiť aktualizáciu</h2>
-    <div class="notice">V tejto MVP verzii sa aktualizovaný katalóg uloží do localStorage prehliadača. Po pripojení Supabase/bridge sa toto tlačidlo zmení na zápis do spoločnej databázy a bude dostupný Martine aj technikom na všetkých zariadeniach.</div>
+    <div class="notice">Dočasne sa katalóg uloží do IndexedDB prehliadača, ktorá zvládne aj 14 000+ zásob. Po pripojení Supabase sa rovnaké dáta budú ukladať do spoločnej online databázy pre Martinu aj technikov.</div>
     <div class="actions" style="margin-top:12px">
       <button id="applyBtn" class="btn green" onclick="applySync()">Použiť aktualizáciu</button>
       <button class="btn ghost" onclick="exportNormalized()">Exportovať normalizovaný JSON</button>
@@ -97,9 +97,8 @@ button,input{font:inherit}button{cursor:pointer}.wrap{max-width:1120px;margin:au
 <div class="nav"><button class="btn primary" onclick="location.href='../index.html'">← Späť do Spektra Ponuky</button></div>
 
 <script>
-const BASE_KEY='spektra_pohoda_stock_baseline_v1';
-const META_KEY='spektra_pohoda_stock_meta_v1';
 let normalized=[], changes=[], conflicts=[], activeTab='all', sourceRows=0, filename='', effectiveMode='partial';
+let baselineRows=[], baselineMeta=null;
 
 const aliases={
   'PLU':'plu','Názov':'name','Mj':'unit','Predajná DPH':'sell_price_inc_vat','Nákupná':'purchase_price_ex_vat',
@@ -118,8 +117,8 @@ function money(v){return v==null?'—':new Intl.NumberFormat('sk-SK',{style:'cur
 function qty(v){return v==null?'—':new Intl.NumberFormat('sk-SK',{maximumFractionDigits:3}).format(v)}
 function esc(x){return s(x).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
 function setProgress(p,text){document.getElementById('processCard').classList.remove('hidden');document.getElementById('bar').style.width=p+'%';document.getElementById('processPct').textContent=p+' %';document.getElementById('processText').textContent=text}
-function baseline(){try{return JSON.parse(localStorage.getItem(BASE_KEY)||'[]')}catch(e){return []}}
-function baselineMap(){return new Map(baseline().map(x=>[x.fingerprint,x]))}
+function baseline(){return baselineRows}
+function baselineMap(){return new Map(baselineRows.map(x=>[x.fingerprint,x]))}
 
 async function handleFile(file){
   if(!file)return;filename=file.name;document.getElementById('fileInfo').textContent=file.name+' · '+Math.round(file.size/1024)+' kB';
@@ -174,7 +173,7 @@ function renderSummary(){
   document.getElementById('summaryCard').classList.remove('hidden');document.getElementById('detailCard').classList.remove('hidden');document.getElementById('applyCard').classList.remove('hidden');
   document.getElementById('nNew').textContent=count('new');document.getElementById('nPrice').textContent=count('price');document.getElementById('nStock').textContent=count('stock');document.getElementById('nRemoved').textContent=count('removed');document.getElementById('nMeta').textContent=count('meta');document.getElementById('nConflict').textContent=count('conflict');document.getElementById('nRows').textContent=sourceRows.toLocaleString('sk-SK');document.getElementById('nUnique').textContent=normalized.length.toLocaleString('sk-SK');
   document.getElementById('firstImport').classList.toggle('hidden',hasBase);document.getElementById('conflictWarning').classList.toggle('hidden',!conflicts.length);
-  const meta=JSON.parse(localStorage.getItem(META_KEY)||'null');document.getElementById('baselineInfo').textContent=meta?'Posledný baseline: '+new Date(meta.applied_at).toLocaleString('sk-SK')+' · '+meta.count.toLocaleString('sk-SK')+' zásob':'Na tomto zariadení ešte nie je baseline.';
+  const meta=baselineMeta;document.getElementById('baselineInfo').textContent=meta?'Posledný baseline: '+new Date(meta.applied_at).toLocaleString('sk-SK')+' · '+meta.count.toLocaleString('sk-SK')+' zásob':'Na tomto zariadení ešte nie je baseline.';
   document.getElementById('syncWarning').textContent=(effectiveMode==='partial'?'ČIASTOČNÝ import · ':'ÚPLNÝ import · ')+(conflicts.length?'skontrolovať konflikty':'pripravené');
 }
 function typeLabel(t){return {new:'Nový',price:'Cena',stock:'Sklad',meta:'Údaje',removed:'Deaktivovať',conflict:'Konflikt'}[t]||t}
@@ -190,24 +189,40 @@ function renderTable(){
   document.getElementById('limitInfo').textContent=data.length>limit?'Zobrazených prvých '+limit+' z '+data.length.toLocaleString('sk-SK')+' záznamov.':'Záznamov: '+data.length.toLocaleString('sk-SK');
 }
 function setTab(t,btn){activeTab=t;document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));btn.classList.add('on');renderTable()}
-function applySync(){
+async function applySync(){
   if(!normalized.length)return;
-  const conflictSet=new Set(conflicts.map(c=>c.fingerprint));
-  const clean=normalized.filter(x=>!conflictSet.has(x.fingerprint)).map(x=>({...x,active:true,last_seen_at:new Date().toISOString()}));
-  let finalRows=clean;
-  if(effectiveMode==='partial'){
-    const merged=new Map(baseline().map(x=>[x.fingerprint,x]));
-    clean.forEach(x=>merged.set(x.fingerprint,x));
-    finalRows=[...merged.values()];
+  const btn=document.getElementById('applyBtn');
+  btn.disabled=true;btn.textContent='Ukladám…';
+  try{
+    const conflictSet=new Set(conflicts.map(c=>c.fingerprint));
+    const clean=normalized.filter(x=>!conflictSet.has(x.fingerprint)).map(x=>({...x,active:true,last_seen_at:new Date().toISOString()}));
+    if(effectiveMode==='partial'){
+      await SpektraStockDB.merge(clean);
+    }else{
+      await SpektraStockDB.replaceAll(clean);
+    }
+    baselineRows=await SpektraStockDB.getAll();
+    baselineMeta={applied_at:new Date().toISOString(),filename,count:baselineRows.length,source_rows:sourceRows,conflicts:conflicts.length,mode:effectiveMode};
+    await SpektraStockDB.setMeta('stock_sync',baselineMeta);
+    document.getElementById('applyResult').textContent='Aktualizácia uložená do IndexedDB ('+(effectiveMode==='partial'?'čiastočný':'úplný')+' import). Databáza obsahuje '+baselineRows.length.toLocaleString('sk-SK')+' zásob. Konfliktné zásoby neboli aplikované.';
+    renderSummary();
+  }catch(err){
+    console.error(err);
+    alert('Uloženie zásob zlyhalo: '+err.message);
+  }finally{
+    btn.disabled=false;btn.textContent='Použiť aktualizáciu';
   }
-  localStorage.setItem(BASE_KEY,JSON.stringify(finalRows));localStorage.setItem(META_KEY,JSON.stringify({applied_at:new Date().toISOString(),filename,count:finalRows.length,source_rows:sourceRows,conflicts:conflicts.length,mode:effectiveMode}));
-  document.getElementById('applyResult').textContent='Aktualizácia uložená ('+(effectiveMode==='partial'?'čiastočný':'úplný')+' import). Baseline obsahuje '+finalRows.length.toLocaleString('sk-SK')+' zásob. Konfliktné zásoby neboli aplikované.';
-  renderSummary();
 }
-function resetBaseline(){if(confirm('Naozaj vymazať lokálny baseline zásob?')){localStorage.removeItem(BASE_KEY);localStorage.removeItem(META_KEY);location.reload()}}
+async function resetBaseline(){if(confirm('Naozaj vymazať lokálnu databázu zásob?')){await SpektraStockDB.clear();location.reload()}}
 function exportNormalized(){if(!normalized.length)return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({source:filename,created_at:new Date().toISOString(),rows:normalized,conflicts},null,2)],{type:'application/json'}));a.download='pohoda-zasoby-normalized.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),300)}
 const fi=document.getElementById('fileInput'),drop=document.getElementById('drop');fi.addEventListener('change',e=>handleFile(e.target.files[0]));['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));drop.addEventListener('drop',e=>handleFile(e.dataTransfer.files[0]));
-const meta=JSON.parse(localStorage.getItem(META_KEY)||'null');if(meta)document.getElementById('fileInfo').textContent='Posledná lokálna aktualizácia: '+new Date(meta.applied_at).toLocaleString('sk-SK')+' · '+meta.count.toLocaleString('sk-SK')+' zásob';
+(async()=>{
+  try{
+    baselineRows=await SpektraStockDB.getAll();
+    baselineMeta=await SpektraStockDB.getMeta('stock_sync');
+    if(baselineMeta)document.getElementById('fileInfo').textContent='Posledná lokálna aktualizácia: '+new Date(baselineMeta.applied_at).toLocaleString('sk-SK')+' · '+baselineRows.length.toLocaleString('sk-SK')+' zásob';
+  }catch(err){console.error('IndexedDB init failed',err)}
+})();
 </script>
 </body>
 </html>
