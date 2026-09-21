@@ -17,7 +17,7 @@
 .hidden{display:none!important}
 @media(max-width:720px){.wrap{padding:9px}.actions{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.choiceGrid{grid-template-columns:repeat(2,1fr)}.priceBox{grid-template-columns:1fr}.sendgrid{grid-template-columns:1fr}.hero h1{font-size:21px}}
 </style>
-</head>
+<script src="js/idb-stock.js"></script>\n</head>
 <body>
 <div class="wrap">
   <div class="head">
@@ -171,9 +171,8 @@
 
 <script>
 const QUOTES_KEY='spektra_quotes_v4';
-const STOCK_KEY='spektra_pohoda_stock_baseline_v1';
 let quotes=JSON.parse(localStorage.getItem(QUOTES_KEY)||'[]');
-let stocks=JSON.parse(localStorage.getItem(STOCK_KEY)||'[]');
+let stocks=[];
 let deviceCatalog=[];
 let bundleRecipes=[];
 let current=null, category='heat_pump', brand='', recommendation=null;
@@ -227,6 +226,7 @@ function go(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remo
 function persist(){localStorage.setItem(QUOTES_KEY,JSON.stringify(quotes));renderHome()}
 async function loadConfig(){
   let configOk=true;
+  try{stocks=await SpektraStockDB.getAll()}catch(e){stocks=[];console.error('IndexedDB stock load failed:',e)}
   try{
     const r=await fetch('data/device-catalog.json?v=20260921-2',{cache:'no-store'});
     if(!r.ok) throw new Error('device-catalog '+r.status);
