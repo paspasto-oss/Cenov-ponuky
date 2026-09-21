@@ -17,12 +17,15 @@
 .hidden{display:none!important}
 @media(max-width:720px){.wrap{padding:9px}.actions{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.choiceGrid{grid-template-columns:repeat(2,1fr)}.priceBox{grid-template-columns:1fr}.sendgrid{grid-template-columns:1fr}.hero h1{font-size:21px}}
 </style>
-<script src="js/idb-stock.js"></script>\n</head>
+<script src="js/idb-stock.js"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="js/db.js"></script>
+</head>
 <body>
 <div class="wrap">
   <div class="head">
     <div class="brand"><div class="logo"></div><div><b>Spektra Ponuky</b><div class="sub">terén / predajňa</div></div></div>
-    <div id="catalogState" class="pill">Katalóg: kontrolujem…</div>
+    <div style="display:flex;gap:6px;align-items:center"><div id="onlineState" class="pill">DB…</div><div id="catalogState" class="pill">Katalóg…</div></div>
   </div>
 
   <section id="home" class="screen on">
@@ -226,7 +229,21 @@ function go(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remo
 function persist(){localStorage.setItem(QUOTES_KEY,JSON.stringify(quotes));renderHome()}
 async function loadConfig(){
   let configOk=true;
-  try{stocks=await SpektraStockDB.getAll()}catch(e){stocks=[];console.error('IndexedDB stock load failed:',e)}
+  try{
+    const st=await SpektraDB.init();
+    if(st.online&&st.authenticated){
+      stocks=await SpektraDB.listStocks();
+      document.getElementById('onlineState').textContent='ONLINE';
+      await SpektraStockDB.replaceAll(stocks.map(x=>({...x,suppliers:x.supplier_name?[x.supplier_name]:[]})));
+    }else{
+      stocks=await SpektraStockDB.getAll();
+      document.getElementById('onlineState').textContent='OFFLINE';
+    }
+  }catch(e){
+    stocks=await SpektraStockDB.getAll().catch(()=>[]);
+    document.getElementById('onlineState').textContent='OFFLINE';
+    console.error('DB load failed',e);
+  }
   try{
     const r=await fetch('data/device-catalog.json?v=20260921-2',{cache:'no-store'});
     if(!r.ok) throw new Error('device-catalog '+r.status);
@@ -469,7 +486,7 @@ function renderRecommendation(){
  let dev=current.items[0]?.price,install=current.items.slice(1).reduce((a,i)=>a+(i.price==null?0:(+i.price||0)*(+i.qty||0)),0);document.getElementById('devicePrice').textContent=eur(dev);document.getElementById('installPrice').textContent=missing?eur(install)+' (známe položky)':eur(install);document.getElementById('netPrice').textContent=missing?'Neúplná cena':eur(net);document.getElementById('vatPrice').textContent=missing?'—':eur(current.vat);document.getElementById('grossPrice').textContent=missing?'—':eur(current.total);document.getElementById('priceWarning').classList.toggle('hidden',!missing);current.price_complete=!missing
 }
 function pickAlternative(id){let d=deviceCatalog.find(x=>x.id===id);if(!d)return;recommendation=d;buildBOM();renderRecommendation()}
-function upsertCurrent(){let i=quotes.findIndex(q=>q.id===current.id);if(i>=0)quotes[i]=JSON.parse(JSON.stringify(current));else quotes.push(JSON.parse(JSON.stringify(current)));persist()}
+async function upsertCurrent(){let i=quotes.findIndex(q=>q.id===current.id);if(i>=0)quotes[i]=JSON.parse(JSON.stringify(current));else quotes.push(JSON.parse(JSON.stringify(current)));persist();if(window.SpektraDB?.isAuthenticated()){try{const ids=await SpektraDB.saveQuote(current);current.remote_id=ids.remote_id;current.remote_customer_id=ids.remote_customer_id}catch(e){console.error('Online quote save failed',e)}}}
 function saveDraft(){current.status='draft';upsertCurrent();alert('Ponuka bola uložená ako rozpracovaná.')}
 function finishQuote(){
  if(current.installation_tier==='economy'&&!current.economy_ready){
