@@ -37,6 +37,19 @@
         <button class="big" onclick="location.href='admin/stock-sync.html'"><span>↻</span><b>Aktualizovať zásoby</b><small>Nahrať nový export Zásoby.xlsx z POHODY</small></button>
       </div>
     </div>
+    <div id="mainAuthCard" class="card hidden">
+      <h2>Online databáza</h2>
+      <div class="notice" style="margin-bottom:10px">Lokálny katalóg funguje, ale Supabase ešte nie je prihlásený. Po prihlásení budú zásoby a ponuky spoločné pre predajňu aj technikov.</div>
+      <div class="grid2">
+        <div class="field"><label>E-mail</label><input id="mainAuthEmail" type="email" placeholder="email"></div>
+        <div class="field"><label>Heslo</label><input id="mainAuthPassword" type="password" placeholder="heslo"></div>
+      </div>
+      <div class="actions" style="margin-top:0">
+        <button class="btn primary" onclick="mainLogin()">Prihlásiť</button>
+        <button class="btn ghost" onclick="mainRegister()">Prvý účet / registrácia</button>
+      </div>
+      <div id="mainAuthMsg" class="sub" style="margin-top:8px"></div>
+    </div>
     <div class="stats">
       <div class="stat"><small>Ponuky spolu</small><strong id="stAll">0</strong></div>
       <div class="stat"><small>Rozpracované</small><strong id="stDraft">0</strong></div>
@@ -259,6 +272,29 @@ async function loadConfig(){
   if(!configOk) state.textContent='Konfigurácia: núdzový režim';
   else if(stocks.length) state.textContent='Katalóg POHODA: '+stocks.length.toLocaleString('sk-SK')+' zásob';
   else state.textContent='POHODA zásoby: treba nahrať';
+  const authCard=document.getElementById('mainAuthCard');
+  if(authCard) authCard.classList.toggle('hidden',SpektraDB.isAuthenticated());
+}
+async function mainLogin(){
+  const msg=document.getElementById('mainAuthMsg');
+  try{
+    await SpektraDB.signIn(document.getElementById('mainAuthEmail').value,document.getElementById('mainAuthPassword').value);
+    msg.textContent='Prihlásenie úspešné.';
+    document.getElementById('onlineState').textContent='ONLINE';
+    document.getElementById('mainAuthCard').classList.add('hidden');
+    try{
+      const online=await SpektraDB.listStocks();
+      if(online.length){stocks=online;await SpektraStockDB.replaceAll(online.map(x=>({...x,suppliers:x.supplier_name?[x.supplier_name]:[]})));document.getElementById('catalogState').textContent='Katalóg POHODA: '+stocks.length.toLocaleString('sk-SK')+' zásob';}
+    }catch(e){console.error(e)}
+  }catch(e){msg.textContent='Chyba: '+e.message}
+}
+async function mainRegister(){
+  const msg=document.getElementById('mainAuthMsg');
+  try{
+    const r=await SpektraDB.signUp(document.getElementById('mainAuthEmail').value,document.getElementById('mainAuthPassword').value,'Spektra');
+    msg.textContent=r.session?'Účet vytvorený a prihlásený.':'Účet vytvorený. Potvrď e-mail, ak to Supabase vyžaduje, a potom sa prihlás.';
+    if(r.session){await mainLogin();}
+  }catch(e){msg.textContent='Chyba: '+e.message}
 }
 function renderHome(){
  document.getElementById('stAll').textContent=quotes.length;document.getElementById('stDraft').textContent=quotes.filter(q=>q.status==='draft').length;document.getElementById('stSent').textContent=quotes.filter(q=>q.status==='sent').length;document.getElementById('stApproved').textContent=quotes.filter(q=>q.status==='approved').length;
@@ -305,8 +341,21 @@ function roleToStock(role){
 }
 function stockByRecipe(r){
  if(!r||!stocks.length)return null;
- if(r.pohoda_code){let byCode=stocks.find(x=>s(x.code)===s(r.pohoda_code));if(byCode)return byCode}
- if(r.pohoda_plu){let byPlu=stocks.find(x=>s(x.plu)===s(r.pohoda_plu));if(byPlu)return byPlu}
+ if(r.pohoda_code){
+   const rc=norm(r.pohoda_code);
+   let byCode=stocks.find(x=>norm(x.code)===rc);
+   if(byCode)return byCode;
+ }
+ if(r.pohoda_plu){
+   const rp=norm(r.pohoda_plu);
+   let byPlu=stocks.find(x=>norm(x.plu)===rp);
+   if(byPlu)return byPlu;
+ }
+ if(r.expected_name){
+   const rn=norm(r.expected_name);
+   let byName=stocks.find(x=>norm(x.name)===rn);
+   if(byName)return byName;
+ }
  return null
 }
 function recipeQty(r){
