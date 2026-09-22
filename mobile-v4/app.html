@@ -175,6 +175,23 @@
         Ročný servis sa v ponuke zobrazuje samostatne a nezvyšuje cenu montáže. Pri predĺženej záruke sa vždy riadime podmienkami konkrétneho výrobcu.
       </div>
     </div>
+    <div id="subsidyCard" class="card">
+      <h2>Dotácia</h2>
+      <div class="choiceGrid" style="grid-template-columns:repeat(3,1fr)">
+        <button id="subsidyNone" class="choice on" onclick="setSubsidyProgram('none')">
+          <span>—</span><b>BEZ DOTÁCIE</b>
+        </button>
+        <button id="subsidyGreen" class="choice" onclick="setSubsidyProgram('green')">
+          <span>€</span><b>ZELENÁ DOMÁCNOSTIAM</b>
+          <small style="display:block;margin-top:5px;color:#bbb">400 €/kW · max. 4 000 €</small>
+        </button>
+        <button id="subsidyObnov" class="choice" onclick="setSubsidyProgram('obnov')">
+          <span>⌂</span><b>OBNOV DOM</b>
+          <small style="display:block;margin-top:5px;color:#bbb">až 11 000 € · ďalšie kolo 01/2027</small>
+        </button>
+      </div>
+      <div id="subsidySummary" class="notice" style="margin-top:10px">Dotácia nie je započítaná.</div>
+    </div>
     <div class="card">
       <h2>Cena</h2>
       <div class="priceBox"><div class="pbox"><small>Zariadenie bez DPH</small><strong id="devicePrice">—</strong></div><div class="pbox"><small>Montáž + materiál bez DPH</small><strong id="installPrice">—</strong></div></div>
@@ -323,7 +340,7 @@ function renderHome(){
 }
 function labelStatus(x){return x==='sent'?'Odoslaná':x==='approved'?'Schválená':'Rozpracovaná'}
 function labelCat(x){return x==='heat_pump'?'Tepelné čerpadlo':x==='air_conditioning'?'Klimatizácia':x==='boiler'?'Kotol':'Iné'}
-function startWizard(){current={id:'q_'+Date.now(),quote_no:'26NA'+String(quotes.length+1).padStart(4,'0'),status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_images_enabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true}};category='heat_pump';brand='';recommendation=null;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
+function startWizard(){current={id:'q_'+Date.now(),quote_no:'26NA'+String(quotes.length+1).padStart(4,'0'),status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_images_enabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
 function nextBuilding(){let name=s(document.getElementById('cName').value),phone=s(document.getElementById('cPhone').value),addr=s(document.getElementById('cAddress').value);if(!name||!phone||!addr){alert('Vyplň meno, telefón a adresu realizácie.');return}current.customer={name,phone,email:s(document.getElementById('cEmail').value),address:addr,note:s(document.getElementById('cNote').value)};go('step2')}
 function toggleLoss(){let known=document.getElementById('hasLoss').value==='yes';document.getElementById('lossKnown').classList.toggle('hidden',!known);document.getElementById('lossEstimate').classList.toggle('hidden',known)}
 function nextCategory(){let known=document.getElementById('hasLoss').value==='yes',loss=+document.getElementById('heatLoss').value||0,area=+document.getElementById('area').value||0;if(known&&loss<=0){alert('Zadaj tepelnú stratu.');return}if(!known&&area<=0){alert('Zadaj vykurovanú plochu.');return}current.building={known_loss:known,heat_loss_kw:known?loss:null,area_m2:known?null:area,w_per_m2:+document.getElementById('buildingClass').value,heating:document.getElementById('heating').value,with_external_dhw_tank:document.getElementById('dhwMode').value==='external'};renderChoices();go('step3')}
@@ -692,6 +709,81 @@ async function removePdfImage(index){
   await upsertCurrent();
 }
 
+function ensureSubsidyState(){
+  if(!current)return;
+  if(!current.subsidy||typeof current.subsidy!=='object')current.subsidy={program:'none'};
+  if(!['none','green','obnov'].includes(current.subsidy.program))current.subsidy.program='none';
+}
+
+function calculateSubsidy(){
+  ensureSubsidyState();
+  const program=current.subsidy.program;
+  const power=Number(current.device?.power_kw||current.target_kw||0);
+  const total=Number(current.total||0);
+
+  if(program==='green'){
+    const rate=400;
+    const max=4000;
+    const byPower=Math.max(0,power*rate);
+    const byEligible=total>0?total*0.50:Infinity;
+    const amount=Math.max(0,Math.min(byPower,max,byEligible));
+    current.subsidy={
+      program:'green',
+      label:'Zelená domácnostiam',
+      rate_eur_per_kw:rate,
+      max_eur:max,
+      estimated_amount:+amount.toFixed(2),
+      estimated_after_subsidy:total>0?+Math.max(0,total-amount).toFixed(2):null,
+      note:'Orientačný výpočet. Skutočná hodnota poukážky závisí od podmienok programu, výkonu zariadenia a oprávnených výdavkov.'
+    };
+  }else if(program==='obnov'){
+    current.subsidy={
+      program:'obnov',
+      label:'Obnov dom mini+',
+      max_eur:11000,
+      round:'Ďalšie kolo plánované na január 2027',
+      estimated_amount:null,
+      estimated_after_subsidy:null,
+      note:'Príspevok až 11 000 € je programový strop na obnovu rodinného domu. Konkrétna suma pre tepelné čerpadlo závisí od podmienok výzvy a schválených opatrení.'
+    };
+  }else{
+    current.subsidy={program:'none',label:'Bez dotácie',estimated_amount:0,estimated_after_subsidy:null};
+  }
+  return current.subsidy;
+}
+
+function syncSubsidyUI(){
+  if(!current)return;
+  ensureSubsidyState();
+  const card=document.getElementById('subsidyCard');
+  if(card)card.classList.toggle('hidden',(current.category||category)!=='heat_pump');
+  const p=current.subsidy.program;
+  ['none','green','obnov'].forEach(x=>{
+    const el=document.getElementById(x==='none'?'subsidyNone':x==='green'?'subsidyGreen':'subsidyObnov');
+    if(el)el.classList.toggle('on',p===x);
+  });
+  const s=calculateSubsidy();
+  const box=document.getElementById('subsidySummary');
+  if(!box)return;
+  if(s.program==='green'){
+    box.innerHTML='<b>Zelená domácnostiam</b><br>Orientačná poukážka: <b>'+eur(s.estimated_amount)+'</b>'+
+      (s.estimated_after_subsidy!=null?'<br>Orientačne po dotácii: <b>'+eur(s.estimated_after_subsidy)+'</b>':'')+
+      '<br><span class="sub">Výpočet 400 €/kW, najviac 4 000 €, zároveň najviac 50 % oprávnených výdavkov.</span>';
+  }else if(s.program==='obnov'){
+    box.innerHTML='<b>Obnov dom mini+</b><br>Možnosť príspevku na obnovu domu až <b>11 000 €</b>.'+
+      '<br><span class="sub">Ďalšie kolo je plánované na január 2027. Konkrétnu sumu pre túto ponuku neodpočítavame automaticky.</span>';
+  }else{
+    box.textContent='Dotácia nie je započítaná.';
+  }
+}
+
+function setSubsidyProgram(program){
+  ensureSubsidyState();
+  current.subsidy.program=program;
+  syncSubsidyUI();
+  upsertCurrent();
+}
+
 function renderRecommendation(){
  syncInstallationTierUI();
  syncOptionalUI();
@@ -708,7 +800,8 @@ function renderRecommendation(){
    return '<div class="item"><div><b>'+esc(i.name)+'</b><small>'+i.qty+' '+esc(i.unit)+link+'</small></div><div>'+eur(i.price)+'</div></div>'
  }).join('');
  let net=0,missing=false;current.items.forEach(i=>{if(i.price==null)missing=true;else net+=(+i.price||0)*(+i.qty||0)});current.net=net;current.vat_pct=23;current.vat=net*.23;current.total=net*1.23;
- let dev=current.items[0]?.price,install=current.items.slice(1).reduce((a,i)=>a+(i.price==null?0:(+i.price||0)*(+i.qty||0)),0);document.getElementById('devicePrice').textContent=eur(dev);document.getElementById('installPrice').textContent=missing?eur(install)+' (známe položky)':eur(install);document.getElementById('netPrice').textContent=missing?'Neúplná cena':eur(net);document.getElementById('vatPrice').textContent=missing?'—':eur(current.vat);document.getElementById('grossPrice').textContent=missing?'—':eur(current.total);document.getElementById('priceWarning').classList.toggle('hidden',!missing);current.price_complete=!missing
+ let dev=current.items[0]?.price,install=current.items.slice(1).reduce((a,i)=>a+(i.price==null?0:(+i.price||0)*(+i.qty||0)),0);document.getElementById('devicePrice').textContent=eur(dev);document.getElementById('installPrice').textContent=missing?eur(install)+' (známe položky)':eur(install);document.getElementById('netPrice').textContent=missing?'Neúplná cena':eur(net);document.getElementById('vatPrice').textContent=missing?'—':eur(current.vat);document.getElementById('grossPrice').textContent=missing?'—':eur(current.total);document.getElementById('priceWarning').classList.toggle('hidden',!missing);current.price_complete=!missing;
+ syncSubsidyUI();
 }
 function refreshQuoteFromCatalog(){
   if(!current)return;
@@ -744,10 +837,22 @@ function renderFinal(){
  const scope=install?.work_scope?.length?'<div style="margin-top:12px"><b>Montáž zahŕňa:</b><ul style="margin:7px 0 0 18px;padding:0">'+install.work_scope.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>':'';
  const optional=flush?'<div class="srow" style="margin-top:10px"><span>Preplach + cleaner + inhibitor</span><b>'+eur(flush.price)+'</b></div>':'';
  const annual=current.optional_services?.annual_service!==false?'<div class="srow" style="margin-top:10px"><span>Ročná servisná prehliadka</span><b>150 € s DPH / rok</b></div><div class="sub">Účtuje sa pri vykonaní servisu. Podmienky predĺženej záruky určuje výrobca.</div>':'';
- document.getElementById('finalSummary').innerHTML='<h2 style="margin-top:0">'+esc(current.customer.name)+'</h2><div class="sub">'+esc(current.customer.address)+'</div><div style="margin-top:14px"><b>'+esc(current.device.brand+' '+current.device.model+' '+(current.device.variant||''))+'</b></div><div class="srow"><span>Typ montáže</span><b>'+(current.installation_tier==='economy'?'EKONOM – '+installationPrice('economy')+' €':'ŠTANDARD – '+installationPrice('standard')+' €')+'</b></div>'+optional+annual+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+ (current.price_complete?eur(current.total):'Cena ešte nie je kompletná') +'</span></div>'
+ const subsidy=calculateSubsidy();
+ const subsidyHtml=subsidy.program==='green'
+   ? '<div class="srow" style="margin-top:10px"><span>Orientačná dotácia Zelená domácnostiam</span><b>− '+eur(subsidy.estimated_amount)+'</b></div><div class="srow"><span>Orientačne po dotácii</span><b>'+eur(subsidy.estimated_after_subsidy)+'</b></div>'
+   : subsidy.program==='obnov'
+     ? '<div class="srow" style="margin-top:10px"><span>Obnov dom mini+</span><b>až 11 000 €</b></div><div class="sub">Ďalšie kolo plánované na január 2027; konkrétna výška závisí od podmienok výzvy.</div>'
+     : '';
+ document.getElementById('finalSummary').innerHTML='<h2 style="margin-top:0">'+esc(current.customer.name)+'</h2><div class="sub">'+esc(current.customer.address)+'</div><div style="margin-top:14px"><b>'+esc(current.device.brand+' '+current.device.model+' '+(current.device.variant||''))+'</b></div><div class="srow"><span>Typ montáže</span><b>'+(current.installation_tier==='economy'?'EKONOM – '+installationPrice('economy')+' €':'ŠTANDARD – '+installationPrice('standard')+' €')+'</b></div>'+optional+annual+subsidyHtml+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+ (current.price_complete?eur(current.total):'Cena ešte nie je kompletná') +'</span></div>'
 }
-function openQuote(id){let q=quotes.find(x=>x.id===id);if(!q)return;current=JSON.parse(JSON.stringify(q));ensurePdfImagesState();if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true};if(current.optional_services.annual_service===undefined)current.optional_services.annual_service=true;if(!current.installation_tier)current.installation_tier='standard';category=current.category||'heat_pump';brand=current.brand||'';recommendation=current.device||null;document.getElementById('cName').value=current.customer.name||'';document.getElementById('cPhone').value=current.customer.phone||'';document.getElementById('cEmail').value=current.customer.email||'';document.getElementById('cAddress').value=current.customer.address||'';document.getElementById('cNote').value=current.customer.note||'';refreshQuoteFromCatalog();renderFinal();go('step4')}
-function message(){return 'Dobrý deň, posielame cenovú ponuku Spektra Install na '+(current.device?.brand||'')+' '+(current.device?.model||'')+'. '+(current.price_complete?'Cena spolu s DPH: '+eur(current.total)+'.':'Cena bude doplnená po kontrole.')+' Ďakujeme.'}
+function openQuote(id){let q=quotes.find(x=>x.id===id);if(!q)return;current=JSON.parse(JSON.stringify(q));ensurePdfImagesState();ensureSubsidyState();if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true};if(current.optional_services.annual_service===undefined)current.optional_services.annual_service=true;if(!current.installation_tier)current.installation_tier='standard';category=current.category||'heat_pump';brand=current.brand||'';recommendation=current.device||null;document.getElementById('cName').value=current.customer.name||'';document.getElementById('cPhone').value=current.customer.phone||'';document.getElementById('cEmail').value=current.customer.email||'';document.getElementById('cAddress').value=current.customer.address||'';document.getElementById('cNote').value=current.customer.note||'';refreshQuoteFromCatalog();renderFinal();go('step4')}
+function message(){
+  const sub=calculateSubsidy();
+  let subsidyText='';
+  if(sub.program==='green')subsidyText=' Orientačná dotácia Zelená domácnostiam: '+eur(sub.estimated_amount)+'.';
+  if(sub.program==='obnov')subsidyText=' Možnosť podpory Obnov dom mini+ až 11 000 € podľa podmienok výzvy.';
+  return 'Dobrý deň, posielame cenovú ponuku Spektra Install na '+(current.device?.brand||'')+' '+(current.device?.model||'')+'. '+(current.price_complete?'Cena spolu s DPH: '+eur(current.total)+'.':'Cena bude doplnená po kontrole.')+subsidyText+' Ďakujeme.'
+}
 
 function shareWA(){
   let p=s(current.customer.phone).replace(/\s/g,'').replace(/^0/,'421');
@@ -834,6 +939,22 @@ function offerHtml(){
     ? '<div style="margin-top:14px;padding:10px 12px;background:#f6f6f6;border-left:3px solid #d60000">'+esc(current.customer.note)+'</div>'
     : '';
 
+  const subsidy=calculateSubsidy();
+  const subsidyBlock=subsidy.program==='green'
+    ? '<div style="margin-top:14px;padding:10px 12px;background:#f3faf5;border:1px solid #bcdcc6">'+
+        '<div style="font-weight:700;color:#176b3a;margin-bottom:5px">Zelená domácnostiam</div>'+
+        '<div style="display:flex;justify-content:space-between"><span>Orientačná hodnota poukážky:</span><b>− '+eur(subsidy.estimated_amount)+'</b></div>'+
+        '<div style="display:flex;justify-content:space-between;margin-top:4px;font-size:12px"><span>Orientačne po dotácii:</span><b>'+eur(subsidy.estimated_after_subsidy)+'</b></div>'+
+        '<div style="font-size:8.5px;color:#555;margin-top:6px">Orientačný výpočet: 400 €/kW, max. 4 000 €, najviac 50 % oprávnených výdavkov. Skutočná výška závisí od podmienok programu.</div>'+
+      '</div>'
+    : subsidy.program==='obnov'
+      ? '<div style="margin-top:14px;padding:10px 12px;background:#f6f6f6;border:1px solid #d7d7d7">'+
+          '<div style="font-weight:700;margin-bottom:5px">Obnov dom mini+</div>'+
+          '<div>Možnosť príspevku na obnovu rodinného domu až <b>11 000 €</b>.</div>'+
+          '<div style="font-size:8.5px;color:#555;margin-top:5px">Ďalšie kolo je plánované na január 2027. Konkrétna výška podpory pre tepelné čerpadlo závisí od podmienok výzvy a schválených opatrení; suma sa z ceny tejto ponuky automaticky neodpočítava.</div>'+
+        '</div>'
+      : '';
+
   ensurePdfImagesState();
   const enabledPdfImages=current.pdf_images_enabled?(current.pdf_images||[]):[];
   const heroImage=enabledPdfImages.length
@@ -895,7 +1016,7 @@ function offerHtml(){
       '</div>'+
     '</div>'+
 
-    extraImages+note+materialScope+scope+annual+
+    subsidyBlock+extraImages+note+materialScope+scope+annual+
 
     '<div style="position:absolute;left:9mm;right:9mm;bottom:8mm;border-top:1px solid #888;padding-top:5px;display:flex;justify-content:space-between;color:#555;font-size:8px">'+
       '<div>Spektra Install s.r.o.<br>Hollého 210, 015 01 Rajec</div>'+
