@@ -595,7 +595,6 @@ function shareWA(){
 }
 
 function offerHtml(){
-  const vis=current.items.filter(i=>i.visible||i.role==='device');
   const issueDate=new Date();
   const validDate=new Date(issueDate.getTime()+14*24*60*60*1000);
   const issue=issueDate.toLocaleDateString('sk-SK');
@@ -604,7 +603,33 @@ function offerHtml(){
   const vat=current.vat||0;
   const total=current.total||0;
 
-  const rows=vis.map(i=>{
+  const deviceItem=current.items.find(i=>i.role==='device');
+  const installationItem=current.items.find(i=>i.role==='installation_service'||i.role==='installation');
+  const otherVisible=current.items.filter(i=>i.visible && i!==deviceItem && i!==installationItem);
+
+  const materialItems=current.items.filter(i=>
+    i!==deviceItem &&
+    i!==installationItem &&
+    !i.visible &&
+    i.role!=='heating_system_flush_cleaner_inhibitor'
+  );
+  const materialTotal=materialItems.reduce((sum,i)=>sum+(Number(i.price||0)*Number(i.qty||0)),0);
+
+  const customerRows=[];
+  if(deviceItem) customerRows.push(deviceItem);
+  if(materialItems.length){
+    customerRows.push({
+      role:'customer_material_bundle',
+      name:'Inštalačný materiál a príslušenstvo do 5 m',
+      qty:1,
+      unit:'súb.',
+      price:materialTotal
+    });
+  }
+  if(installationItem) customerRows.push(installationItem);
+  customerRows.push(...otherVisible);
+
+  const rows=customerRows.map(i=>{
     const unit=Number(i.price||0);
     const amount=unit*Number(i.qty||0);
     return '<tr>'+
