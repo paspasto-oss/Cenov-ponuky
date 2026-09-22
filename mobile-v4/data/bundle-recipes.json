@@ -1,8 +1,8 @@
 {
-  "version": 20,
+  "version": 21,
   "updated_at": "2026-09-22",
   "source": "POHODA export Zásoby1.xlsx",
-  "note": "Split používa spoločný elektrobalík JYTY-O 4x1 10 jednotiek; duplicitný model-dependent communication_cable_split odstránený.",
+  "note": "Prúdové chrániče boli nahradené ďalšími 2 ks ističa B16 3P. Celkový štandard elektrobalíka: 4 ks ističa B16 3P.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -1090,17 +1090,17 @@
           "note": "Štandard 10 m; karta je vedená v POHODE na ks. Počítané 5 ks pri dĺžke 2 m/ks."
         },
         {
-          "role": "rcd",
-          "pohoda_code": null,
-          "pohoda_plu": null,
-          "expected_name": "Prúdový chránič pre tepelné čerpadlo",
+          "role": "additional_breaker_b16_3p",
+          "pohoda_code": "ISTIČ",
+          "pohoda_plu": "106384",
+          "expected_name": "Istič 6000A, charakteristika B, 16 A, 3-pól",
           "qty": 2,
           "unit": "ks",
           "required": true,
           "condition": null,
-          "mapping_status": "needs_product",
+          "mapping_status": "mapped",
           "customer_group": "Elektroinštalačný materiál",
-          "note": "Povinný štandard 2 ks navyše k 2 ks ističa B16 3P. Presná skladová karta ešte nie je v Zásoby1.xlsx."
+          "note": "Nahrádza pôvodne uvažované prúdové chrániče. Spolu s existujúcimi 2 ks ističa B16 3P bude BOM obsahovať celkom 4 ks tej istej POHODA karty; aplikácia ich automaticky zlúči."
         }
       ]
     },
