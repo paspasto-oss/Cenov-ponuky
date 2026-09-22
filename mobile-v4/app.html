@@ -109,6 +109,18 @@
       <div id="alternatives" class="list" style="margin-top:9px"></div>
     </div>
     <div class="card">
+      <h2>Obrázok zariadenia do PDF</h2>
+      <div id="quoteImagePreview" class="hidden" style="margin-bottom:10px;background:#fff;border-radius:12px;padding:8px;text-align:center">
+        <img id="quoteImageImg" alt="Obrázok zariadenia" style="display:block;width:100%;max-height:220px;object-fit:contain;border-radius:8px">
+      </div>
+      <label class="btn ghost full" style="display:block;text-align:center">
+        Vybrať alebo odfotiť obrázok
+        <input id="quoteImageInput" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="handleQuoteImage(this.files[0])">
+      </label>
+      <button id="removeQuoteImageBtn" class="btn ghost full hidden" style="margin-top:8px" onclick="removeQuoteImage()">Odstrániť obrázok</button>
+      <div id="quoteImageStatus" class="sub" style="margin-top:8px">Do PDF sa vloží jeden hlavný obrázok zariadenia.</div>
+    </div>
+    <div class="card">
       <h2>Položky na pozadí</h2>
       <div class="sub" style="margin-bottom:9px">Tieto položky sa použijú pre POHODU. Zákazník ich v PDF môže vidieť zoskupené.</div>
       <div id="bomItems" class="items"></div>
@@ -533,9 +545,101 @@ function updateFlushPrice(){
   document.getElementById('flushPrice').value=p;
   buildBOM();renderRecommendation();
 }
+function renderQuoteImageUI(){
+  const url=current?.device?.image_url||'';
+  const box=document.getElementById('quoteImagePreview');
+  const img=document.getElementById('quoteImageImg');
+  const remove=document.getElementById('removeQuoteImageBtn');
+  const status=document.getElementById('quoteImageStatus');
+  if(!box||!img||!remove||!status)return;
+  if(url){
+    img.src=url;
+    box.classList.remove('hidden');
+    remove.classList.remove('hidden');
+    status.textContent=current?.device?.image_storage_path?'Obrázok je uložený online a vloží sa do PDF.':'Obrázok sa vloží do PDF.';
+  }else{
+    img.removeAttribute('src');
+    box.classList.add('hidden');
+    remove.classList.add('hidden');
+    status.textContent='Do PDF sa vloží jeden hlavný obrázok zariadenia.';
+  }
+}
+
+async function compressQuoteImage(file){
+  const src=URL.createObjectURL(file);
+  try{
+    const img=await new Promise((resolve,reject)=>{
+      const i=new Image();
+      i.onload=()=>resolve(i);
+      i.onerror=()=>reject(new Error('Obrázok sa nepodarilo načítať.'));
+      i.src=src;
+    });
+    const maxW=1600,maxH=900;
+    const scale=Math.min(1,maxW/img.width,maxH/img.height);
+    const w=Math.max(1,Math.round(img.width*scale));
+    const h=Math.max(1,Math.round(img.height*scale));
+    const canvas=document.createElement('canvas');
+    canvas.width=w;canvas.height=h;
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle='#ffffff';ctx.fillRect(0,0,w,h);
+    ctx.drawImage(img,0,0,w,h);
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.84));
+    if(!blob)throw new Error('Obrázok sa nepodarilo spracovať.');
+    return new File([blob],'device.jpg',{type:'image/jpeg'});
+  }finally{
+    URL.revokeObjectURL(src);
+  }
+}
+
+async function fileToDataUrl(file){
+  return await new Promise((resolve,reject)=>{
+    const r=new FileReader();
+    r.onload=()=>resolve(r.result);
+    r.onerror=()=>reject(r.error||new Error('Obrázok sa nepodarilo načítať.'));
+    r.readAsDataURL(file);
+  });
+}
+
+async function handleQuoteImage(file){
+  if(!file||!current)return;
+  const status=document.getElementById('quoteImageStatus');
+  try{
+    if(status)status.textContent='Spracúvam obrázok…';
+    const compressed=await compressQuoteImage(file);
+    let url='',path='';
+    if(window.SpektraDB?.isAuthenticated()){
+      if(status)status.textContent='Nahrávam obrázok do online databázy…';
+      const uploaded=await SpektraDB.uploadQuoteImage(compressed,current.quote_no||current.id);
+      url=uploaded.url;path=uploaded.path;
+    }else{
+      url=await fileToDataUrl(compressed);
+    }
+    current.device={...(current.device||recommendation||{}),image_url:url,image_storage_path:path||null};
+    recommendation=current.device;
+    renderQuoteImageUI();
+    await upsertCurrent();
+  }catch(e){
+    console.error(e);
+    if(status)status.textContent='Chyba obrázka: '+e.message;
+    alert('Obrázok sa nepodarilo uložiť: '+e.message);
+  }finally{
+    const input=document.getElementById('quoteImageInput');
+    if(input)input.value='';
+  }
+}
+
+async function removeQuoteImage(){
+  if(!current?.device)return;
+  current.device={...current.device,image_url:null,image_storage_path:null};
+  recommendation=current.device;
+  renderQuoteImageUI();
+  await upsertCurrent();
+}
+
 function renderRecommendation(){
  syncInstallationTierUI();
  syncOptionalUI();
+ renderQuoteImageUI();
  let d=recommendation,required=current.required_kw,target=current.target_kw;
  document.getElementById('calcNotice').textContent=category==='heat_pump'?(current.building.known_loss?'Zadaná tepelná strata: '+required+' kW. Navrhnutá výkonová trieda: '+target+' kW.':'Orientačný návrhový výkon po rezerve: '+required+' kW. Navrhnutá výkonová trieda: '+target+' kW.'):'Pre túto kategóriu sa výkon vyberie podľa konkrétneho modelu a priestoru.';
  document.getElementById('recommendation').innerHTML='<div class="title"><div><h3>'+esc(d.brand+' '+d.model)+'</h3><div class="sub">'+esc(d.variant||'')+(current.system_type?' · '+esc(current.system_type):'')+'</div></div><div class="kw">'+(d.power_kw||target||'—')+' kW</div></div>';
@@ -561,13 +665,16 @@ function refreshQuoteFromCatalog(){
     fresh=powered.find(x=>x.power_kw>=target)||powered[powered.length-1]||candidates[0]||null;
   }
   if(fresh){
+    const oldImage=current.device?.image_url||null;
+    const oldPath=current.device?.image_storage_path||null;
+    fresh={...fresh,image_url:oldImage||fresh.image_url||null,image_storage_path:oldPath||fresh.image_storage_path||null};
     recommendation=fresh;
     current.device=fresh;
   }
   buildBOM();
   renderRecommendation();
 }
-function pickAlternative(id){let d=deviceCatalog.find(x=>x.id===id);if(!d)return;recommendation=d;buildBOM();renderRecommendation()}
+function pickAlternative(id){let d=deviceCatalog.find(x=>x.id===id);if(!d)return;recommendation={...d,image_url:null,image_storage_path:null};buildBOM();renderRecommendation()}
 async function upsertCurrent(){let i=quotes.findIndex(q=>q.id===current.id);if(i>=0)quotes[i]=JSON.parse(JSON.stringify(current));else quotes.push(JSON.parse(JSON.stringify(current)));persist();if(window.SpektraDB?.isAuthenticated()){try{const ids=await SpektraDB.saveQuote(current);current.remote_id=ids.remote_id;current.remote_customer_id=ids.remote_customer_id}catch(e){console.error('Online quote save failed',e)}}}
 function saveDraft(){current.status='draft';upsertCurrent();alert('Ponuka bola uložená ako rozpracovaná.')}
 function finishQuote(){
@@ -653,6 +760,10 @@ function offerHtml(){
     ? '<div style="margin-top:14px;padding:10px 12px;background:#f6f6f6;border-left:3px solid #d60000">'+esc(current.customer.note)+'</div>'
     : '';
 
+  const heroImage=current.device?.image_url
+    ? '<div style="height:42mm;margin:0 0 18px;background:#f7f7f7;border:1px solid #e5e5e5;overflow:hidden;display:flex;align-items:center;justify-content:center"><img crossorigin="anonymous" src="'+esc(current.device.image_url)+'" style="width:100%;height:100%;object-fit:contain;display:block"></div>'
+    : '';
+
   return '<div style="width:190mm;min-height:277mm;padding:10mm 9mm 8mm;font-family:Arial,sans-serif;color:#111;background:#fff;font-size:10.5px;line-height:1.35;position:relative">'+
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:26px">'+
       '<div style="font-size:9px;color:#666;line-height:1.45">'+
@@ -663,7 +774,7 @@ function offerHtml(){
         '<div style="font-size:21px;font-weight:800;line-height:1">SPEKTRA<br><span style="font-weight:500">INSTALL</span></div>'+
       '</div>'+
     '</div>'+
-
+    heroImage+
     '<div style="display:grid;grid-template-columns:1.4fr .8fr;gap:28px;margin-bottom:18px">'+
       '<div>'+
         '<div style="font-size:9px;font-weight:700;margin-bottom:4px">PRE</div>'+
