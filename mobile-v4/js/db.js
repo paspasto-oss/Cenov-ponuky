@@ -70,41 +70,54 @@ window.SpektraDB = (() => {
     return out;
   }
 
-  async function upsertStocks(rows) {
+  async function upsertStocks(rows, onProgress) {
     if (!client || !user) throw new Error('Online databáza nie je prihlásená.');
-    const chunks = [];
-    for (let i=0;i<rows.length;i+=500) chunks.push(rows.slice(i,i+500));
-    let count=0;
-    for (const chunk of chunks) {
-      const payload = chunk.map(x => ({
-        fingerprint:x.fingerprint,
-        plu:x.plu||null,
-        code:x.code||null,
-        ean:x.ean||null,
-        name:x.name,
-        unit:x.unit||null,
-        storage_ref:x.storage_ref||null,
-        storage_name:x.storage_name||null,
-        stock_group_ref:x.stock_group_ref||null,
-        stock_group:x.stock_group||null,
-        supplier_name:(x.suppliers||[]).join(', ')||x.supplier_name||null,
-        manufacturer:x.manufacturer||null,
-        purchase_price_ex_vat:x.purchase_price_ex_vat,
-        sell_price_ex_vat:x.sell_price_ex_vat,
-        sell_price_inc_vat:x.sell_price_inc_vat,
-        quantity_available:x.quantity_available,
-        min_limit:x.min_limit,
-        max_limit:x.max_limit,
-        quantity_to_order:x.quantity_to_order,
-        margin_pct:x.margin_pct,
-        discount_pct:x.discount_pct,
-        active:true,
-        raw_payload:x,
-        synced_at:new Date().toISOString()
-      }));
-      const { error } = await client.from('pohoda_stocks').upsert(payload,{onConflict:'fingerprint'});
-      if (error) throw error;
+    const chunkSize = 200;
+    let count = 0;
+    const total = rows.length;
+
+    const toPayload = chunk => chunk.map(x => ({
+      fingerprint:x.fingerprint,
+      plu:x.plu||null,
+      code:x.code||null,
+      ean:x.ean||null,
+      name:x.name,
+      unit:x.unit||null,
+      storage_ref:x.storage_ref||null,
+      storage_name:x.storage_name||null,
+      stock_group_ref:x.stock_group_ref||null,
+      stock_group:x.stock_group||null,
+      supplier_name:(x.suppliers||[]).join(', ')||x.supplier_name||null,
+      manufacturer:x.manufacturer||null,
+      purchase_price_ex_vat:x.purchase_price_ex_vat,
+      sell_price_ex_vat:x.sell_price_ex_vat,
+      sell_price_inc_vat:x.sell_price_inc_vat,
+      quantity_available:x.quantity_available,
+      min_limit:x.min_limit,
+      max_limit:x.max_limit,
+      quantity_to_order:x.quantity_to_order,
+      margin_pct:x.margin_pct,
+      discount_pct:x.discount_pct,
+      active:true,
+      raw_payload:x,
+      synced_at:new Date().toISOString()
+    }));
+
+    for (let start=0; start<total; start+=chunkSize) {
+      const payload = toPayload(rows.slice(start,start+chunkSize));
+      let lastError = null;
+      for (let attempt=1; attempt<=3; attempt++) {
+        const { error } = await client.from('pohoda_stocks').upsert(payload,{onConflict:'fingerprint'});
+        if (!error) { lastError=null; break; }
+        lastError=error;
+        if (attempt<3) await new Promise(r=>setTimeout(r, 500*attempt));
+      }
+      if (lastError) {
+        throw new Error('Upload zásob zlyhal pri riadkoch '+(start+1)+'–'+(start+payload.length)+': '+lastError.message);
+      }
       count += payload.length;
+      if (onProgress) onProgress({count,total,percent:Math.round(count/total*100)});
+      await new Promise(r=>setTimeout(r,35));
     }
     return count;
   }
