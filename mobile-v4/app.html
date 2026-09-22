@@ -445,16 +445,17 @@ function buildBOM(){
    const svcBundle=bundleRecipes.find(b=>b.key==='hp_optional_services');
    const flush=svcBundle?.items?.find(r=>r.role==='heating_system_flush_cleaner_inhibitor');
    if(flush){
+     const flushStock=stockByRecipe(flush);
      items.push({
        role:flush.role,
-       name:flush.expected_name,
+       name:flushStock?.name||flush.expected_name,
        qty:1,
-       unit:flush.unit||'súb.',
-       pohoda:null,
-       pohoda_code:flush.pohoda_code||null,
-       mapping_status:flush.mapping_status||'needs_service_card',
+       unit:flush.unit||flushStock?.unit||'súb.',
+       pohoda:flushStock,
+       pohoda_code:flushStock?.code||flush.pohoda_code||null,
+       mapping_status:flushStock?'mapped_service':(flush.mapping_status||'needs_service_card'),
        price:+(current.optional_services.flush_price_ex_vat||flush.default_sell_price_ex_vat||400),
-       cost:null,
+       cost:flushStock?.purchase_price_ex_vat??null,
        visible:true,
        customer_group:flush.customer_group||'Voliteľné služby',
        note:flush.note||'',
