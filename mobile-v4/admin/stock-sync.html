@@ -101,7 +101,7 @@ button,input{font:inherit}button{cursor:pointer}.wrap{max-width:1120px;margin:au
 
   <div id="applyCard" class="card hidden">
     <h2>3. Použiť aktualizáciu</h2>
-    <div class="notice">Dočasne sa katalóg uloží do IndexedDB prehliadača, ktorá zvládne aj 14 000+ zásob. Po pripojení Supabase sa rovnaké dáta budú ukladať do spoločnej online databázy pre Martinu aj technikov.</div>
+    <div class="notice">Ak je stav hore ONLINE, zásoby sa najprv nahrajú do Supabase a potom sa uložia aj do IndexedDB ako offline cache. Pri opakovanom importe sa existujúce karty aktualizujú, nevytvárajú sa duplicitne.</div>
     <div class="actions" style="margin-top:12px">
       <button id="applyBtn" class="btn green" onclick="applySync()">Použiť aktualizáciu</button>
       <button class="btn ghost" onclick="exportNormalized()">Exportovať normalizovaný JSON</button>
@@ -213,8 +213,11 @@ async function applySync(){
     const conflictSet=new Set(conflicts.map(c=>c.fingerprint));
     const clean=normalized.filter(x=>!conflictSet.has(x.fingerprint)).map(x=>({...x,active:true,last_seen_at:new Date().toISOString()}));
     if(window.SpektraDB?.isAuthenticated()){
-      const uploaded=await SpektraDB.upsertStocks(clean);
-      document.getElementById('applyResult').textContent='Online databáza: nahraných '+uploaded.toLocaleString('sk-SK')+' zásob. Ukladám lokálnu cache…';
+      const uploaded=await SpektraDB.upsertStocks(clean,p=>{
+        btn.textContent='ONLINE '+p.count.toLocaleString('sk-SK')+' / '+p.total.toLocaleString('sk-SK')+' ('+p.percent+' %)';
+        document.getElementById('applyResult').textContent='Nahrávam do Supabase: '+p.count.toLocaleString('sk-SK')+' z '+p.total.toLocaleString('sk-SK')+' zásob.';
+      });
+      document.getElementById('applyResult').textContent='Supabase: nahraných '+uploaded.toLocaleString('sk-SK')+' zásob. Ukladám lokálnu cache…';
     }
     if(effectiveMode==='partial'){
       await SpektraStockDB.merge(clean);
