@@ -409,7 +409,8 @@ function buildBOM(){
      (activeRecipe.items||[]).forEach(r=>{
        if(r.condition==='with_external_dhw_tank'&&!current.building.with_external_dhw_tank)return;
        if(r.condition==='device_electrical_spec_allows'||r.condition==='3_phase_device_and_spec_allows'||r.condition==='according_to_device'||r.condition==='new_enclosure_required')return;
-       if(r.required===false&&r.default_enabled!==true&&r.role!=='installation_service')return;
+       const activeConditional = r.condition==='with_external_dhw_tank' && current.building.with_external_dhw_tank;
+       if(r.required===false&&r.default_enabled!==true&&r.role!=='installation_service'&&!activeConditional)return;
        let recipeRow=r;
        if(r.role==='installation_service'&&r.tier_pohoda_plu){
          recipeRow={...r,pohoda_plu:r.tier_pohoda_plu[current.installation_tier||'standard']||r.pohoda_plu};
