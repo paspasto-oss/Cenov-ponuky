@@ -35,6 +35,7 @@ create table if not exists public.quotes (
   building jsonb not null default '{}'::jsonb,
   device jsonb not null default '{}'::jsonb,
   optional_services jsonb not null default '{}'::jsonb,
+  subsidy jsonb not null default '{}'::jsonb,
   subtotal_ex_vat numeric(12,2) not null default 0,
   vat_pct numeric(6,2) not null default 23,
   total_inc_vat numeric(12,2) not null default 0,
