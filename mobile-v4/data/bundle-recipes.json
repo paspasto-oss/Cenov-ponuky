@@ -1,8 +1,8 @@
 {
-  "version": 18,
+  "version": 19,
   "updated_at": "2026-09-22",
-  "source": "POHODA export Zásoby(2).xlsx",
-  "note": "Doplnené mapovania z Zásoby0.xlsx: WFV-25, HERZ DN15, JV-80, montážne služby podľa tieru, split kondenzát a preplach.",
+  "source": "POHODA export Zásoby1.xlsx",
+  "note": "Doplnené: PG21 vývodky, PVC lišta 40x40, JYTY-O 4x1, odstraňovač plynu/cyklónový filter. Prúdový chránič ostáva povinný, ale čaká na presnú POHODA kartu.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -24,16 +24,16 @@
         },
         {
           "role": "air_separator",
-          "pohoda_code": null,
-          "pohoda_plu": null,
-          "expected_name": "Odlučovač vzduchu 1\"",
+          "pohoda_code": "Odstraňovač plynu s poistným ventilom 3 bar",
+          "pohoda_plu": "105108",
+          "expected_name": "Odstraňovač plynu s poistným ventilom 3 bar – 12-vrstvový nerezový cyklónový filter 800",
           "qty": 1,
           "unit": "ks",
           "required": true,
-          "mapping_status": "needs_product",
+          "mapping_status": "mapped",
           "candidate_code": "INT_CLF 551005",
           "candidate_name": "DISCAL® - odvzdušňovač, 3/4\" FF, s odtokom",
-          "note": "V exporte je len 3/4\" kandidát. Pre univerzálny DN25 balík doplniť/určiť 1\" kartu."
+          "note": "Presná karta POHODA z Zásoby1.xlsx."
         },
         {
           "role": "heating_safety_valve",
@@ -529,16 +529,16 @@
         },
         {
           "role": "air_separator",
-          "pohoda_code": null,
-          "pohoda_plu": null,
-          "expected_name": "Odlučovač vzduchu 1\"",
+          "pohoda_code": "Odstraňovač plynu s poistným ventilom 3 bar",
+          "pohoda_plu": "105108",
+          "expected_name": "Odstraňovač plynu s poistným ventilom 3 bar – 12-vrstvový nerezový cyklónový filter 800",
           "qty": 1,
           "unit": "ks",
           "required": true,
-          "mapping_status": "needs_product",
+          "mapping_status": "mapped",
           "candidate_code": "INT_CLF 551005",
           "candidate_name": "DISCAL® - odvzdušňovač, 3/4\" FF, s odtokom",
-          "note": "Po doplnení správnej 1\" karty do POHODY namapovať."
+          "note": "Presná karta POHODA z Zásoby1.xlsx."
         },
         {
           "role": "heating_safety_valve",
@@ -1064,54 +1064,54 @@
         },
         {
           "role": "control_cable_4x0_75",
-          "pohoda_code": null,
-          "pohoda_plu": null,
-          "expected_name": "Ovládací / komunikačný kábel 4x0,75",
+          "pohoda_code": "JYTY-O 4x1",
+          "pohoda_plu": "105109",
+          "expected_name": "Kábel špeciálny JYTY-O 4x1",
           "qty": 10,
-          "unit": "m",
+          "unit": "ks",
           "required": true,
-          "mapping_status": "needs_product",
+          "mapping_status": "mapped",
           "customer_group": "Elektroinštalačný materiál",
-          "note": "V aktuálnom exporte POHODY nebola nájdená presná skladová karta 4x0,75."
+          "note": "Nahrádza pôvodný štandard 4x0,75. POHODA karta je vedená na ks; v kalkulácii používame 10 jednotiek pre štandardnú trasu 10 m."
         },
         {
           "role": "cable_glands",
-          "pohoda_code": null,
-          "pohoda_plu": null,
-          "expected_name": "Káblové vývodky / prechodky",
+          "pohoda_code": "206599",
+          "pohoda_plu": "105106",
+          "expected_name": "Vývodka PG 21 šedá CP40006",
           "qty": 5,
           "unit": "ks",
           "required": true,
-          "mapping_status": "needs_product",
+          "mapping_status": "mapped",
           "customer_group": "Elektroinštalačný materiál",
-          "note": "Treba doplniť presný typ a skladovú kartu POHODA."
+          "note": "Presná karta POHODA z Zásoby1.xlsx."
         },
         {
           "role": "installation_trunking_40x40",
-          "pohoda_code": null,
-          "pohoda_plu": null,
-          "expected_name": "Inštalačná PVC lišta 40x40",
-          "qty": 10,
-          "unit": "m",
+          "pohoda_code": "720900113",
+          "pohoda_plu": "105107",
+          "expected_name": "lišta inštalačná PVC 40X40 biela 001 014 040040 20 00",
+          "qty": 5,
+          "unit": "ks",
           "required": true,
-          "mapping_status": "needs_product",
+          "mapping_status": "mapped",
           "customer_group": "Elektroinštalačný materiál",
           "candidate_code": "LIŠTA",
           "candidate_name": "lišta inštalačná PVC 40x25 biela",
-          "note": "V exporte nie je presná 40x40. Existuje 40x25 (LIŠTA), ale bez potvrdenia sa automaticky nezamení."
+          "note": "Štandard 10 m; karta je vedená v POHODE na ks. Počítané 5 ks pri dĺžke 2 m/ks."
         },
         {
           "role": "rcd",
           "pohoda_code": null,
           "pohoda_plu": null,
-          "expected_name": "Prúdový chránič podľa konkrétneho zariadenia",
+          "expected_name": "Prúdový chránič pre tepelné čerpadlo",
           "qty": 2,
           "unit": "ks",
-          "required": false,
-          "condition": "according_to_device",
+          "required": true,
+          "condition": null,
           "mapping_status": "needs_product",
           "customer_group": "Elektroinštalačný materiál",
-          "note": "Technické overenie podľa výrobcu/projektu; nie je súčasťou pevného cenového štandardu, kým nebude určený presný typ."
+          "note": "Povinný štandard 2 ks navyše k 2 ks ističa B16 3P. Presná skladová karta ešte nie je v Zásoby1.xlsx."
         }
       ]
     },
