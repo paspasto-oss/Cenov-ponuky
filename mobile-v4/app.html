@@ -322,6 +322,14 @@ function calcRequiredKw(){
 function nextStepKw(required){let steps=[5,7,9,12,16];return steps.find(x=>x>=required)||16}
 function findStockForDevice(d){
  if(!stocks.length)return null;
+ if(d.pohoda_code){
+   const byCode=stocks.find(x=>norm(x.code)===norm(d.pohoda_code));
+   if(byCode)return byCode;
+ }
+ if(d.pohoda_plu){
+   const byPlu=stocks.find(x=>norm(x.plu)===norm(d.pohoda_plu));
+   if(byPlu)return byPlu;
+ }
  let terms=[d.brand,d.model,d.variant].filter(Boolean).map(norm);
  let candidates=stocks.filter(x=>terms.every(t=>!t||norm((x.name||'')+' '+(x.manufacturer||'')).includes(t.split(' ')[0])));
  if(d.power_kw)candidates=candidates.filter(x=>norm(x.name).includes(String(d.power_kw)));
@@ -402,10 +410,14 @@ function buildBOM(){
        if(r.condition==='with_external_dhw_tank'&&!current.building.with_external_dhw_tank)return;
        if(r.condition==='device_electrical_spec_allows'||r.condition==='3_phase_device_and_spec_allows'||r.condition==='according_to_device'||r.condition==='new_enclosure_required')return;
        if(r.required===false&&r.default_enabled!==true&&r.role!=='installation_service')return;
-       let st=stockByRecipe(r),qty=recipeQty(r);
+       let recipeRow=r;
+       if(r.role==='installation_service'&&r.tier_pohoda_plu){
+         recipeRow={...r,pohoda_plu:r.tier_pohoda_plu[current.installation_tier||'standard']||r.pohoda_plu};
+       }
+       let st=stockByRecipe(recipeRow),qty=recipeQty(r);
        let defaultPrice=r.default_sell_price_ex_vat!=null?+r.default_sell_price_ex_vat:null;
        if(r.role==='installation_service'){
-         defaultPrice=installationPrice(current.installation_tier||'standard');
+         defaultPrice=st?.sell_price_ex_vat??installationPrice(current.installation_tier||'standard');
        }
        items.push({
          role:r.role,
