@@ -122,6 +122,22 @@ window.SpektraDB = (() => {
     return count;
   }
 
+  async function uploadQuoteImage(file, quoteKey) {
+    if (!client || !user) throw new Error('Online databáza nie je prihlásená.');
+    if (!file) throw new Error('Chýba obrázok.');
+    const ext=(file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg');
+    const safe=String(quoteKey||'quote').replace(/[^a-zA-Z0-9_-]/g,'_');
+    const path=user.id+'/'+safe+'/'+Date.now()+'.'+ext;
+    const { error } = await client.storage.from('quote-images').upload(path,file,{
+      cacheControl:'3600',
+      upsert:false,
+      contentType:file.type||'image/jpeg'
+    });
+    if (error) throw error;
+    const { data } = client.storage.from('quote-images').getPublicUrl(path);
+    return { path, url:data.publicUrl };
+  }
+
   async function listQuotes() {
     if (!client || !user) return [];
     const { data, error } = await client.from('quotes')
@@ -189,5 +205,5 @@ window.SpektraDB = (() => {
     return { remote_id:remoteId, remote_customer_id:customerId };
   }
 
-  return { configured, init, signIn, signUp, signOut, isAuthenticated, getUser, getProfile, listStocks, upsertStocks, listQuotes, saveQuote };
+  return { configured, init, signIn, signUp, signOut, isAuthenticated, getUser, getProfile, listStocks, upsertStocks, uploadQuoteImage, listQuotes, saveQuote };
 })();
