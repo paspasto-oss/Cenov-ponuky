@@ -173,6 +173,7 @@ window.SpektraDB = (() => {
       building:q.building||{},
       device:q.device||{},
       optional_services:q.optional_services||{},
+      subsidy:q.subsidy||{},
       subtotal_ex_vat:q.net||0,
       vat_pct:q.vat_pct||23,
       total_inc_vat:q.total||0,
