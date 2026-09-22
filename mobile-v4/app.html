@@ -752,6 +752,26 @@ function offerHtml(){
     ? '<div style="margin-top:18px"><div style="font-weight:700;margin-bottom:6px">Rozsah montáže</div><ul style="margin:0 0 0 18px;padding:0;line-height:1.45">'+install.work_scope.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>'
     : '';
 
+  const materialScopeParts=[];
+  if(current.system_type==='monoblock'){
+    materialScopeParts.push('hydraulické armatúry, filtre a odlučovače');
+    materialScopeParts.push('obehové čerpadlo, expanzná nádoba a poistné prvky');
+    materialScopeParts.push('Cu potrubie 28 mm + izolácia do 5 m');
+    materialScopeParts.push('protimrazová ochrana a antivibračné podstavce');
+  }else if(current.system_type==='split'){
+    materialScopeParts.push('hydraulické armatúry, filtre a odlučovače');
+    materialScopeParts.push('obehové čerpadlo, expanzná nádoba a poistné prvky');
+    materialScopeParts.push('chladivové potrubie 3/8\"–5/8\" + izolácia do 5 m');
+    materialScopeParts.push('odvod kondenzátu a antivibračné podstavce');
+  }else{
+    materialScopeParts.push('štandardný montážny a pripojovací materiál podľa zvoleného zariadenia');
+  }
+  materialScopeParts.push('elektro materiál, istenie, rozvodnica, káble, lišta a vývodky');
+  if(current.building?.with_external_dhw_tank){
+    materialScopeParts.push('TÚV armatúry, expanzná nádoba, poistný ventil, prepínací ventil a servo');
+  }
+  const materialScope='<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:5px">Rozsah materiálu</div><div style="color:#444;line-height:1.45">'+esc(materialScopeParts.join(' · '))+'</div></div>';
+
   const annual=current.optional_services?.annual_service!==false
     ? '<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:4px">Servis a záruka</div><div><b>Ročná servisná prehliadka tepelného čerpadla: 150 € s DPH / rok.</b><br><span style="color:#555">Účtuje sa pri vykonaní prehliadky. Podmienky predĺženej záruky sa riadia konkrétnym výrobcom a záručným programom.</span></div></div>'
     : '';
@@ -816,7 +836,7 @@ function offerHtml(){
       '</div>'+
     '</div>'+
 
-    note+scope+annual+
+    note+materialScope+scope+annual+
 
     '<div style="position:absolute;left:9mm;right:9mm;bottom:8mm;border-top:1px solid #888;padding-top:5px;display:flex;justify-content:space-between;color:#555;font-size:8px">'+
       '<div>Spektra Install s.r.o.<br>Hollého 210, 015 01 Rajec</div>'+
