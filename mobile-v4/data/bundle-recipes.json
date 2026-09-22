@@ -1,8 +1,8 @@
 {
-  "version": 17,
-  "updated_at": "2026-09-21",
+  "version": 18,
+  "updated_at": "2026-09-22",
   "source": "POHODA export Zásoby(2).xlsx",
-  "note": "HERZ DN15 privzdušňovací/odvzdušňovací ventil je súčasť ÚK, preto zostáva v monobloku aj splite. Protimrazové WFV ventily len monoblok.",
+  "note": "Doplnené mapovania z Zásoby0.xlsx: WFV-25, HERZ DN15, JV-80, montážne služby podľa tieru, split kondenzát a preplach.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -214,7 +214,7 @@
           "qty": 1,
           "unit": "súb.",
           "required": true,
-          "mapping_status": "needs_service_card",
+          "mapping_status": "mapped_by_tier",
           "default_sell_price_ex_vat": 900,
           "note": "Cena montáže je samostatná služba. Materiál sa oceňuje položkovo na pozadí z POHODY. Kalkulačný čas montáže: 2 montéri × 10 hodín = 20 človekohodín. Nezamieňať s cenou voliteľného preplachu. Montáž má dve úrovne: ŠTANDARD 900 € bez DPH a EKONOM 600 € bez DPH pri splnení prípravných podmienok zákazníkom.",
           "visible_to_customer": true,
@@ -240,6 +240,10 @@
             "economy": {
               "price_ex_vat": 600
             }
+          },
+          "tier_pohoda_plu": {
+            "standard": "63",
+            "economy": "64"
           }
         },
         {
@@ -371,13 +375,13 @@
         },
         {
           "role": "antifreeze_valve",
-          "pohoda_code": null,
+          "pohoda_code": "601561",
           "pohoda_plu": null,
           "expected_name": "Protimrazový ventil WFV-25 M, PN 10, kvs 68",
           "qty": 2,
           "unit": "ks",
           "required": true,
-          "mapping_status": "needs_product",
+          "mapping_status": "mapped",
           "customer_group": "Ochrana monobloku proti zamrznutiu",
           "note": "Štandard Spektra pre monoblok: 2 ks protimrazového ventilu WFV-25 M, jeden na prívod a jeden na spiatočku.",
           "recommended_qty": 2
@@ -454,13 +458,13 @@
         },
         {
           "role": "wall_penetration_80mm_50cm",
-          "pohoda_code": null,
+          "pohoda_code": "JV-80",
           "pohoda_plu": null,
           "expected_name": "Prieraz / jadrové vŕtanie cez stenu Ø80 mm, hrúbka do 50 cm",
           "qty": 1,
           "unit": "súb.",
           "required": true,
-          "mapping_status": "needs_service_card",
+          "mapping_status": "mapped",
           "customer_group": "Montážne práce",
           "note": "Štandardne 1 prestup cez stenu; vytvoriť službu v POHODE."
         },
@@ -492,13 +496,13 @@
         },
         {
           "role": "freeze_air_admission_vent",
-          "pohoda_code": null,
-          "pohoda_plu": null,
+          "pohoda_code": "1263001",
+          "pohoda_plu": "108274",
           "expected_name": "HERZ ventil DN15 privzdušňovací a odvzdušňovací, so spätným ventilom, závitový, mosadz/EPDM",
           "qty": 1,
           "unit": "ks",
           "required": true,
-          "mapping_status": "needs_product",
+          "mapping_status": "mapped",
           "customer_group": "Ochrana monobloku proti zamrznutiu",
           "note": "Štandard Spektra pre monoblok: 1 ks HERZ DN15 privzdušňovací/odvzdušňovací ventil so spätným ventilom.",
           "recommended_qty": 1
@@ -728,13 +732,13 @@
         },
         {
           "role": "condensate_drain",
-          "pohoda_code": null,
-          "pohoda_plu": null,
-          "expected_name": "Odvod kondenzátu vnútornej jednotky",
+          "pohoda_code": "ART01375",
+          "pohoda_plu": "104891",
+          "expected_name": "PVC trubka na odvod kondenzátu 20 mm Artiplastic",
           "qty": 5,
           "unit": "m",
           "required": false,
-          "mapping_status": "needs_product"
+          "mapping_status": "mapped"
         },
         {
           "role": "installation_service",
@@ -744,7 +748,7 @@
           "qty": 1,
           "unit": "súb.",
           "required": true,
-          "mapping_status": "needs_service_card",
+          "mapping_status": "mapped_by_tier",
           "default_sell_price_ex_vat": 1050,
           "visible_to_customer": true,
           "work_scope": [
@@ -771,6 +775,10 @@
             "economy": {
               "price_ex_vat": 750
             }
+          },
+          "tier_pohoda_plu": {
+            "standard": "66",
+            "economy": "65"
           }
         },
         {
@@ -871,13 +879,13 @@
         },
         {
           "role": "wall_penetration_80mm_50cm",
-          "pohoda_code": null,
+          "pohoda_code": "JV-80",
           "pohoda_plu": null,
           "expected_name": "Prieraz / jadrové vŕtanie cez stenu Ø80 mm, hrúbka do 50 cm",
           "qty": 1,
           "unit": "súb.",
           "required": true,
-          "mapping_status": "needs_service_card",
+          "mapping_status": "mapped",
           "customer_group": "Montážne práce",
           "note": "Štandardne 1 prestup cez stenu; vytvoriť službu v POHODE."
         },
@@ -922,14 +930,14 @@
         },
         {
           "role": "freeze_air_admission_vent",
-          "pohoda_code": null,
-          "pohoda_plu": null,
+          "pohoda_code": "1263001",
+          "pohoda_plu": "108274",
           "expected_name": "HERZ ventil DN15 privzdušňovací a odvzdušňovací, so spätným ventilom, závitový, mosadz/EPDM",
           "qty": 1,
           "unit": "ks",
           "required": true,
           "recommended_qty": 1,
-          "mapping_status": "needs_product",
+          "mapping_status": "mapped",
           "customer_group": "Hydraulické a montážne príslušenstvo",
           "note": "Súčasť vykurovacieho okruhu (ÚK), preto sa používa pri monobloku aj splite. Po novom exporte POHODY doplniť presný kód/PLU."
         }
@@ -1115,12 +1123,12 @@
         {
           "role": "heating_system_flush_cleaner_inhibitor",
           "pohoda_code": null,
-          "pohoda_plu": null,
+          "pohoda_plu": "62",
           "expected_name": "Preplach vykurovacieho systému + cleaner + inhibitor",
           "qty": 1,
           "unit": "súb.",
           "required": false,
-          "mapping_status": "needs_service_and_material_cards",
+          "mapping_status": "mapped_service",
           "default_sell_price_ex_vat": 400,
           "price_min_ex_vat": 350,
           "price_max_ex_vat": 450,
