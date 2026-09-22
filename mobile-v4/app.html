@@ -109,16 +109,22 @@
       <div id="alternatives" class="list" style="margin-top:9px"></div>
     </div>
     <div class="card">
-      <h2>Obrázok zariadenia do PDF</h2>
-      <div id="quoteImagePreview" class="hidden" style="margin-bottom:10px;background:#fff;border-radius:12px;padding:8px;text-align:center">
-        <img id="quoteImageImg" alt="Obrázok zariadenia" style="display:block;width:100%;max-height:220px;object-fit:contain;border-radius:8px">
-      </div>
-      <label class="btn ghost full" style="display:block;text-align:center">
-        Vybrať alebo odfotiť obrázok
-        <input id="quoteImageInput" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="handleQuoteImage(this.files[0])">
+      <h2>Obrázky do PDF</h2>
+      <label class="row" style="cursor:pointer;margin-bottom:10px">
+        <div>
+          <b>PDF s obrázkami</b>
+          <small>Ak nie je zaškrtnuté, ponuka sa vytvorí bez obrázkov.</small>
+        </div>
+        <input id="includePdfImages" type="checkbox" style="width:24px;height:24px" onchange="togglePdfImages()">
       </label>
-      <button id="removeQuoteImageBtn" class="btn ghost full hidden" style="margin-top:8px" onclick="removeQuoteImage()">Odstrániť obrázok</button>
-      <div id="quoteImageStatus" class="sub" style="margin-top:8px">Do PDF sa vloží jeden hlavný obrázok zariadenia.</div>
+      <div id="pdfImagesBox" class="hidden">
+        <div id="pdfImagesPreview" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:10px"></div>
+        <label class="btn ghost full" style="display:block;text-align:center">
+          + Pridať obrázky
+          <input id="pdfImagesInput" type="file" accept="image/jpeg,image/png,image/webp" multiple style="display:none" onchange="handlePdfImages(this.files)">
+        </label>
+      </div>
+      <div id="quoteImageStatus" class="sub" style="margin-top:8px">Predvolený Spektra banner je pripravený. Obrázky sa do PDF vložia iba po zaškrtnutí.</div>
     </div>
     <div class="card">
       <h2>Položky na pozadí</h2>
@@ -317,7 +323,7 @@ function renderHome(){
 }
 function labelStatus(x){return x==='sent'?'Odoslaná':x==='approved'?'Schválená':'Rozpracovaná'}
 function labelCat(x){return x==='heat_pump'?'Tepelné čerpadlo':x==='air_conditioning'?'Klimatizácia':x==='boiler'?'Kotol':'Iné'}
-function startWizard(){current={id:'q_'+Date.now(),quote_no:'26NA'+String(quotes.length+1).padStart(4,'0'),status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true}};category='heat_pump';brand='';recommendation=null;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
+function startWizard(){current={id:'q_'+Date.now(),quote_no:'26NA'+String(quotes.length+1).padStart(4,'0'),status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_images_enabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true}};category='heat_pump';brand='';recommendation=null;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
 function nextBuilding(){let name=s(document.getElementById('cName').value),phone=s(document.getElementById('cPhone').value),addr=s(document.getElementById('cAddress').value);if(!name||!phone||!addr){alert('Vyplň meno, telefón a adresu realizácie.');return}current.customer={name,phone,email:s(document.getElementById('cEmail').value),address:addr,note:s(document.getElementById('cNote').value)};go('step2')}
 function toggleLoss(){let known=document.getElementById('hasLoss').value==='yes';document.getElementById('lossKnown').classList.toggle('hidden',!known);document.getElementById('lossEstimate').classList.toggle('hidden',known)}
 function nextCategory(){let known=document.getElementById('hasLoss').value==='yes',loss=+document.getElementById('heatLoss').value||0,area=+document.getElementById('area').value||0;if(known&&loss<=0){alert('Zadaj tepelnú stratu.');return}if(!known&&area<=0){alert('Zadaj vykurovanú plochu.');return}current.building={known_loss:known,heat_loss_kw:known?loss:null,area_m2:known?null:area,w_per_m2:+document.getElementById('buildingClass').value,heating:document.getElementById('heating').value,with_external_dhw_tank:document.getElementById('dhwMode').value==='external'};renderChoices();go('step3')}
@@ -545,24 +551,66 @@ function updateFlushPrice(){
   document.getElementById('flushPrice').value=p;
   buildBOM();renderRecommendation();
 }
-function renderQuoteImageUI(){
-  const url=current?.device?.image_url||'';
-  const box=document.getElementById('quoteImagePreview');
-  const img=document.getElementById('quoteImageImg');
-  const remove=document.getElementById('removeQuoteImageBtn');
-  const status=document.getElementById('quoteImageStatus');
-  if(!box||!img||!remove||!status)return;
-  if(url){
-    img.src=url;
-    box.classList.remove('hidden');
-    remove.classList.remove('hidden');
-    status.textContent=current?.device?.image_storage_path?'Obrázok je uložený online a vloží sa do PDF.':'Obrázok sa vloží do PDF.';
-  }else{
-    img.removeAttribute('src');
-    box.classList.add('hidden');
-    remove.classList.add('hidden');
-    status.textContent='Do PDF sa vloží jeden hlavný obrázok zariadenia.';
+const DEFAULT_PDF_BANNER='assets/pdf-images/tepelne-cerpadla-banner.jpg';
+
+function ensurePdfImagesState(){
+  if(!current)return;
+  if(!Array.isArray(current.pdf_images)){
+    const migrated=[];
+    if(current.device?.image_url){
+      migrated.push({
+        url:current.device.image_url,
+        path:current.device.image_storage_path||null,
+        name:'Obrázok zariadenia',
+        source:current.device.image_storage_path?'upload':'legacy'
+      });
+    }
+    if(!migrated.length && (current.category||category)==='heat_pump'){
+      migrated.push({url:DEFAULT_PDF_BANNER,path:null,name:'Spektra – tepelné čerpadlá',source:'default'});
+    }
+    current.pdf_images=migrated;
   }
+  if(typeof current.pdf_images_enabled!=='boolean'){
+    current.pdf_images_enabled=!!current.device?.image_url;
+  }
+}
+
+function renderQuoteImageUI(){
+  if(!current)return;
+  ensurePdfImagesState();
+  const toggle=document.getElementById('includePdfImages');
+  const box=document.getElementById('pdfImagesBox');
+  const preview=document.getElementById('pdfImagesPreview');
+  const status=document.getElementById('quoteImageStatus');
+  if(!toggle||!box||!preview||!status)return;
+
+  toggle.checked=!!current.pdf_images_enabled;
+  box.classList.toggle('hidden',!current.pdf_images_enabled);
+
+  const images=current.pdf_images||[];
+  preview.innerHTML=images.map((img,idx)=>
+    '<div style="background:#fff;border-radius:10px;padding:6px;color:#111;position:relative">'+
+      '<img src="'+esc(img.url)+'" alt="" style="width:100%;height:105px;object-fit:contain;display:block;border-radius:6px;background:#f5f5f5">'+
+      '<div style="font-size:10px;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(img.name||('Obrázok '+(idx+1)))+'</div>'+
+      '<button type="button" onclick="removePdfImage('+idx+')" style="position:absolute;right:7px;top:7px;border:0;background:#111;color:#fff;border-radius:999px;width:25px;height:25px;font-weight:900">×</button>'+
+    '</div>'
+  ).join('');
+
+  if(current.pdf_images_enabled){
+    status.textContent=images.length
+      ? 'Do PDF sa vloží '+images.length+' '+(images.length===1?'obrázok':'obrázky')+'. Prvý obrázok bude hlavný banner.'
+      : 'PDF s obrázkami je zapnuté, ale zatiaľ nie je vybraný žiadny obrázok.';
+  }else{
+    status.textContent='Obrázky sú vypnuté. PDF bude bez obrázkov.';
+  }
+}
+
+function togglePdfImages(){
+  if(!current)return;
+  ensurePdfImagesState();
+  current.pdf_images_enabled=document.getElementById('includePdfImages').checked;
+  renderQuoteImageUI();
+  upsertCurrent();
 }
 
 async function compressQuoteImage(file){
@@ -574,7 +622,7 @@ async function compressQuoteImage(file){
       i.onerror=()=>reject(new Error('Obrázok sa nepodarilo načítať.'));
       i.src=src;
     });
-    const maxW=1600,maxH=900;
+    const maxW=1600,maxH=1000;
     const scale=Math.min(1,maxW/img.width,maxH/img.height);
     const w=Math.max(1,Math.round(img.width*scale));
     const h=Math.max(1,Math.round(img.height*scale));
@@ -585,7 +633,7 @@ async function compressQuoteImage(file){
     ctx.drawImage(img,0,0,w,h);
     const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.84));
     if(!blob)throw new Error('Obrázok sa nepodarilo spracovať.');
-    return new File([blob],'device.jpg',{type:'image/jpeg'});
+    return new File([blob],(file.name||'image').replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg'});
   }finally{
     URL.revokeObjectURL(src);
   }
@@ -600,22 +648,30 @@ async function fileToDataUrl(file){
   });
 }
 
-async function handleQuoteImage(file){
-  if(!file||!current)return;
+async function handlePdfImages(files){
+  if(!files?.length||!current)return;
+  ensurePdfImagesState();
   const status=document.getElementById('quoteImageStatus');
   try{
-    if(status)status.textContent='Spracúvam obrázok…';
-    const compressed=await compressQuoteImage(file);
-    let url='',path='';
-    if(window.SpektraDB?.isAuthenticated()){
-      if(status)status.textContent='Nahrávam obrázok do online databázy…';
-      const uploaded=await SpektraDB.uploadQuoteImage(compressed,current.quote_no||current.id);
-      url=uploaded.url;path=uploaded.path;
-    }else{
-      url=await fileToDataUrl(compressed);
+    current.pdf_images_enabled=true;
+    for(const file of Array.from(files)){
+      if(status)status.textContent='Spracúvam '+file.name+'…';
+      const compressed=await compressQuoteImage(file);
+      let url='',path='';
+      if(window.SpektraDB?.isAuthenticated()){
+        if(status)status.textContent='Nahrávam '+file.name+' do online úložiska…';
+        const uploaded=await SpektraDB.uploadQuoteImage(compressed,current.quote_no||current.id);
+        url=uploaded.url;path=uploaded.path;
+      }else{
+        url=await fileToDataUrl(compressed);
+      }
+      current.pdf_images.push({
+        url,
+        path:path||null,
+        name:file.name||'Obrázok',
+        source:path?'upload':'local'
+      });
     }
-    current.device={...(current.device||recommendation||{}),image_url:url,image_storage_path:path||null};
-    recommendation=current.device;
     renderQuoteImageUI();
     await upsertCurrent();
   }catch(e){
@@ -623,15 +679,15 @@ async function handleQuoteImage(file){
     if(status)status.textContent='Chyba obrázka: '+e.message;
     alert('Obrázok sa nepodarilo uložiť: '+e.message);
   }finally{
-    const input=document.getElementById('quoteImageInput');
+    const input=document.getElementById('pdfImagesInput');
     if(input)input.value='';
   }
 }
 
-async function removeQuoteImage(){
-  if(!current?.device)return;
-  current.device={...current.device,image_url:null,image_storage_path:null};
-  recommendation=current.device;
+async function removePdfImage(index){
+  if(!current)return;
+  ensurePdfImagesState();
+  current.pdf_images.splice(index,1);
   renderQuoteImageUI();
   await upsertCurrent();
 }
@@ -665,16 +721,14 @@ function refreshQuoteFromCatalog(){
     fresh=powered.find(x=>x.power_kw>=target)||powered[powered.length-1]||candidates[0]||null;
   }
   if(fresh){
-    const oldImage=current.device?.image_url||null;
-    const oldPath=current.device?.image_storage_path||null;
-    fresh={...fresh,image_url:oldImage||fresh.image_url||null,image_storage_path:oldPath||fresh.image_storage_path||null};
-    recommendation=fresh;
-    current.device=fresh;
+    recommendation={...fresh};
+    current.device={...fresh};
+    ensurePdfImagesState();
   }
   buildBOM();
   renderRecommendation();
 }
-function pickAlternative(id){let d=deviceCatalog.find(x=>x.id===id);if(!d)return;recommendation={...d,image_url:null,image_storage_path:null};buildBOM();renderRecommendation()}
+function pickAlternative(id){let d=deviceCatalog.find(x=>x.id===id);if(!d)return;recommendation={...d};current.device={...d};ensurePdfImagesState();buildBOM();renderRecommendation()}
 async function upsertCurrent(){let i=quotes.findIndex(q=>q.id===current.id);if(i>=0)quotes[i]=JSON.parse(JSON.stringify(current));else quotes.push(JSON.parse(JSON.stringify(current)));persist();if(window.SpektraDB?.isAuthenticated()){try{const ids=await SpektraDB.saveQuote(current);current.remote_id=ids.remote_id;current.remote_customer_id=ids.remote_customer_id}catch(e){console.error('Online quote save failed',e)}}}
 function saveDraft(){current.status='draft';upsertCurrent();alert('Ponuka bola uložená ako rozpracovaná.')}
 function finishQuote(){
@@ -692,7 +746,7 @@ function renderFinal(){
  const annual=current.optional_services?.annual_service!==false?'<div class="srow" style="margin-top:10px"><span>Ročná servisná prehliadka</span><b>150 € s DPH / rok</b></div><div class="sub">Účtuje sa pri vykonaní servisu. Podmienky predĺženej záruky určuje výrobca.</div>':'';
  document.getElementById('finalSummary').innerHTML='<h2 style="margin-top:0">'+esc(current.customer.name)+'</h2><div class="sub">'+esc(current.customer.address)+'</div><div style="margin-top:14px"><b>'+esc(current.device.brand+' '+current.device.model+' '+(current.device.variant||''))+'</b></div><div class="srow"><span>Typ montáže</span><b>'+(current.installation_tier==='economy'?'EKONOM – '+installationPrice('economy')+' €':'ŠTANDARD – '+installationPrice('standard')+' €')+'</b></div>'+optional+annual+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+ (current.price_complete?eur(current.total):'Cena ešte nie je kompletná') +'</span></div>'
 }
-function openQuote(id){let q=quotes.find(x=>x.id===id);if(!q)return;current=JSON.parse(JSON.stringify(q));if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true};if(current.optional_services.annual_service===undefined)current.optional_services.annual_service=true;if(!current.installation_tier)current.installation_tier='standard';category=current.category||'heat_pump';brand=current.brand||'';recommendation=current.device||null;document.getElementById('cName').value=current.customer.name||'';document.getElementById('cPhone').value=current.customer.phone||'';document.getElementById('cEmail').value=current.customer.email||'';document.getElementById('cAddress').value=current.customer.address||'';document.getElementById('cNote').value=current.customer.note||'';refreshQuoteFromCatalog();renderFinal();go('step4')}
+function openQuote(id){let q=quotes.find(x=>x.id===id);if(!q)return;current=JSON.parse(JSON.stringify(q));ensurePdfImagesState();if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true};if(current.optional_services.annual_service===undefined)current.optional_services.annual_service=true;if(!current.installation_tier)current.installation_tier='standard';category=current.category||'heat_pump';brand=current.brand||'';recommendation=current.device||null;document.getElementById('cName').value=current.customer.name||'';document.getElementById('cPhone').value=current.customer.phone||'';document.getElementById('cEmail').value=current.customer.email||'';document.getElementById('cAddress').value=current.customer.address||'';document.getElementById('cNote').value=current.customer.note||'';refreshQuoteFromCatalog();renderFinal();go('step4')}
 function message(){return 'Dobrý deň, posielame cenovú ponuku Spektra Install na '+(current.device?.brand||'')+' '+(current.device?.model||'')+'. '+(current.price_complete?'Cena spolu s DPH: '+eur(current.total)+'.':'Cena bude doplnená po kontrole.')+' Ďakujeme.'}
 
 function shareWA(){
@@ -780,8 +834,13 @@ function offerHtml(){
     ? '<div style="margin-top:14px;padding:10px 12px;background:#f6f6f6;border-left:3px solid #d60000">'+esc(current.customer.note)+'</div>'
     : '';
 
-  const heroImage=current.device?.image_url
-    ? '<div style="height:42mm;margin:0 0 18px;background:#f7f7f7;border:1px solid #e5e5e5;overflow:hidden;display:flex;align-items:center;justify-content:center"><img crossorigin="anonymous" src="'+esc(current.device.image_url)+'" style="width:100%;height:100%;object-fit:contain;display:block"></div>'
+  ensurePdfImagesState();
+  const enabledPdfImages=current.pdf_images_enabled?(current.pdf_images||[]):[];
+  const heroImage=enabledPdfImages.length
+    ? '<div style="height:42mm;margin:0 0 18px;background:#f7f7f7;border:1px solid #e5e5e5;overflow:hidden;display:flex;align-items:center;justify-content:center"><img crossorigin="anonymous" src="'+esc(enabledPdfImages[0].url)+'" style="width:100%;height:100%;object-fit:contain;display:block"></div>'
+    : '';
+  const extraImages=enabledPdfImages.length>1
+    ? '<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:6px">Fotografie</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">'+enabledPdfImages.slice(1).map(img=>'<div style="height:42mm;border:1px solid #e5e5e5;background:#f7f7f7;display:flex;align-items:center;justify-content:center;overflow:hidden"><img crossorigin="anonymous" src="'+esc(img.url)+'" style="width:100%;height:100%;object-fit:contain;display:block"></div>').join('')+'</div></div>'
     : '';
 
   return '<div style="width:190mm;min-height:277mm;padding:10mm 9mm 8mm;font-family:Arial,sans-serif;color:#111;background:#fff;font-size:10.5px;line-height:1.35;position:relative">'+
@@ -836,7 +895,7 @@ function offerHtml(){
       '</div>'+
     '</div>'+
 
-    note+materialScope+scope+annual+
+    extraImages+note+materialScope+scope+annual+
 
     '<div style="position:absolute;left:9mm;right:9mm;bottom:8mm;border-top:1px solid #888;padding-top:5px;display:flex;justify-content:space-between;color:#555;font-size:8px">'+
       '<div>Spektra Install s.r.o.<br>Hollého 210, 015 01 Rajec</div>'+
