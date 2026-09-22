@@ -595,23 +595,97 @@ function shareWA(){
 }
 
 function offerHtml(){
-  let vis=current.items.filter(i=>i.visible||i.role==='device');
-  let rows=vis.map(i=>'<tr><td>'+esc(i.name)+'</td><td>'+i.qty+' '+esc(i.unit)+'</td><td style="text-align:right">'+eur((i.price||0)*i.qty)+'</td></tr>').join('');
-  let install=current.items.find(i=>i.role==='installation_service'||i.role==='installation');
-  let scope=install?.work_scope?.length?'<h3 style="margin:18px 0 6px">Rozsah montáže</h3><ul style="margin-top:6px">'+install.work_scope.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>':'';
-  let annual=current.optional_services?.annual_service!==false?'<h3 style="margin:18px 0 6px">Servis a záruka</h3><p><b>Ročná servisná prehliadka tepelného čerpadla: 150 € s DPH / rok.</b><br>Účtuje sa pri vykonaní prehliadky. Podmienky predĺženej záruky sa riadia konkrétnym výrobcom a záručným programom.</p>':'';
-  return '<div style="width:190mm;padding:10mm 8mm;font-family:Arial,sans-serif;color:#111;background:#fff;font-size:12px;line-height:1.3">'+
-    '<h1 style="font-size:24px;border-bottom:3px solid #e52424;padding-bottom:8px;margin:0 0 14px">Spektra Install s.r.o. – Cenová ponuka</h1>'+
-    '<div style="display:flex;justify-content:space-between;gap:20px;margin-bottom:22px">'+
-      '<div><b>'+esc(current.customer.name)+'</b><br>'+esc(current.customer.address)+'<br>'+esc(current.customer.phone)+'<br>'+esc(current.customer.email)+'</div>'+
-      '<div style="text-align:right"><b>'+esc(current.quote_no)+'</b><br>'+new Date().toLocaleDateString('sk-SK')+'</div>'+
+  const vis=current.items.filter(i=>i.visible||i.role==='device');
+  const issueDate=new Date();
+  const validDate=new Date(issueDate.getTime()+14*24*60*60*1000);
+  const issue=issueDate.toLocaleDateString('sk-SK');
+  const valid=validDate.toLocaleDateString('sk-SK');
+  const net=current.net||0;
+  const vat=current.vat||0;
+  const total=current.total||0;
+
+  const rows=vis.map(i=>{
+    const unit=Number(i.price||0);
+    const amount=unit*Number(i.qty||0);
+    return '<tr>'+
+      '<td style="padding:7px 5px;border-bottom:1px solid #d8d8d8">'+esc(i.name)+'</td>'+
+      '<td style="padding:7px 5px;border-bottom:1px solid #d8d8d8;text-align:center">'+i.qty+' '+esc(i.unit)+'</td>'+
+      '<td style="padding:7px 5px;border-bottom:1px solid #d8d8d8;text-align:right">'+eur(unit)+'</td>'+
+      '<td style="padding:7px 5px;border-bottom:1px solid #d8d8d8;text-align:right;font-weight:700">'+eur(amount)+'</td>'+
+    '</tr>';
+  }).join('');
+
+  const install=current.items.find(i=>i.role==='installation_service'||i.role==='installation');
+  const scope=install?.work_scope?.length
+    ? '<div style="margin-top:18px"><div style="font-weight:700;margin-bottom:6px">Rozsah montáže</div><ul style="margin:0 0 0 18px;padding:0;line-height:1.45">'+install.work_scope.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>'
+    : '';
+
+  const annual=current.optional_services?.annual_service!==false
+    ? '<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:4px">Servis a záruka</div><div><b>Ročná servisná prehliadka tepelného čerpadla: 150 € s DPH / rok.</b><br><span style="color:#555">Účtuje sa pri vykonaní prehliadky. Podmienky predĺženej záruky sa riadia konkrétnym výrobcom a záručným programom.</span></div></div>'
+    : '';
+
+  const note=current.customer.note
+    ? '<div style="margin-top:14px;padding:10px 12px;background:#f6f6f6;border-left:3px solid #d60000">'+esc(current.customer.note)+'</div>'
+    : '';
+
+  return '<div style="width:190mm;min-height:277mm;padding:10mm 9mm 8mm;font-family:Arial,sans-serif;color:#111;background:#fff;font-size:10.5px;line-height:1.35;position:relative">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:26px">'+
+      '<div style="font-size:9px;color:#666;line-height:1.45">'+
+        'Spektra Install s.r.o.<br>Hollého 210, 015 01 Rajec<br>IČO: 53690036 · IČ DPH: SK2121464047'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:10px">'+
+        '<div style="width:38px;height:38px;border:5px solid #d60000;border-right-color:transparent;border-radius:50%"></div>'+
+        '<div style="font-size:21px;font-weight:800;line-height:1">SPEKTRA<br><span style="font-weight:500">INSTALL</span></div>'+
+      '</div>'+
     '</div>'+
-    (current.customer.note?'<div style="margin:12px 0;padding:10px;background:#f4f4f4">'+esc(current.customer.note)+'</div>':'')+
-    '<table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:7px;border-bottom:1px solid #bbb">Položka</th><th style="text-align:left;padding:7px;border-bottom:1px solid #bbb">Množstvo</th><th style="text-align:right;padding:7px;border-bottom:1px solid #bbb">Cena bez DPH</th></tr></thead><tbody>'+
-      rows+
-    '</tbody></table>'+
-    scope+annual+
-    '<div style="text-align:right;font-size:21px;font-weight:bold;margin-top:24px">'+(current.price_complete?'Spolu s DPH: '+eur(current.total):'Cena bude doplnená po kontrole')+'</div>'+
+
+    '<div style="display:grid;grid-template-columns:1.4fr .8fr;gap:28px;margin-bottom:18px">'+
+      '<div>'+
+        '<div style="font-size:9px;font-weight:700;margin-bottom:4px">PRE</div>'+
+        '<div style="font-weight:700">'+esc(current.customer.name||'')+'</div>'+
+        '<div>'+esc(current.customer.address||'')+'</div>'+
+        '<div>'+esc(current.customer.phone||'')+'</div>'+
+        '<div>'+esc(current.customer.email||'')+'</div>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:auto auto;gap:2px 14px;justify-content:end">'+
+        '<div style="font-size:9px">Číslo ponuky:</div><div style="font-weight:700;text-align:right">'+esc(current.quote_no||'')+'</div>'+
+        '<div style="font-size:9px">Dátum vystavenia:</div><div style="font-weight:700;text-align:right">'+issue+'</div>'+
+        '<div style="font-size:9px">Platnosť do:</div><div style="font-weight:700;text-align:right">'+valid+'</div>'+
+      '</div>'+
+    '</div>'+
+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1.25fr;margin:14px 0 18px">'+
+      '<div style="background:#d60000;color:#fff;padding:9px 11px"><div style="font-size:8px;opacity:.9">Číslo ponuky</div><div style="font-size:14px">'+esc(current.quote_no||'')+'</div></div>'+
+      '<div style="background:#d60000;color:#fff;padding:9px 11px;border-left:1px solid rgba(255,255,255,.4)"><div style="font-size:8px;opacity:.9">Dátum</div><div style="font-size:14px">'+issue+'</div></div>'+
+      '<div style="background:#d60000;color:#fff;padding:9px 11px;border-left:1px solid rgba(255,255,255,.4)"><div style="font-size:8px;opacity:.9">Platnosť</div><div style="font-size:14px">'+valid+'</div></div>'+
+      '<div style="background:#333;color:#fff;padding:9px 11px"><div style="font-size:8px;opacity:.9">Cena spolu s DPH</div><div style="font-size:14px;font-weight:700">'+(current.price_complete?eur(total):'—')+'</div></div>'+
+    '</div>'+
+
+    '<div style="font-size:9px;font-style:italic;margin-bottom:6px">Ponuka</div>'+
+    '<table style="width:100%;border-collapse:collapse;font-size:9.5px">'+
+      '<thead><tr>'+
+        '<th style="text-align:left;padding:7px 5px;border-bottom:1px solid #999">Popis</th>'+
+        '<th style="text-align:center;padding:7px 5px;border-bottom:1px solid #999;width:70px">Množstvo</th>'+
+        '<th style="text-align:right;padding:7px 5px;border-bottom:1px solid #999;width:92px">Jedn. cena</th>'+
+        '<th style="text-align:right;padding:7px 5px;border-bottom:1px solid #999;width:92px">Spolu</th>'+
+      '</tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+    '</table>'+
+
+    '<div style="display:flex;justify-content:flex-end;margin-top:8px">'+
+      '<div style="width:255px">'+
+        '<div style="display:flex;justify-content:space-between;padding:3px 0"><span>Základ dane:</span><b>'+eur(net)+'</b></div>'+
+        '<div style="display:flex;justify-content:space-between;padding:3px 0"><span>DPH '+(current.vat_pct||23)+' %:</span><b>'+eur(vat)+'</b></div>'+
+        '<div style="display:flex;justify-content:space-between;padding:7px 0 3px;border-top:2px solid #111;font-size:14px"><span>SPOLU:</span><b>'+(current.price_complete?eur(total):'—')+'</b></div>'+
+      '</div>'+
+    '</div>'+
+
+    note+scope+annual+
+
+    '<div style="position:absolute;left:9mm;right:9mm;bottom:8mm;border-top:1px solid #888;padding-top:5px;display:flex;justify-content:space-between;color:#555;font-size:8px">'+
+      '<div>Spektra Install s.r.o.<br>Hollého 210, 015 01 Rajec</div>'+
+      '<div style="text-align:right">spektrainstall.sk · spektrashop.sk</div>'+
+    '</div>'+
   '</div>';
 }
 
