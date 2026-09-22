@@ -1,8 +1,8 @@
 {
-  "version": 19,
+  "version": 20,
   "updated_at": "2026-09-22",
   "source": "POHODA export Zásoby1.xlsx",
-  "note": "Doplnené: PG21 vývodky, PVC lišta 40x40, JYTY-O 4x1, odstraňovač plynu/cyklónový filter. Prúdový chránič ostáva povinný, ale čaká na presnú POHODA kartu.",
+  "note": "Split používa spoločný elektrobalík JYTY-O 4x1 10 jednotiek; duplicitný model-dependent communication_cable_split odstránený.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -718,17 +718,6 @@
           "required": true,
           "mapping_status": "mapped",
           "customer_group": "Hydraulické a montážne príslušenstvo"
-        },
-        {
-          "role": "communication_cable_split",
-          "pohoda_code": null,
-          "pohoda_plu": null,
-          "expected_name": "Prepojovací / komunikačný kábel split",
-          "qty": 10,
-          "unit": "m",
-          "required": true,
-          "mapping_status": "model_dependent",
-          "note": "Počet žíl a prierez podľa konkrétneho výrobcu/modelu."
         },
         {
           "role": "condensate_drain",
