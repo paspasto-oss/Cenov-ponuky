@@ -101,6 +101,7 @@
     <div class="topline"><button class="btn ghost small" onclick="go('step3')">← Späť</button><h1>4. Návrh aplikácie</h1></div>
     <div class="steps"><div class="step on"></div><div class="step on"></div><div class="step on"></div><div class="step on"></div><div class="step"></div></div>
     <div id="calcNotice" class="notice" style="margin-bottom:10px"></div>
+    <button class="btn ghost full" style="margin-bottom:10px" onclick="refreshQuoteFromCatalog()">↻ Obnoviť zariadenie a ceny z aktuálnej POHODY</button>
     <div class="card">
       <h2>Odporučené zariadenie</h2>
       <div id="recommendation" class="reco"></div>
@@ -258,12 +259,12 @@ async function loadConfig(){
     console.error('DB load failed',e);
   }
   try{
-    const r=await fetch('data/device-catalog.json?v=20260921-2',{cache:'no-store'});
+    const r=await fetch('data/device-catalog.json?v=20260922-4',{cache:'no-store'});
     if(!r.ok) throw new Error('device-catalog '+r.status);
     const j=await r.json();deviceCatalog=j.devices||[];
   }catch(e){deviceCatalog=fallbackDevices;configOk=false;console.error('Device catalog load failed:',e)}
   try{
-    const r=await fetch('data/bundle-recipes.json?v=20260921-2',{cache:'no-store'});
+    const r=await fetch('data/bundle-recipes.json?v=20260922-4',{cache:'no-store'});
     if(!r.ok) throw new Error('bundle-recipes '+r.status);
     const j=await r.json();bundleRecipes=j.bundles||[];
   }catch(e){bundleRecipes=[];configOk=false;console.error('Bundle recipes load failed:',e)}
@@ -548,6 +549,23 @@ function renderRecommendation(){
  let net=0,missing=false;current.items.forEach(i=>{if(i.price==null)missing=true;else net+=(+i.price||0)*(+i.qty||0)});current.net=net;current.vat_pct=23;current.vat=net*.23;current.total=net*1.23;
  let dev=current.items[0]?.price,install=current.items.slice(1).reduce((a,i)=>a+(i.price==null?0:(+i.price||0)*(+i.qty||0)),0);document.getElementById('devicePrice').textContent=eur(dev);document.getElementById('installPrice').textContent=missing?eur(install)+' (známe položky)':eur(install);document.getElementById('netPrice').textContent=missing?'Neúplná cena':eur(net);document.getElementById('vatPrice').textContent=missing?'—':eur(current.vat);document.getElementById('grossPrice').textContent=missing?'—':eur(current.total);document.getElementById('priceWarning').classList.toggle('hidden',!missing);current.price_complete=!missing
 }
+function refreshQuoteFromCatalog(){
+  if(!current)return;
+  let fresh=null;
+  if(current.device?.id) fresh=deviceCatalog.find(x=>x.id===current.device.id)||null;
+  if(!fresh){
+    const candidates=deviceCatalog.filter(x=>catalogCategory(x)===(current.category||category) && x.brand===(current.brand||brand) && x.active!==false);
+    const target=current.target_kw||current.required_kw||current.device?.power_kw||0;
+    const powered=candidates.filter(x=>x.power_kw!=null).sort((a,b)=>a.power_kw-b.power_kw);
+    fresh=powered.find(x=>x.power_kw>=target)||powered[powered.length-1]||candidates[0]||null;
+  }
+  if(fresh){
+    recommendation=fresh;
+    current.device=fresh;
+  }
+  buildBOM();
+  renderRecommendation();
+}
 function pickAlternative(id){let d=deviceCatalog.find(x=>x.id===id);if(!d)return;recommendation=d;buildBOM();renderRecommendation()}
 async function upsertCurrent(){let i=quotes.findIndex(q=>q.id===current.id);if(i>=0)quotes[i]=JSON.parse(JSON.stringify(current));else quotes.push(JSON.parse(JSON.stringify(current)));persist();if(window.SpektraDB?.isAuthenticated()){try{const ids=await SpektraDB.saveQuote(current);current.remote_id=ids.remote_id;current.remote_customer_id=ids.remote_customer_id}catch(e){console.error('Online quote save failed',e)}}}
 function saveDraft(){current.status='draft';upsertCurrent();alert('Ponuka bola uložená ako rozpracovaná.')}
@@ -566,7 +584,7 @@ function renderFinal(){
  const annual=current.optional_services?.annual_service!==false?'<div class="srow" style="margin-top:10px"><span>Ročná servisná prehliadka</span><b>150 € s DPH / rok</b></div><div class="sub">Účtuje sa pri vykonaní servisu. Podmienky predĺženej záruky určuje výrobca.</div>':'';
  document.getElementById('finalSummary').innerHTML='<h2 style="margin-top:0">'+esc(current.customer.name)+'</h2><div class="sub">'+esc(current.customer.address)+'</div><div style="margin-top:14px"><b>'+esc(current.device.brand+' '+current.device.model+' '+(current.device.variant||''))+'</b></div><div class="srow"><span>Typ montáže</span><b>'+(current.installation_tier==='economy'?'EKONOM – '+installationPrice('economy')+' €':'ŠTANDARD – '+installationPrice('standard')+' €')+'</b></div>'+optional+annual+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+ (current.price_complete?eur(current.total):'Cena ešte nie je kompletná') +'</span></div>'
 }
-function openQuote(id){let q=quotes.find(x=>x.id===id);if(!q)return;current=JSON.parse(JSON.stringify(q));if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true};if(current.optional_services.annual_service===undefined)current.optional_services.annual_service=true;if(!current.installation_tier)current.installation_tier='standard';category=current.category||'heat_pump';brand=current.brand||'';recommendation=current.device||null;document.getElementById('cName').value=current.customer.name||'';document.getElementById('cPhone').value=current.customer.phone||'';document.getElementById('cEmail').value=current.customer.email||'';document.getElementById('cAddress').value=current.customer.address||'';document.getElementById('cNote').value=current.customer.note||'';renderRecommendation();renderFinal();go('step4')}
+function openQuote(id){let q=quotes.find(x=>x.id===id);if(!q)return;current=JSON.parse(JSON.stringify(q));if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true};if(current.optional_services.annual_service===undefined)current.optional_services.annual_service=true;if(!current.installation_tier)current.installation_tier='standard';category=current.category||'heat_pump';brand=current.brand||'';recommendation=current.device||null;document.getElementById('cName').value=current.customer.name||'';document.getElementById('cPhone').value=current.customer.phone||'';document.getElementById('cEmail').value=current.customer.email||'';document.getElementById('cAddress').value=current.customer.address||'';document.getElementById('cNote').value=current.customer.note||'';refreshQuoteFromCatalog();renderFinal();go('step4')}
 function message(){return 'Dobrý deň, posielame cenovú ponuku Spektra Install na '+(current.device?.brand||'')+' '+(current.device?.model||'')+'. '+(current.price_complete?'Cena spolu s DPH: '+eur(current.total)+'.':'Cena bude doplnená po kontrole.')+' Ďakujeme.'}
 function shareWA(){let p=s(current.customer.phone).replace(/\s/g,'').replace(/^0/,'421');window.open('https://wa.me/'+p+'?text='+encodeURIComponent(message()),'_blank');markSent()}
 function shareEmail(){location.href='mailto:'+encodeURIComponent(current.customer.email||'')+'?subject='+encodeURIComponent('Cenová ponuka Spektra Install')+'&body='+encodeURIComponent(message());markSent()}
