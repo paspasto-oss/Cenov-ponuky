@@ -175,6 +175,23 @@
         </div>
         <input id="boilerCondensatePumpToggle" type="checkbox" style="width:24px;height:24px" onchange="toggleBoilerCondensatePump()">
       </label>
+      <label class="row" style="cursor:pointer;margin-top:10px">
+        <div>
+          <b>Ročný servis plynového kotla</b>
+          <small>POHODA: 90 € bez DPH / 110,70 € s DPH za rok · nezvyšuje cenu montáže</small>
+        </div>
+        <input id="gasAnnualServiceToggle" type="checkbox" checked style="width:24px;height:24px" onchange="toggleBoilerAnnualService()">
+      </label>
+    </div>
+    <div id="boilerBiomassOptionsCard" class="card hidden">
+      <h2>Servis kotla na biomasu</h2>
+      <label class="row" style="cursor:pointer">
+        <div>
+          <b>Ročný servis kotla na biomasu</b>
+          <small>Zobrazí sa v ponuke ako odporúčaná pravidelná servisná prehliadka. Cena sa doplní po vytvorení servisnej karty v POHODE.</small>
+        </div>
+        <input id="biomassAnnualServiceToggle" type="checkbox" checked style="width:24px;height:24px" onchange="toggleBiomassAnnualService()">
+      </label>
     </div>
     <div id="optionalServicesCard" class="card">
       <h2>Voliteľné služby</h2>
@@ -657,6 +674,13 @@ function syncOptionalUI(){
   if(boilerCard)boilerCard.classList.toggle('hidden',!showBoilerGas);
   const boilerPump=document.getElementById('boilerCondensatePumpToggle');
   if(boilerPump)boilerPump.checked=!!current?.optional_services?.condensate_pump;
+  const gasAnnual=document.getElementById('gasAnnualServiceToggle');
+  if(gasAnnual)gasAnnual.checked=current?.optional_services?.annual_service!==false;
+  const biomassCard=document.getElementById('boilerBiomassOptionsCard');
+  const showBiomass=activeCategory==='boiler' && ['pellet','biomass'].includes(current?.boiler_type||boilerType);
+  if(biomassCard)biomassCard.classList.toggle('hidden',!showBiomass);
+  const biomassAnnual=document.getElementById('biomassAnnualServiceToggle');
+  if(biomassAnnual)biomassAnnual.checked=current?.optional_services?.annual_service!==false;
   const tankRow=document.getElementById('boilerDhwTankRow');
   const tankToggle=document.getElementById('boilerDhwTankToggle');
   const tankEligible=showBoilerGas && (current?.device?.dhw_mode||recommendation?.dhw_mode||'none')==='none';
@@ -672,6 +696,18 @@ function syncOptionalUI(){
   if(wrap) wrap.classList.toggle('hidden',!on);
   const annual=document.getElementById('annualServiceToggle');
   if(annual) annual.checked=current?.optional_services?.annual_service!==false;
+}
+function toggleBoilerAnnualService(){
+  if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false};
+  current.optional_services.annual_service=!!document.getElementById('gasAnnualServiceToggle')?.checked;
+  renderFinal();
+  upsertCurrent();
+}
+function toggleBiomassAnnualService(){
+  if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false};
+  current.optional_services.annual_service=!!document.getElementById('biomassAnnualServiceToggle')?.checked;
+  renderFinal();
+  upsertCurrent();
 }
 function toggleBoilerDhwTank(){
   if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false};
@@ -977,14 +1013,27 @@ function renderFinal(){
  const flush=current.items.find(i=>i.role==='heating_system_flush_cleaner_inhibitor');
  const scope=install?.work_scope?.length?'<div style="margin-top:12px"><b>Montáž zahŕňa:</b><ul style="margin:7px 0 0 18px;padding:0">'+install.work_scope.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>':'';
  const optional=flush?'<div class="srow" style="margin-top:10px"><span>Preplach + cleaner + inhibitor</span><b>'+eur(flush.price)+'</b></div>':'';
- const annual=current.category==='heat_pump'&&current.optional_services?.annual_service!==false?'<div class="srow" style="margin-top:10px"><span>Ročná servisná prehliadka</span><b>150 € s DPH / rok</b></div><div class="sub">Účtuje sa pri vykonaní servisu. Podmienky predĺženej záruky určuje výrobca.</div>':'';
+ let annual='';
+ if(current.optional_services?.annual_service!==false){
+   if(current.category==='heat_pump'){
+     annual='<div class="srow" style="margin-top:10px"><span>Ročná servisná prehliadka TČ</span><b>150 € s DPH / rok</b></div><div class="sub">Účtuje sa pri vykonaní servisu. Podmienky predĺženej záruky určuje výrobca.</div>';
+   }else if(current.category==='boiler'&&current.boiler_type==='gas'){
+     annual='<div class="srow" style="margin-top:10px"><span>Ročný servis plynového kotla</span><b>90 € bez DPH / 110,70 € s DPH</b></div><div class="sub">Servis sa účtuje až pri vykonaní pravidelnej prehliadky a nezvyšuje cenu tejto montáže.</div>';
+   }else if(current.category==='boiler'&&['pellet','biomass'].includes(current.boiler_type)){
+     annual='<div class="srow" style="margin-top:10px"><span>Ročný servis kotla na biomasu</span><b>cena podľa rozsahu</b></div><div class="sub">Pravidelná servisná prehliadka sa účtuje samostatne. Cena bude doplnená podľa servisnej karty v POHODE.</div>';
+   }
+ }
  const subsidy=calculateSubsidy();
  const subsidyHtml=subsidy.program==='green'
    ? '<div class="srow" style="margin-top:10px"><span>Orientačná dotácia Zelená domácnostiam</span><b>− '+eur(subsidy.estimated_amount)+'</b></div><div class="srow"><span>Orientačne po dotácii</span><b>'+eur(subsidy.estimated_after_subsidy)+'</b></div>'
    : subsidy.program==='obnov'
      ? '<div class="srow" style="margin-top:10px"><span>Obnov dom mini+</span><b>až 11 000 €</b></div><div class="sub">Ďalšie kolo plánované na január 2027; konkrétna výška závisí od podmienok výzvy.</div>'
      : '';
- document.getElementById('finalSummary').innerHTML='<h2 style="margin-top:0">'+esc(current.customer.name)+'</h2><div class="sub">'+esc(current.customer.address)+'</div><div style="margin-top:14px"><b>'+esc(current.device.brand+' '+current.device.model+' '+(current.device.variant||''))+'</b></div><div class="srow"><span>Typ montáže</span><b>'+(current.installation_tier==='economy'?'EKONOM – '+installationPrice('economy')+' €':'ŠTANDARD – '+installationPrice('standard')+' €')+'</b></div>'+optional+annual+subsidyHtml+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+ (current.price_complete?eur(current.total):'Cena ešte nie je kompletná') +'</span></div>'
+ document.getElementById('finalSummary').innerHTML='<h2 style="margin-top:0">'+esc(current.customer.name)+'</h2><div class="sub">'+esc(current.customer.address)+'</div><div style="margin-top:14px"><b>'+esc(current.device.brand+' '+current.device.model+' '+(current.device.variant||''))+'</b></div><div class="srow"><span>Montáž</span><b>'+(
+   current.category==='heat_pump'
+     ? (current.installation_tier==='economy'?'EKONOM – '+installationPrice('economy')+' €':'ŠTANDARD – '+installationPrice('standard')+' €')
+     : (install?.price!=null?eur(install.price):'podľa cenníka')
+ )+'</b></div>'+optional+annual+subsidyHtml+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+ (current.price_complete?eur(current.total):'Cena ešte nie je kompletná') +'</span></div>'
 }
 function openQuote(id){let q=quotes.find(x=>x.id===id);if(!q)return;current=JSON.parse(JSON.stringify(q));ensurePdfImagesState();ensureSubsidyState();if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false};if(current.optional_services.annual_service===undefined)current.optional_services.annual_service=true;if(current.optional_services.condensate_pump===undefined)current.optional_services.condensate_pump=false;if(current.optional_services.dhw_tank_fe120===undefined)current.optional_services.dhw_tank_fe120=false;if(!current.installation_tier)current.installation_tier='standard';category=current.category||'heat_pump';brand=current.brand||'';boilerType=current.boiler_type||'gas';recommendation=current.device||null;document.getElementById('cName').value=current.customer.name||'';document.getElementById('cPhone').value=current.customer.phone||'';document.getElementById('cEmail').value=current.customer.email||'';document.getElementById('cAddress').value=current.customer.address||'';document.getElementById('cNote').value=current.customer.note||'';refreshQuoteFromCatalog();renderFinal();go('step4')}
 function message(){
@@ -1084,9 +1133,16 @@ function offerHtml(){
   }
   const materialScope='<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:5px">Rozsah materiálu</div><div style="color:#444;line-height:1.45">'+esc(materialScopeParts.join(' · '))+'</div></div>';
 
-  const annual=current.category==='heat_pump'&&current.optional_services?.annual_service!==false
-    ? '<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:4px">Servis a záruka</div><div><b>Ročná servisná prehliadka tepelného čerpadla: 150 € s DPH / rok.</b><br><span style="color:#555">Účtuje sa pri vykonaní prehliadky. Podmienky predĺženej záruky sa riadia konkrétnym výrobcom a záručným programom.</span></div></div>'
-    : '';
+  let annual='';
+  if(current.optional_services?.annual_service!==false){
+    if(current.category==='heat_pump'){
+      annual='<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:4px">Servis a záruka</div><div><b>Ročná servisná prehliadka tepelného čerpadla: 150 € s DPH / rok.</b><br><span style="color:#555">Účtuje sa pri vykonaní prehliadky. Podmienky predĺženej záruky sa riadia konkrétnym výrobcom a záručným programom.</span></div></div>';
+    }else if(current.category==='boiler'&&current.boiler_type==='gas'){
+      annual='<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:4px">Pravidelný servis</div><div><b>Ročný servis plynového kotla: 90 € bez DPH / 110,70 € s DPH.</b><br><span style="color:#555">Servis sa účtuje samostatne až pri vykonaní pravidelnej prehliadky a nezvyšuje cenu tejto montáže.</span></div></div>';
+    }else if(current.category==='boiler'&&['pellet','biomass'].includes(current.boiler_type)){
+      annual='<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:4px">Pravidelný servis</div><div><b>Ročný servis kotla na biomasu.</b><br><span style="color:#555">Odporúčaná pravidelná servisná prehliadka. Cena podľa rozsahu servisu a aktuálnej servisnej karty v POHODE.</span></div></div>';
+    }
+  }
 
   const note=current.customer.note
     ? '<div style="margin-top:14px;padding:10px 12px;background:#f6f6f6;border-left:3px solid #d60000">'+esc(current.customer.note)+'</div>'
