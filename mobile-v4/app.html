@@ -159,6 +159,16 @@
         <div id="economyState" class="sub" style="margin-top:8px">Podmienky nie sú potvrdené.</div>
       </div>
     </div>
+    <div id="boilerGasOptionsCard" class="card hidden">
+      <h2>Voliteľné príslušenstvo plynového kotla</h2>
+      <label class="row" style="cursor:pointer">
+        <div>
+          <b>Prečerpávačka kondenzátu SANIBROY</b>
+          <small>Voliteľné – ak kondenzát nie je možné odviesť samospádom.</small>
+        </div>
+        <input id="boilerCondensatePumpToggle" type="checkbox" style="width:24px;height:24px" onchange="toggleBoilerCondensatePump()">
+      </label>
+    </div>
     <div id="optionalServicesCard" class="card">
       <h2>Voliteľné služby</h2>
       <label class="row" style="cursor:pointer">
@@ -308,7 +318,7 @@ async function loadConfig(){
     const j=await r.json();deviceCatalog=j.devices||[];
   }catch(e){deviceCatalog=fallbackDevices;configOk=false;console.error('Device catalog load failed:',e)}
   try{
-    const r=await fetch('data/bundle-recipes.json?v=20260922-4',{cache:'no-store'});
+    const r=await fetch('data/bundle-recipes.json?v=20260923-gasboiler1',{cache:'no-store'});
     if(!r.ok) throw new Error('bundle-recipes '+r.status);
     const j=await r.json();bundleRecipes=j.bundles||[];
   }catch(e){bundleRecipes=[];configOk=false;console.error('Bundle recipes load failed:',e)}
@@ -348,7 +358,7 @@ function renderHome(){
 }
 function labelStatus(x){return x==='sent'?'Odoslaná':x==='approved'?'Schválená':'Rozpracovaná'}
 function labelCat(x){return x==='heat_pump'?'Tepelné čerpadlo':x==='air_conditioning'?'Klimatizácia':x==='boiler'?'Kotol':'Iné'}
-function startWizard(){current={id:'q_'+Date.now(),quote_no:'26NA'+String(quotes.length+1).padStart(4,'0'),status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_images_enabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;boilerType='gas';['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
+function startWizard(){current={id:'q_'+Date.now(),quote_no:'26NA'+String(quotes.length+1).padStart(4,'0'),status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_images_enabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;boilerType='gas';['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
 function nextBuilding(){let name=s(document.getElementById('cName').value),phone=s(document.getElementById('cPhone').value),addr=s(document.getElementById('cAddress').value);if(!name||!phone||!addr){alert('Vyplň meno, telefón a adresu realizácie.');return}current.customer={name,phone,email:s(document.getElementById('cEmail').value),address:addr,note:s(document.getElementById('cNote').value)};go('step2')}
 function toggleLoss(){let known=document.getElementById('hasLoss').value==='yes';document.getElementById('lossKnown').classList.toggle('hidden',!known);document.getElementById('lossEstimate').classList.toggle('hidden',known)}
 function nextCategory(){let known=document.getElementById('hasLoss').value==='yes',loss=+document.getElementById('heatLoss').value||0,area=+document.getElementById('area').value||0;if(known&&loss<=0){alert('Zadaj tepelnú stratu.');return}if(!known&&area<=0){alert('Zadaj vykurovanú plochu.');return}current.building={known_loss:known,heat_loss_kw:known?loss:null,area_m2:known?null:area,w_per_m2:+document.getElementById('buildingClass').value,heating:document.getElementById('heating').value,with_external_dhw_tank:document.getElementById('dhwMode').value==='external'};renderChoices();go('step3')}
@@ -421,15 +431,18 @@ function roleToStock(role){
 }
 function stockByRecipe(r){
  if(!r||!stocks.length)return null;
- if(r.pohoda_code){
-   const rc=norm(r.pohoda_code);
-   let byCode=stocks.find(x=>norm(x.code)===rc);
-   if(byCode)return byCode;
- }
  if(r.pohoda_plu){
    const rp=norm(r.pohoda_plu);
    let byPlu=stocks.find(x=>norm(x.plu)===rp);
    if(byPlu)return byPlu;
+ }
+ if(r.pohoda_code){
+   const rc=norm(r.pohoda_code);
+   const matches=stocks.filter(x=>norm(x.code)===rc);
+   if(matches.length){
+     matches.sort((a,b)=>(+b.quantity_available||0)-(+a.quantity_available||0));
+     return matches[0];
+   }
  }
  if(r.expected_name){
    const rn=norm(r.expected_name);
@@ -446,7 +459,14 @@ function recipeQty(r){
 function recipeName(r,stock){
  return stock?.name||r.expected_name||roleLabels[r.role]||r.role
 }
-function bundleKeyFor(d){let st=systemType(d);return st==='monoblock'?'hp_monoblock_5m':st==='split'?'hp_split_5m':st==='single_split_ac'?'ac_single_split_5m':null}
+function bundleKeyFor(d){
+  let st=systemType(d);
+  if(catalogCategory(d)==='boiler'){
+    if((d.boiler_type||current?.boiler_type)==='gas' && d.brand==='Protherm')return 'boiler_gas_protherm_standard';
+    return null;
+  }
+  return st==='monoblock'?'hp_monoblock_5m':st==='split'?'hp_split_5m':st==='single_split_ac'?'ac_single_split_5m':null
+}
 function consolidateBOM(items){
   const out=[], byKey=new Map();
   for(const i of items){
@@ -536,6 +556,27 @@ function buildBOM(){
      });
    }
  }
+ if(category==='boiler'&&current.boiler_type==='gas'&&current.optional_services?.condensate_pump){
+   const svcBundle=bundleRecipes.find(b=>b.key==='boiler_gas_optional_services');
+   const pump=svcBundle?.items?.find(r=>r.role==='condensate_pump_sanibroy');
+   if(pump){
+     const st=stockByRecipe(pump);
+     items.push({
+       role:pump.role,
+       name:recipeName(pump,st),
+       qty:recipeQty(pump),
+       unit:pump.unit||'ks',
+       pohoda:st,
+       pohoda_code:pump.pohoda_code||null,
+       mapping_status:pump.mapping_status|| (st?'mapped':'unmapped'),
+       price:st?.sell_price_ex_vat??null,
+       cost:st?.purchase_price_ex_vat??null,
+       visible:true,
+       customer_group:pump.customer_group||'Voliteľné príslušenstvo',
+       note:pump.note||''
+     });
+   }
+ }
  items=consolidateBOM(items);
  current.items=items;current.system_type=systemType(d);current.bundle_key=key;current.device=recommendation;current.route_m=5;current.updated=Date.now()
 }
@@ -576,8 +617,14 @@ function checkEconomyReady(){
   if(state)state.textContent=ready?'Všetky podmienky EKONOM sú splnené.':'EKONOM nie je možné uzavrieť, kým nie sú potvrdené všetky podmienky.';
 }
 function syncOptionalUI(){
+  const activeCategory=current?.category||category;
   const optionalCard=document.getElementById('optionalServicesCard');
-  if(optionalCard)optionalCard.classList.toggle('hidden',(current?.category||category)!=='heat_pump');
+  if(optionalCard)optionalCard.classList.toggle('hidden',activeCategory!=='heat_pump');
+  const boilerCard=document.getElementById('boilerGasOptionsCard');
+  const showBoilerGas=activeCategory==='boiler' && (current?.boiler_type||boilerType)==='gas';
+  if(boilerCard)boilerCard.classList.toggle('hidden',!showBoilerGas);
+  const boilerPump=document.getElementById('boilerCondensatePumpToggle');
+  if(boilerPump)boilerPump.checked=!!current?.optional_services?.condensate_pump;
   const on=!!current?.optional_services?.flush;
   const toggle=document.getElementById('flushToggle');
   const price=document.getElementById('flushPrice');
@@ -587,6 +634,12 @@ function syncOptionalUI(){
   if(wrap) wrap.classList.toggle('hidden',!on);
   const annual=document.getElementById('annualServiceToggle');
   if(annual) annual.checked=current?.optional_services?.annual_service!==false;
+}
+function toggleBoilerCondensatePump(){
+  if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false};
+  current.optional_services.condensate_pump=!!document.getElementById('boilerCondensatePumpToggle')?.checked;
+  buildBOM();
+  renderRecommendation();
 }
 function toggleFlushService(){
   if(!current.optional_services) current.optional_services={flush:false,flush_price_ex_vat:400};
@@ -888,7 +941,7 @@ function renderFinal(){
      : '';
  document.getElementById('finalSummary').innerHTML='<h2 style="margin-top:0">'+esc(current.customer.name)+'</h2><div class="sub">'+esc(current.customer.address)+'</div><div style="margin-top:14px"><b>'+esc(current.device.brand+' '+current.device.model+' '+(current.device.variant||''))+'</b></div><div class="srow"><span>Typ montáže</span><b>'+(current.installation_tier==='economy'?'EKONOM – '+installationPrice('economy')+' €':'ŠTANDARD – '+installationPrice('standard')+' €')+'</b></div>'+optional+annual+subsidyHtml+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+ (current.price_complete?eur(current.total):'Cena ešte nie je kompletná') +'</span></div>'
 }
-function openQuote(id){let q=quotes.find(x=>x.id===id);if(!q)return;current=JSON.parse(JSON.stringify(q));ensurePdfImagesState();ensureSubsidyState();if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true};if(current.optional_services.annual_service===undefined)current.optional_services.annual_service=true;if(!current.installation_tier)current.installation_tier='standard';category=current.category||'heat_pump';brand=current.brand||'';boilerType=current.boiler_type||'gas';recommendation=current.device||null;document.getElementById('cName').value=current.customer.name||'';document.getElementById('cPhone').value=current.customer.phone||'';document.getElementById('cEmail').value=current.customer.email||'';document.getElementById('cAddress').value=current.customer.address||'';document.getElementById('cNote').value=current.customer.note||'';refreshQuoteFromCatalog();renderFinal();go('step4')}
+function openQuote(id){let q=quotes.find(x=>x.id===id);if(!q)return;current=JSON.parse(JSON.stringify(q));ensurePdfImagesState();ensureSubsidyState();if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false};if(current.optional_services.annual_service===undefined)current.optional_services.annual_service=true;if(current.optional_services.condensate_pump===undefined)current.optional_services.condensate_pump=false;if(!current.installation_tier)current.installation_tier='standard';category=current.category||'heat_pump';brand=current.brand||'';boilerType=current.boiler_type||'gas';recommendation=current.device||null;document.getElementById('cName').value=current.customer.name||'';document.getElementById('cPhone').value=current.customer.phone||'';document.getElementById('cEmail').value=current.customer.email||'';document.getElementById('cAddress').value=current.customer.address||'';document.getElementById('cNote').value=current.customer.note||'';refreshQuoteFromCatalog();renderFinal();go('step4')}
 function message(){
   const sub=calculateSubsidy();
   let subsidyText='';
@@ -965,10 +1018,15 @@ function offerHtml(){
     materialScopeParts.push('obehové čerpadlo, expanzná nádoba a poistné prvky');
     materialScopeParts.push('chladivové potrubie 3/8\"–5/8\" + izolácia do 5 m');
     materialScopeParts.push('odvod kondenzátu a antivibračné podstavce');
+  }else if(current.category==='boiler'&&current.boiler_type==='gas'){
+    materialScopeParts.push('adaptér A1K, revízne koleno, flexi komínová rúra DN60 do 8 m a čierna komínová hlavica');
+    materialScopeParts.push('magnetický filter ABC MINI, uzatváracie armatúry, spätná klapka, šróbenia a vsuvky');
+    materialScopeParts.push('flexibilné pripojenie MERABELL pre vykurovanie a plynové pripojenie');
+    if(current.optional_services?.condensate_pump)materialScopeParts.push('prečerpávačka kondenzátu SANIBROY');
   }else{
     materialScopeParts.push('štandardný montážny a pripojovací materiál podľa zvoleného zariadenia');
   }
-  materialScopeParts.push('elektro materiál, istenie, rozvodnica, káble, lišta a vývodky');
+  if(current.category!=='boiler')materialScopeParts.push('elektro materiál, istenie, rozvodnica, káble, lišta a vývodky');
   if(current.building?.with_external_dhw_tank){
     materialScopeParts.push('TÚV armatúry, expanzná nádoba, poistný ventil, prepínací ventil a servo');
   }
