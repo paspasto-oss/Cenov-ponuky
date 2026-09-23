@@ -1,8 +1,8 @@
 {
-  "version": 23,
+  "version": 24,
   "updated_at": "2026-09-23",
   "source": "POHODA export Zásoby1.xlsx",
-  "note": "Plynový kotol: jeden spoločný montážny balík pre všetky značky; montáž PK-MONT z POHODY; doplnený E20i-W Wi-Fi termostat.",
+  "note": "Plynový kotol: doplnená voliteľná nádoba TÚV Protherm FE 120 BM pre vykurovacie-only modely.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -1341,6 +1341,19 @@
       "key": "boiler_gas_optional_services",
       "label": "Voliteľné príslušenstvo plynového kotla",
       "items": [
+        {
+          "role": "dhw_tank_fe120",
+          "pohoda_code": "PROTHERM12",
+          "pohoda_plu": "100247",
+          "expected_name": "PROTHERM FE 120 BM nepriamo vykurovací zásobník 117l",
+          "qty": 1,
+          "unit": "ks",
+          "required": false,
+          "default_enabled": false,
+          "mapping_status": "mapped",
+          "customer_group": "Voliteľné príslušenstvo",
+          "note": "Ponúka sa iba ku kotlu bez zabudovaného zásobníka a bez prietokového ohrevu TÚV."
+        },
         {
           "role": "condensate_pump_sanibroy",
           "pohoda_code": "SK6",
