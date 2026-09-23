@@ -1,8 +1,8 @@
 {
-  "version": 21,
-  "updated_at": "2026-09-22",
+  "version": 22,
+  "updated_at": "2026-09-23",
   "source": "POHODA export Zásoby1.xlsx",
-  "note": "Prúdové chrániče boli nahradené ďalšími 2 ks ističa B16 3P. Celkový štandard elektrobalíka: 4 ks ističa B16 3P.",
+  "note": "Doplnený štandardný montážny balík plynového kondenzačného kotla Protherm a voliteľná prečerpávačka kondenzátu SANIBROY.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -1153,6 +1153,193 @@
           "charge_mode": "future_annual_service",
           "include_in_initial_total": false,
           "note": "150 € s DPH za každú vykonanú ročnú prehliadku. V úvodnej ponuke sa zobrazuje informačne a nezvyšuje cenu montáže. Povinnosť pre predĺženú záruku závisí od výrobcu/programu."
+        }
+      ]
+    },
+    {
+      "key": "boiler_gas_protherm_standard",
+      "label": "Plynový kondenzačný kotol Protherm – štandardná montáž",
+      "customer_label": "Inštalačný materiál plynového kotla",
+      "description": "Štandardný balík montáže plynového kondenzačného kotla Protherm vrátane komínovej vložky DN60 a hydraulického pripojenia.",
+      "items": [
+        {
+          "role": "flue_adapter_a1k",
+          "pohoda_code": "0020257015",
+          "pohoda_plu": "100234",
+          "expected_name": "PROTHERM A1K pripojovací vertikálny adaptér pr. 60/100mm",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Odvod spalín"
+        },
+        {
+          "role": "flue_inspection_elbow_dn60",
+          "pohoda_code": "093AD",
+          "expected_name": "Koleno revízne lakované 90° DN60",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Odvod spalín"
+        },
+        {
+          "role": "flue_flex_dn60_black",
+          "pohoda_code": "0003C",
+          "expected_name": "Rúra flexibilná DN60/1m čierny plast",
+          "qty": 8,
+          "unit": "m",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Odvod spalín",
+          "note": "Štandardná dĺžka 8 m."
+        },
+        {
+          "role": "chimney_cap_dn60_black",
+          "pohoda_code": "416AS",
+          "pohoda_plu": "100425",
+          "expected_name": "Hlavica komínová čierna AL DN60",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Odvod spalín"
+        },
+        {
+          "role": "magnetic_filter_boiler",
+          "pohoda_code": "MF20 MINI",
+          "pohoda_plu": "570002",
+          "expected_name": "ABC Magnetický filter 3/4” MINI",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické pripojenie"
+        },
+        {
+          "role": "water_ball_valve_3_4",
+          "pohoda_code": "154079591609750001",
+          "pohoda_plu": "102564",
+          "expected_name": "IVR 954 EVERLAST guľový kohút FF3/4\"",
+          "qty": 4,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické pripojenie"
+        },
+        {
+          "role": "union_1_2",
+          "pohoda_code": "06401804",
+          "pohoda_plu": "108327",
+          "expected_name": "Šróbenie priame F/F s plochým tesnením 1/2\"",
+          "qty": 4,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické pripojenie"
+        },
+        {
+          "role": "check_valve_3_4",
+          "pohoda_code": "ZZM2",
+          "pohoda_plu": "104401",
+          "expected_name": "Spätná klapka JY504, 3/4\", kovová vložka",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické pripojenie"
+        },
+        {
+          "role": "nipple_3_4",
+          "pohoda_code": "06458005",
+          "pohoda_plu": "108448",
+          "expected_name": "Vsuvka M/M 3/4\" x 3/4\"",
+          "qty": 8,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické pripojenie"
+        },
+        {
+          "role": "merabell_ready_3_4_0_8m",
+          "pohoda_code": "M0422",
+          "pohoda_plu": "100592",
+          "expected_name": "MERABELL READY! G3/4\"-G3/4\", 0,8 m",
+          "qty": 4,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Hydraulické pripojenie"
+        },
+        {
+          "role": "merabell_ready_1_2_0_8m_boiler",
+          "pohoda_code": "M0414",
+          "pohoda_plu": "250018",
+          "expected_name": "MERABELL READY! G1/2\"-G1/2\", 0,8 m",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Plynové pripojenie"
+        },
+        {
+          "role": "gas_ball_valve_1_2",
+          "pohoda_code": "154079539009800002",
+          "pohoda_plu": "102507",
+          "expected_name": "IVR 100 ELITE GAS guľový kohút FF1/2\"",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Plynové pripojenie"
+        },
+        {
+          "role": "nipple_1_2",
+          "pohoda_code": "06458004",
+          "pohoda_plu": "108447",
+          "expected_name": "Vsuvka M/M 1/2\" x 1/2\"",
+          "qty": 2,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Plynové pripojenie"
+        },
+        {
+          "role": "installation_service",
+          "pohoda_code": "PK-MONT",
+          "expected_name": "Základná montáž nástenného plynového kotla",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped_service",
+          "customer_group": "Montáž",
+          "work_scope": [
+            "dovoz a osadenie nástenného plynového kotla",
+            "napojenie vykurovania, vody a plynu na pripravené rozvody",
+            "montáž magnetického filtra, uzáverov, spätného ventilu a pripojovacích hadíc",
+            "montáž odvodu spalín DN60 vrátane adaptéra A1K, revízneho kolena, flexi rúry a komínovej hlavice",
+            "napustenie a odvzdušnenie vykurovacieho systému",
+            "základná kontrola tesnosti a funkcie po montáži"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "boiler_gas_optional_services",
+      "label": "Voliteľné príslušenstvo plynového kotla",
+      "items": [
+        {
+          "role": "condensate_pump_sanibroy",
+          "pohoda_code": "SK6",
+          "pohoda_plu": "108199",
+          "expected_name": "SFA SANIBROY SANICONDENS PRO N prečerpávacia stanica kondenzátu",
+          "qty": 1,
+          "unit": "ks",
+          "required": false,
+          "default_enabled": false,
+          "mapping_status": "mapped",
+          "customer_group": "Voliteľné príslušenstvo",
+          "note": "Použiť tam, kde kondenzát nie je možné odviesť samospádom."
         }
       ]
     }
