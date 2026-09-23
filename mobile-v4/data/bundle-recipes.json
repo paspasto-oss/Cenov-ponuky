@@ -1,8 +1,8 @@
 {
-  "version": 25,
+  "version": 26,
   "updated_at": "2026-09-23",
   "source": "POHODA export Zásoby1.xlsx",
-  "note": "Doplnený spoločný montážny balík pre kotly na biomasu/pelety: OPOP ochrana kotla, SMT125 Wilo, E20i-W, SANHA THERM 28 mm a montáž MPEL.",
+  "note": "Aktualizovaná cena montáže kotla na pelety MPEL podľa POHODY na 950 € bez DPH.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -1449,7 +1449,7 @@
           "required": true,
           "mapping_status": "mapped_service",
           "customer_group": "Montáž",
-          "note": "Cena sa načítava priamo z POHODY; aktuálne 507 € bez DPH.",
+          "note": "Cena sa načítava priamo z POHODY; aktuálne 950 € bez DPH.",
           "work_scope": [
             "dovoz a osadenie kotla na určené miesto",
             "montáž kotlovej ochrannej zostavy a čerpadlovej skupiny",
