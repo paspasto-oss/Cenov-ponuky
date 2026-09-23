@@ -1,8 +1,8 @@
 {
-  "version": 22,
+  "version": 23,
   "updated_at": "2026-09-23",
   "source": "POHODA export Zásoby1.xlsx",
-  "note": "Doplnený štandardný montážny balík plynového kondenzačného kotla Protherm a voliteľná prečerpávačka kondenzátu SANIBROY.",
+  "note": "Plynový kotol: jeden spoločný montážny balík pre všetky značky; montáž PK-MONT z POHODY; doplnený E20i-W Wi-Fi termostat.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -1157,10 +1157,10 @@
       ]
     },
     {
-      "key": "boiler_gas_protherm_standard",
-      "label": "Plynový kondenzačný kotol Protherm – štandardná montáž",
+      "key": "boiler_gas_standard",
+      "label": "Plynový kotol – štandardná montáž",
       "customer_label": "Inštalačný materiál plynového kotla",
-      "description": "Štandardný balík montáže plynového kondenzačného kotla Protherm vrátane komínovej vložky DN60 a hydraulického pripojenia.",
+      "description": "Spoločný štandardný balík montáže pre všetky plynové kotly.",
       "items": [
         {
           "role": "flue_adapter_a1k",
@@ -1305,6 +1305,18 @@
           "customer_group": "Plynové pripojenie"
         },
         {
+          "role": "room_thermostat_wifi",
+          "pohoda_code": "932312648",
+          "pohoda_plu": "106766",
+          "expected_name": "E20i-W bezdrôtový regulátor teploty Wi-Fi, biely",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Regulácia",
+          "note": "Štandardne započítaný do montážneho materiálu plynového kotla."
+        },
+        {
           "role": "installation_service",
           "pohoda_code": "PK-MONT",
           "expected_name": "Základná montáž nástenného plynového kotla",
@@ -1320,7 +1332,8 @@
             "montáž odvodu spalín DN60 vrátane adaptéra A1K, revízneho kolena, flexi rúry a komínovej hlavice",
             "napustenie a odvzdušnenie vykurovacieho systému",
             "základná kontrola tesnosti a funkcie po montáži"
-          ]
+          ],
+          "note": "Cena sa načítava priamo z POHODY; aktuálne 590 € bez DPH."
         }
       ]
     },
