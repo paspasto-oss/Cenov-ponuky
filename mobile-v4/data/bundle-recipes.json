@@ -1,8 +1,8 @@
 {
-  "version": 24,
+  "version": 25,
   "updated_at": "2026-09-23",
   "source": "POHODA export Zásoby1.xlsx",
-  "note": "Plynový kotol: doplnená voliteľná nádoba TÚV Protherm FE 120 BM pre vykurovacie-only modely.",
+  "note": "Doplnený spoločný montážny balík pre kotly na biomasu/pelety: OPOP ochrana kotla, SMT125 Wilo, E20i-W, SANHA THERM 28 mm a montáž MPEL.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -1366,6 +1366,99 @@
           "mapping_status": "mapped",
           "customer_group": "Voliteľné príslušenstvo",
           "note": "Použiť tam, kde kondenzát nie je možné odviesť samospádom."
+        }
+      ]
+    },
+    {
+      "key": "boiler_biomass_standard",
+      "label": "Kotol na biomasu / pelety – štandardná montáž",
+      "customer_label": "Inštalačný materiál kotla na biomasu",
+      "description": "Spoločný štandardný montážny balík pre kotly na biomasu a pelety.",
+      "items": [
+        {
+          "role": "boiler_protection_set_opop",
+          "pohoda_plu": "28",
+          "expected_name": "Kotlová zostava OPOP ochrana kotla",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Ochrana kotla"
+        },
+        {
+          "role": "heating_group_smt125_wilo",
+          "pohoda_code": "607168",
+          "expected_name": "Skupina SMT 125 - DN 32 s čerpadlom Wilo Yonos Para 30/6, s izoláciou",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Obeh a vykurovací okruh"
+        },
+        {
+          "role": "room_thermostat_wifi",
+          "pohoda_code": "932312648",
+          "pohoda_plu": "106766",
+          "expected_name": "E20i-W bezdrôtový regulátor teploty Wi-Fi, biely",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Regulácia"
+        },
+        {
+          "role": "carbon_steel_transition_28x1",
+          "pohoda_code": "124243G281",
+          "pohoda_plu": "101284",
+          "expected_name": "SANHA THERM 24243G prechodová vsuvka 28x1\"",
+          "qty": 10,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Uhlíková oceľ"
+        },
+        {
+          "role": "carbon_steel_elbow_28",
+          "pohoda_code": "124002A28",
+          "pohoda_plu": "101128",
+          "expected_name": "SANHA THERM 24002A oblúk 90°, 28 mm, uhlíková oceľ",
+          "qty": 10,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Uhlíková oceľ"
+        },
+        {
+          "role": "carbon_steel_pipe_28",
+          "pohoda_code": "12400028",
+          "pohoda_plu": "100727",
+          "expected_name": "SANHA THERM 24000 rúrka 28x1,5 mm, uhlíková oceľ",
+          "qty": 4,
+          "unit": "m",
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Uhlíková oceľ"
+        },
+        {
+          "role": "installation_service",
+          "pohoda_code": "MPEL",
+          "pohoda_plu": "12",
+          "expected_name": "Montáž kotla na pelety – základ",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped_service",
+          "customer_group": "Montáž",
+          "note": "Cena sa načítava priamo z POHODY; aktuálne 507 € bez DPH.",
+          "work_scope": [
+            "dovoz a osadenie kotla na určené miesto",
+            "montáž kotlovej ochrannej zostavy a čerpadlovej skupiny",
+            "napojenie kotla na vykurovací systém uhlíkovou oceľou DN28",
+            "lisovanie potrubia a tvaroviek",
+            "montáž regulácie E20i-W",
+            "napustenie a odvzdušnenie vykurovacieho systému",
+            "základná kontrola funkcie a príprava na uvedenie do prevádzky"
+          ]
         }
       ]
     }
