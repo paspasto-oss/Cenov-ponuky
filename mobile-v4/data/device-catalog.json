@@ -506,7 +506,8 @@
       "sell_price_ex_vat": 1113.82,
       "active": true,
       "supplier": "Ptáček",
-      "notes": "Presná skladová karta z POHODY."
+      "notes": "Presná skladová karta z POHODY.",
+      "dhw_mode": "none"
     },
     {
       "id": "protherm-gepard-condens-18-25-mkv",
@@ -522,7 +523,8 @@
       "sell_price_ex_vat": 1162.6,
       "active": true,
       "supplier": "Ptáček",
-      "notes": "Presná skladová karta z POHODY."
+      "notes": "Presná skladová karta z POHODY.",
+      "dhw_mode": "instant"
     },
     {
       "id": "protherm-panther-condens-15-kko",
@@ -538,7 +540,8 @@
       "sell_price_ex_vat": 1260.16,
       "active": true,
       "supplier": "Ptáček",
-      "notes": "Presná skladová karta z POHODY."
+      "notes": "Presná skladová karta z POHODY.",
+      "dhw_mode": "none"
     },
     {
       "id": "protherm-panther-condens-20-26-kkv",
@@ -554,7 +557,8 @@
       "sell_price_ex_vat": 1843.67,
       "active": true,
       "supplier": "Ptáček",
-      "notes": "Presná skladová karta z POHODY."
+      "notes": "Presná skladová karta z POHODY.",
+      "dhw_mode": "instant"
     },
     {
       "id": "protherm-panther-condens-25-kko",
@@ -570,7 +574,8 @@
       "sell_price_ex_vat": 1586.95,
       "active": true,
       "supplier": "Ptáček",
-      "notes": "Presná skladová karta z POHODY."
+      "notes": "Presná skladová karta z POHODY.",
+      "dhw_mode": "none"
     },
     {
       "id": "protherm-tiger-condens-20-26-kkz21",
@@ -586,7 +591,8 @@
       "sell_price_ex_vat": 1983.74,
       "active": true,
       "supplier": "Ptáček",
-      "notes": "Presná skladová karta z POHODY."
+      "notes": "Presná skladová karta z POHODY.",
+      "dhw_mode": "instant"
     },
     {
       "id": "protherm-tiger-condens-20-26-kkz42",
@@ -602,7 +608,8 @@
       "sell_price_ex_vat": 2210.99,
       "active": true,
       "supplier": "Ptáček",
-      "notes": "Presná skladová karta z POHODY."
+      "notes": "Presná skladová karta z POHODY.",
+      "dhw_mode": "integrated"
     },
     {
       "id": "protherm-ray-6",
@@ -698,7 +705,8 @@
       "sell_price_ex_vat": 1951.22,
       "active": true,
       "supplier": "Ptáček",
-      "notes": "Presná skladová karta z POHODY."
+      "notes": "Presná skladová karta z POHODY.",
+      "dhw_mode": "none"
     },
     {
       "id": "vaillant-ecotec-pro-vuw236",
@@ -714,7 +722,8 @@
       "sell_price_ex_vat": 1983.74,
       "active": true,
       "supplier": "Ptáček",
-      "notes": "Presná skladová karta z POHODY."
+      "notes": "Presná skladová karta z POHODY.",
+      "dhw_mode": "instant"
     },
     {
       "id": "vaillant-ecotec-plus-vuw26",
@@ -730,7 +739,8 @@
       "sell_price_ex_vat": 2292.68,
       "active": true,
       "supplier": "Ptáček",
-      "notes": "Presná skladová karta z POHODY."
+      "notes": "Presná skladová karta z POHODY.",
+      "dhw_mode": "instant"
     },
     {
       "id": "vaillant-ecotec-pro-vu246",
@@ -746,7 +756,8 @@
       "sell_price_ex_vat": 1926.83,
       "active": true,
       "supplier": "Ptáček",
-      "notes": "Presná skladová karta z POHODY."
+      "notes": "Presná skladová karta z POHODY.",
+      "dhw_mode": "none"
     },
     {
       "id": "vaillant-ecotec-plus-vu25",
@@ -762,7 +773,8 @@
       "sell_price_ex_vat": 2073.17,
       "active": true,
       "supplier": "Ptáček",
-      "notes": "Presná skladová karta z POHODY."
+      "notes": "Presná skladová karta z POHODY.",
+      "dhw_mode": "none"
     },
     {
       "id": "vaillant-ecotec-plus-vu35",
@@ -778,7 +790,8 @@
       "sell_price_ex_vat": 2260.16,
       "active": true,
       "supplier": "Ptáček",
-      "notes": "Presná skladová karta z POHODY."
+      "notes": "Presná skladová karta z POHODY.",
+      "dhw_mode": "none"
     },
     {
       "id": "vaillant-ecocompact-vcc206",
@@ -794,7 +807,8 @@
       "sell_price_ex_vat": 3821.14,
       "active": true,
       "supplier": "Ptáček",
-      "notes": "Presná skladová karta z POHODY."
+      "notes": "Presná skladová karta z POHODY.",
+      "dhw_mode": "integrated"
     },
     {
       "id": "opop-biopel-mini-kompakt-15",
