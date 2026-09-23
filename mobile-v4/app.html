@@ -94,6 +94,14 @@
     <div class="topline"><button class="btn ghost small" onclick="go('step2')">← Späť</button><h1>3. Typ a značka</h1></div>
     <div class="steps"><div class="step on"></div><div class="step on"></div><div class="step on"></div><div class="step"></div><div class="step"></div></div>
     <div class="card"><h2>Čo zákazník chce?</h2><div id="catChoices" class="choiceGrid"></div></div>
+    <div id="boilerTypeCard" class="card hidden">
+      <h2>Typ kotla</h2>
+      <div class="choiceGrid">
+        <button id="boilerGas" class="choice on" onclick="selectBoilerType('gas')"><span>🔥</span><b>PLYNOVÝ</b></button>
+        <button id="boilerElectric" class="choice" onclick="selectBoilerType('electric')"><span>⚡</span><b>ELEKTRICKÝ</b></button>
+        <button id="boilerPellet" class="choice" onclick="selectBoilerType('pellet')"><span>●</span><b>PELETOVÝ</b></button>
+      </div>
+    </div>
     <div class="card"><h2>Vyber značku</h2><div id="brandChoices" class="choiceGrid"></div></div>
     <button id="recommendBtn" class="btn primary full" onclick="makeRecommendation()">Vypočítať ponuku →</button>
   </section>
@@ -228,7 +236,7 @@ let quotes=JSON.parse(localStorage.getItem(QUOTES_KEY)||'[]');
 let stocks=[];
 let deviceCatalog=[];
 let bundleRecipes=[];
-let current=null, category='heat_pump', brand='', recommendation=null;
+let current=null, category='heat_pump', brand='', recommendation=null, boilerType='gas';
 
 const fallbackDevices=[
  {id:'panasonic-aquarea-k-7',category:'tepelne_cerpadlo',brand:'Panasonic',model:'Aquarea K',variant:'7 kW',power_kw:7},
@@ -295,7 +303,7 @@ async function loadConfig(){
     console.error('DB load failed',e);
   }
   try{
-    const r=await fetch('data/device-catalog.json?v=20260922-4',{cache:'no-store'});
+    const r=await fetch('data/device-catalog.json?v=20260923-boilers1',{cache:'no-store'});
     if(!r.ok) throw new Error('device-catalog '+r.status);
     const j=await r.json();deviceCatalog=j.devices||[];
   }catch(e){deviceCatalog=fallbackDevices;configOk=false;console.error('Device catalog load failed:',e)}
@@ -340,17 +348,35 @@ function renderHome(){
 }
 function labelStatus(x){return x==='sent'?'Odoslaná':x==='approved'?'Schválená':'Rozpracovaná'}
 function labelCat(x){return x==='heat_pump'?'Tepelné čerpadlo':x==='air_conditioning'?'Klimatizácia':x==='boiler'?'Kotol':'Iné'}
-function startWizard(){current={id:'q_'+Date.now(),quote_no:'26NA'+String(quotes.length+1).padStart(4,'0'),status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_images_enabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
+function startWizard(){current={id:'q_'+Date.now(),quote_no:'26NA'+String(quotes.length+1).padStart(4,'0'),status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_images_enabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;boilerType='gas';['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
 function nextBuilding(){let name=s(document.getElementById('cName').value),phone=s(document.getElementById('cPhone').value),addr=s(document.getElementById('cAddress').value);if(!name||!phone||!addr){alert('Vyplň meno, telefón a adresu realizácie.');return}current.customer={name,phone,email:s(document.getElementById('cEmail').value),address:addr,note:s(document.getElementById('cNote').value)};go('step2')}
 function toggleLoss(){let known=document.getElementById('hasLoss').value==='yes';document.getElementById('lossKnown').classList.toggle('hidden',!known);document.getElementById('lossEstimate').classList.toggle('hidden',known)}
 function nextCategory(){let known=document.getElementById('hasLoss').value==='yes',loss=+document.getElementById('heatLoss').value||0,area=+document.getElementById('area').value||0;if(known&&loss<=0){alert('Zadaj tepelnú stratu.');return}if(!known&&area<=0){alert('Zadaj vykurovanú plochu.');return}current.building={known_loss:known,heat_loss_kw:known?loss:null,area_m2:known?null:area,w_per_m2:+document.getElementById('buildingClass').value,heating:document.getElementById('heating').value,with_external_dhw_tank:document.getElementById('dhwMode').value==='external'};renderChoices();go('step3')}
-function renderChoices(){let cats=[['heat_pump','♨','Tepelné čerpadlo'],['air_conditioning','❄','Klimatizácia'],['boiler','🔥','Kotol']];document.getElementById('catChoices').innerHTML=cats.map(c=>'<button class="choice '+(category===c[0]?'on':'')+'" onclick="selectCat(\''+c[0]+'\')"><span>'+c[1]+'</span><b>'+c[2]+'</b></button>').join('');renderBrands()}
-function selectCat(c){category=c;brand='';renderChoices()}
+function renderChoices(){
+  let cats=[['heat_pump','♨','Tepelné čerpadlo'],['air_conditioning','❄','Klimatizácia'],['boiler','🔥','Kotol']];
+  document.getElementById('catChoices').innerHTML=cats.map(c=>'<button class="choice '+(category===c[0]?'on':'')+'" onclick="selectCat(\''+c[0]+'\')"><span>'+c[1]+'</span><b>'+c[2]+'</b></button>').join('');
+  const boilerCard=document.getElementById('boilerTypeCard');
+  if(boilerCard)boilerCard.classList.toggle('hidden',category!=='boiler');
+  syncBoilerTypeUI();
+  renderBrands();
+}
+function selectCat(c){category=c;brand='';if(c!=='boiler')boilerType='gas';renderChoices()}
 function catalogCategory(d){return d.category==='tepelne_cerpadlo'?'heat_pump':d.category==='klimatizacia'?'air_conditioning':d.category==='kotol'?'boiler':d.category}
-function renderBrands(){let brands=[...new Set(deviceCatalog.filter(d=>catalogCategory(d)===category).map(d=>d.brand).filter(Boolean))];if(category==='boiler'&&!brands.length)brands=['Protherm','Vaillant'];document.getElementById('brandChoices').innerHTML=(brands.length?brands:['Zatiaľ bez značiek v katalógu']).map(b=>'<button class="choice '+(brand===b?'on':'')+' '+(b.startsWith('Zatiaľ')?'disabled':'')+'" '+(b.startsWith('Zatiaľ')?'':'onclick="selectBrand(\''+String(b).replace(/'/g,"\\'")+'\')"')+'><span>●</span><b>'+esc(b)+'</b></button>').join('')}
+function syncBoilerTypeUI(){
+  [['gas','boilerGas'],['electric','boilerElectric'],['pellet','boilerPellet']].forEach(([v,id])=>{
+    const el=document.getElementById(id);if(el)el.classList.toggle('on',boilerType===v);
+  });
+}
+function selectBoilerType(t){boilerType=t;brand='';syncBoilerTypeUI();renderBrands()}
+function renderBrands(){
+  let pool=deviceCatalog.filter(d=>catalogCategory(d)===category);
+  if(category==='boiler')pool=pool.filter(d=>(d.boiler_type||'gas')===boilerType);
+  let brands=[...new Set(pool.map(d=>d.brand).filter(Boolean))];
+  document.getElementById('brandChoices').innerHTML=(brands.length?brands:['Zatiaľ bez značiek v katalógu']).map(b=>'<button class="choice '+(brand===b?'on':'')+' '+(b.startsWith('Zatiaľ')?'disabled':'')+'" '+(b.startsWith('Zatiaľ')?'':'onclick="selectBrand(\''+String(b).replace(/'/g,"\\'")+'\')"')+'><span>●</span><b>'+esc(b)+'</b></button>').join('');
+}
 function selectBrand(b){brand=b;renderBrands()}
 function calcRequiredKw(){
- if(category!=='heat_pump')return null;
+ if(category!=='heat_pump'&&category!=='boiler')return null;
  if(current.building.known_loss)return current.building.heat_loss_kw;
  let base=current.building.area_m2*current.building.w_per_m2/1000;
  let reserve=current.building.heating==='underfloor'?1.10:current.building.heating==='radiators'?1.15:1.20;
@@ -373,9 +399,18 @@ function findStockForDevice(d){
  return candidates[0]||null
 }
 function systemType(d){let m=norm((d.model||'')+' '+(d.variant||''));if(m.includes('monoblok')||m.includes('monoblock')||m.includes('nature')||m.includes('arotherm plus'))return 'monoblock';if(m.includes('split')||m.includes('zubadan'))return 'split';return category==='air_conditioning'?'single_split_ac':null}
-function makeRecommendation(){if(!brand){alert('Vyber značku.');return}current.category=category;current.brand=brand;let required=calcRequiredKw(),target=required?nextStepKw(required):null;
+function makeRecommendation(){
+ if(!brand){alert('Vyber značku.');return}
+ current.category=category;current.brand=brand;
+ if(category==='boiler')current.boiler_type=boilerType;
+ let required=calcRequiredKw();
+ let target=category==='heat_pump'?(required?nextStepKw(required):null):required;
  let devices=deviceCatalog.filter(d=>catalogCategory(d)===category&&d.brand===brand);
- if(category==='heat_pump'&&target){let withPower=devices.filter(d=>d.power_kw!=null).sort((a,b)=>a.power_kw-b.power_kw);recommendation=withPower.find(d=>d.power_kw>=target)||withPower[withPower.length-1]||devices[0]||null}else recommendation=devices[0]||null;
+ if(category==='boiler')devices=devices.filter(d=>(d.boiler_type||'gas')===boilerType);
+ if((category==='heat_pump'||category==='boiler')&&target){
+   let withPower=devices.filter(d=>d.power_kw!=null).sort((a,b)=>a.power_kw-b.power_kw);
+   recommendation=withPower.find(d=>d.power_kw>=target)||withPower[withPower.length-1]||devices[0]||null;
+ }else recommendation=devices[0]||null;
  if(!recommendation){recommendation={id:'manual-'+brand,brand,model:'Model doplníme po naplnení cenníka',variant:'',power_kw:target,category:category}}
  current.required_kw=required;current.target_kw=target;buildBOM();renderRecommendation();go('step4')
 }
@@ -511,6 +546,8 @@ function installationPrice(tier){
 }
 function syncInstallationTierUI(){
   const tier=current?.installation_tier||'standard';
+  const card=document.getElementById('installationTierCard');
+  if(card)card.classList.toggle('hidden',(current?.category||category)!=='heat_pump');
   const st=document.getElementById('tierStandard'), ec=document.getElementById('tierEconomy'), box=document.getElementById('economyChecklist');
   if(st)st.classList.toggle('on',tier==='standard');
   if(ec)ec.classList.toggle('on',tier==='economy');
@@ -539,6 +576,8 @@ function checkEconomyReady(){
   if(state)state.textContent=ready?'Všetky podmienky EKONOM sú splnené.':'EKONOM nie je možné uzavrieť, kým nie sú potvrdené všetky podmienky.';
 }
 function syncOptionalUI(){
+  const optionalCard=document.getElementById('optionalServicesCard');
+  if(optionalCard)optionalCard.classList.toggle('hidden',(current?.category||category)!=='heat_pump');
   const on=!!current?.optional_services?.flush;
   const toggle=document.getElementById('flushToggle');
   const price=document.getElementById('flushPrice');
@@ -789,9 +828,13 @@ function renderRecommendation(){
  syncOptionalUI();
  renderQuoteImageUI();
  let d=recommendation,required=current.required_kw,target=current.target_kw;
- document.getElementById('calcNotice').textContent=category==='heat_pump'?(current.building.known_loss?'Zadaná tepelná strata: '+required+' kW. Navrhnutá výkonová trieda: '+target+' kW.':'Orientačný návrhový výkon po rezerve: '+required+' kW. Navrhnutá výkonová trieda: '+target+' kW.'):'Pre túto kategóriu sa výkon vyberie podľa konkrétneho modelu a priestoru.';
+ document.getElementById('calcNotice').textContent=category==='heat_pump'
+   ? (current.building.known_loss?'Zadaná tepelná strata: '+required+' kW. Navrhnutá výkonová trieda: '+target+' kW.':'Orientačný návrhový výkon po rezerve: '+required+' kW. Navrhnutá výkonová trieda: '+target+' kW.')
+   : category==='boiler'
+     ? (current.building.known_loss?'Zadaná tepelná strata: '+required+' kW. Vybraný najbližší výkon kotla.':'Orientačný potrebný výkon: '+required+' kW. Vybraný najbližší výkon kotla.')
+     : 'Pre túto kategóriu sa výkon vyberie podľa konkrétneho modelu a priestoru.';
  document.getElementById('recommendation').innerHTML='<div class="title"><div><h3>'+esc(d.brand+' '+d.model)+'</h3><div class="sub">'+esc(d.variant||'')+(current.system_type?' · '+esc(current.system_type):'')+'</div></div><div class="kw">'+(d.power_kw||target||'—')+' kW</div></div>';
- let alt=deviceCatalog.filter(x=>catalogCategory(x)===category&&x.brand===brand&&x.id!==d.id).slice(0,4);document.getElementById('alternatives').innerHTML=alt.length?'<div class="sub">Alternatívy:</div>'+alt.map(x=>'<div class="row" onclick="pickAlternative(\''+x.id+'\')"><div><b>'+esc(x.model+' '+(x.variant||''))+'</b><small>'+((x.power_kw||'—')+' kW')+'</small></div><span>Vybrať ›</span></div>').join(''):'';
+ let alt=deviceCatalog.filter(x=>catalogCategory(x)===category&&x.brand===brand&&x.id!==d.id&& (category!=='boiler'||(x.boiler_type||'gas')===boilerType)).sort((a,b)=>(a.power_kw||999)-(b.power_kw||999)).slice(0,8);document.getElementById('alternatives').innerHTML=alt.length?'<div class="sub">Alternatívy:</div>'+alt.map(x=>'<div class="row" onclick="pickAlternative(\''+x.id+'\')"><div><b>'+esc(x.model+' '+(x.variant||''))+'</b><small>'+((x.power_kw||'—')+' kW')+'</small></div><span>Vybrať ›</span></div>').join(''):'';
  document.getElementById('bomItems').innerHTML=current.items.map(i=>{
    let link='';
    if(i.pohoda) link=' · POHODA: '+esc(i.pohoda.code||i.pohoda.plu||'namapované');
@@ -845,7 +888,7 @@ function renderFinal(){
      : '';
  document.getElementById('finalSummary').innerHTML='<h2 style="margin-top:0">'+esc(current.customer.name)+'</h2><div class="sub">'+esc(current.customer.address)+'</div><div style="margin-top:14px"><b>'+esc(current.device.brand+' '+current.device.model+' '+(current.device.variant||''))+'</b></div><div class="srow"><span>Typ montáže</span><b>'+(current.installation_tier==='economy'?'EKONOM – '+installationPrice('economy')+' €':'ŠTANDARD – '+installationPrice('standard')+' €')+'</b></div>'+optional+annual+subsidyHtml+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+ (current.price_complete?eur(current.total):'Cena ešte nie je kompletná') +'</span></div>'
 }
-function openQuote(id){let q=quotes.find(x=>x.id===id);if(!q)return;current=JSON.parse(JSON.stringify(q));ensurePdfImagesState();ensureSubsidyState();if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true};if(current.optional_services.annual_service===undefined)current.optional_services.annual_service=true;if(!current.installation_tier)current.installation_tier='standard';category=current.category||'heat_pump';brand=current.brand||'';recommendation=current.device||null;document.getElementById('cName').value=current.customer.name||'';document.getElementById('cPhone').value=current.customer.phone||'';document.getElementById('cEmail').value=current.customer.email||'';document.getElementById('cAddress').value=current.customer.address||'';document.getElementById('cNote').value=current.customer.note||'';refreshQuoteFromCatalog();renderFinal();go('step4')}
+function openQuote(id){let q=quotes.find(x=>x.id===id);if(!q)return;current=JSON.parse(JSON.stringify(q));ensurePdfImagesState();ensureSubsidyState();if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true};if(current.optional_services.annual_service===undefined)current.optional_services.annual_service=true;if(!current.installation_tier)current.installation_tier='standard';category=current.category||'heat_pump';brand=current.brand||'';boilerType=current.boiler_type||'gas';recommendation=current.device||null;document.getElementById('cName').value=current.customer.name||'';document.getElementById('cPhone').value=current.customer.phone||'';document.getElementById('cEmail').value=current.customer.email||'';document.getElementById('cAddress').value=current.customer.address||'';document.getElementById('cNote').value=current.customer.note||'';refreshQuoteFromCatalog();renderFinal();go('step4')}
 function message(){
   const sub=calculateSubsidy();
   let subsidyText='';
