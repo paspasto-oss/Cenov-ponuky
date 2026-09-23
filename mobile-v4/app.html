@@ -325,7 +325,7 @@ async function loadConfig(){
     const j=await r.json();deviceCatalog=j.devices||[];
   }catch(e){deviceCatalog=fallbackDevices;configOk=false;console.error('Device catalog load failed:',e)}
   try{
-    const r=await fetch('data/bundle-recipes.json?v=20260923-gasboiler3',{cache:'no-store'});
+    const r=await fetch('data/bundle-recipes.json?v=20260923-biomass1',{cache:'no-store'});
     if(!r.ok) throw new Error('bundle-recipes '+r.status);
     const j=await r.json();bundleRecipes=j.bundles||[];
   }catch(e){bundleRecipes=[];configOk=false;console.error('Bundle recipes load failed:',e)}
@@ -469,7 +469,9 @@ function recipeName(r,stock){
 function bundleKeyFor(d){
   let st=systemType(d);
   if(catalogCategory(d)==='boiler'){
-    if((d.boiler_type||current?.boiler_type)==='gas')return 'boiler_gas_standard';
+    const bt=d.boiler_type||current?.boiler_type;
+    if(bt==='gas')return 'boiler_gas_standard';
+    if(bt==='pellet'||bt==='biomass')return 'boiler_biomass_standard';
     return null;
   }
   return st==='monoblock'?'hp_monoblock_5m':st==='split'?'hp_split_5m':st==='single_split_ac'?'ac_single_split_5m':null
@@ -1068,6 +1070,11 @@ function offerHtml(){
     materialScopeParts.push('Wi-Fi izbový termostat E20i-W');
     if(current.optional_services?.dhw_tank_fe120)materialScopeParts.push('zásobník TÚV PROTHERM FE 120 BM, 117 l');
     if(current.optional_services?.condensate_pump)materialScopeParts.push('prečerpávačka kondenzátu SANIBROY');
+  }else if(current.category==='boiler'&&(current.boiler_type==='pellet'||current.boiler_type==='biomass')){
+    materialScopeParts.push('kotlová zostava OPOP na ochranu kotla');
+    materialScopeParts.push('skupina SMT 125 s čerpadlom Wilo Yonos Para');
+    materialScopeParts.push('Wi-Fi izbový termostat E20i-W');
+    materialScopeParts.push('uhlíková oceľ SANHA THERM 28 mm: prechody 28x1, kolená a potrubie');
   }else{
     materialScopeParts.push('štandardný montážny a pripojovací materiál podľa zvoleného zariadenia');
   }
