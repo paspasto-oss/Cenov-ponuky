@@ -977,7 +977,7 @@ function renderFinal(){
  const flush=current.items.find(i=>i.role==='heating_system_flush_cleaner_inhibitor');
  const scope=install?.work_scope?.length?'<div style="margin-top:12px"><b>Montáž zahŕňa:</b><ul style="margin:7px 0 0 18px;padding:0">'+install.work_scope.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>':'';
  const optional=flush?'<div class="srow" style="margin-top:10px"><span>Preplach + cleaner + inhibitor</span><b>'+eur(flush.price)+'</b></div>':'';
- const annual=current.optional_services?.annual_service!==false?'<div class="srow" style="margin-top:10px"><span>Ročná servisná prehliadka</span><b>150 € s DPH / rok</b></div><div class="sub">Účtuje sa pri vykonaní servisu. Podmienky predĺženej záruky určuje výrobca.</div>':'';
+ const annual=current.category==='heat_pump'&&current.optional_services?.annual_service!==false?'<div class="srow" style="margin-top:10px"><span>Ročná servisná prehliadka</span><b>150 € s DPH / rok</b></div><div class="sub">Účtuje sa pri vykonaní servisu. Podmienky predĺženej záruky určuje výrobca.</div>':'';
  const subsidy=calculateSubsidy();
  const subsidyHtml=subsidy.program==='green'
    ? '<div class="srow" style="margin-top:10px"><span>Orientačná dotácia Zelená domácnostiam</span><b>− '+eur(subsidy.estimated_amount)+'</b></div><div class="srow"><span>Orientačne po dotácii</span><b>'+eur(subsidy.estimated_after_subsidy)+'</b></div>'
@@ -1084,7 +1084,7 @@ function offerHtml(){
   }
   const materialScope='<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:5px">Rozsah materiálu</div><div style="color:#444;line-height:1.45">'+esc(materialScopeParts.join(' · '))+'</div></div>';
 
-  const annual=current.optional_services?.annual_service!==false
+  const annual=current.category==='heat_pump'&&current.optional_services?.annual_service!==false
     ? '<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:4px">Servis a záruka</div><div><b>Ročná servisná prehliadka tepelného čerpadla: 150 € s DPH / rok.</b><br><span style="color:#555">Účtuje sa pri vykonaní prehliadky. Podmienky predĺženej záruky sa riadia konkrétnym výrobcom a záručným programom.</span></div></div>'
     : '';
 
