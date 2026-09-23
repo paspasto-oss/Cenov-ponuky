@@ -318,7 +318,7 @@ async function loadConfig(){
     const j=await r.json();deviceCatalog=j.devices||[];
   }catch(e){deviceCatalog=fallbackDevices;configOk=false;console.error('Device catalog load failed:',e)}
   try{
-    const r=await fetch('data/bundle-recipes.json?v=20260923-gasboiler1',{cache:'no-store'});
+    const r=await fetch('data/bundle-recipes.json?v=20260923-gasboiler2',{cache:'no-store'});
     if(!r.ok) throw new Error('bundle-recipes '+r.status);
     const j=await r.json();bundleRecipes=j.bundles||[];
   }catch(e){bundleRecipes=[];configOk=false;console.error('Bundle recipes load failed:',e)}
@@ -462,7 +462,7 @@ function recipeName(r,stock){
 function bundleKeyFor(d){
   let st=systemType(d);
   if(catalogCategory(d)==='boiler'){
-    if((d.boiler_type||current?.boiler_type)==='gas' && d.brand==='Protherm')return 'boiler_gas_protherm_standard';
+    if((d.boiler_type||current?.boiler_type)==='gas')return 'boiler_gas_standard';
     return null;
   }
   return st==='monoblock'?'hp_monoblock_5m':st==='split'?'hp_split_5m':st==='single_split_ac'?'ac_single_split_5m':null
@@ -1022,6 +1022,7 @@ function offerHtml(){
     materialScopeParts.push('adaptér A1K, revízne koleno, flexi komínová rúra DN60 do 8 m a čierna komínová hlavica');
     materialScopeParts.push('magnetický filter ABC MINI, uzatváracie armatúry, spätná klapka, šróbenia a vsuvky');
     materialScopeParts.push('flexibilné pripojenie MERABELL pre vykurovanie a plynové pripojenie');
+    materialScopeParts.push('Wi-Fi izbový termostat E20i-W');
     if(current.optional_services?.condensate_pump)materialScopeParts.push('prečerpávačka kondenzátu SANIBROY');
   }else{
     materialScopeParts.push('štandardný montážny a pripojovací materiál podľa zvoleného zariadenia');
