@@ -342,7 +342,7 @@ async function loadConfig(){
     const j=await r.json();deviceCatalog=j.devices||[];
   }catch(e){deviceCatalog=fallbackDevices;configOk=false;console.error('Device catalog load failed:',e)}
   try{
-    const r=await fetch('data/bundle-recipes.json?v=20260923-biomass1',{cache:'no-store'});
+    const r=await fetch('data/bundle-recipes.json?v=20260924-acprices1',{cache:'no-store'});
     if(!r.ok) throw new Error('bundle-recipes '+r.status);
     const j=await r.json();bundleRecipes=j.bundles||[];
   }catch(e){bundleRecipes=[];configOk=false;console.error('Bundle recipes load failed:',e)}
@@ -409,6 +409,54 @@ function renderBrands(){
   document.getElementById('brandChoices').innerHTML=(brands.length?brands:['Zatiaľ bez značiek v katalógu']).map(b=>'<button class="choice '+(brand===b?'on':'')+' '+(b.startsWith('Zatiaľ')?'disabled':'')+'" '+(b.startsWith('Zatiaľ')?'':'onclick="selectBrand(\''+String(b).replace(/'/g,"\\'")+'\')"')+'><span>●</span><b>'+esc(b)+'</b></button>').join('');
 }
 function selectBrand(b){brand=b;renderBrands()}
+function acBrandAliases(b){
+  const x=norm(b);
+  if(x.includes('midea')||x.includes('mdv'))return ['midea','mdv'];
+  if(x.includes('mitsubishi'))return ['mitsubishi'];
+  return [x];
+}
+function extractPowerKw(text){
+  const stext=String(text||'').replace(/,/g,'.');
+  const matches=[...stext.matchAll(/(\d+(?:\.\d+)?)\s*kW/gi)].map(m=>Number(m[1])).filter(Number.isFinite);
+  if(!matches.length)return null;
+  return matches.find(v=>v>=1.5&&v<=20)||matches[0]||null;
+}
+function acStockCandidates(selectedBrand){
+  const aliases=acBrandAliases(selectedBrand);
+  return stocks.filter(st=>{
+    const n=norm(st.name);
+    if(!aliases.some(a=>n.includes(a)))return false;
+    if(!(n.includes('klimatiz')||n.includes('split')))return false;
+    if(n.includes('tepelne cerpad')||n.includes('m-thermal'))return false;
+    if(n.includes('multisplit')||n.includes('vnutorna')||n.includes('vonkajsia'))return false;
+    if(n.includes('kazet')||n.includes('kanalov')||n.includes('potrubn')||n.includes('parapet')||n.includes('podstrop'))return false;
+    if(!n.includes('split')&&!n.includes('set'))return false;
+    return Number(st.sell_price_ex_vat)>0;
+  }).map(st=>{
+    const power=extractPowerKw(st.name);
+    return {
+      id:'ac-stock-'+String(st.plu||st.code||st.id).replace(/[^a-zA-Z0-9_-]/g,'-'),
+      category:'klimatizacia',
+      brand:selectedBrand,
+      model:st.name,
+      variant:'POHODA',
+      power_kw:power,
+      phase:/400\s*v|3f/i.test(st.name)?'3f':'1f',
+      pohoda_code:st.code||null,
+      pohoda_plu:st.plu||null,
+      purchase_price_ex_vat:Number(st.purchase_price_ex_vat),
+      sell_price_ex_vat:Number(st.sell_price_ex_vat),
+      active:true,
+      source:'pohoda_stock'
+    };
+  }).sort((a,b)=>(a.power_kw||99)-(b.power_kw||99)||(a.sell_price_ex_vat||0)-(b.sell_price_ex_vat||0));
+}
+function acPipeRecipeForPower(power){
+  const p=Number(power||3.5);
+  if(p<=3.6)return {pohoda_code:'2RGC2GRE#GA075AC075',pohoda_plu:'104992',expected_name:'Predizolované Cu potrubie 1/4x3/8x0,8mm'};
+  if(p<=5.5)return {pohoda_code:'2RGC2GRE#GA075AD075',pohoda_plu:'104993',expected_name:'Predizolované Cu potrubie 1/4x1/2x0,8mm'};
+  return {pohoda_code:'2RGC2GRE#GC075AE100',pohoda_plu:'104991',expected_name:'Predizolované Cu potrubie 3/8x5/8'};
+}
 function calcRequiredKw(){
  if(category!=='heat_pump'&&category!=='boiler')return null;
  if(current.building.known_loss)return current.building.heat_loss_kw;
@@ -439,9 +487,12 @@ function makeRecommendation(){
  if(category==='boiler')current.boiler_type=boilerType;
  let required=calcRequiredKw();
  let target=category==='heat_pump'?(required?nextStepKw(required):null):required;
- let devices=deviceCatalog.filter(d=>catalogCategory(d)===category&&d.brand===brand);
+ let devices=category==='air_conditioning'?acStockCandidates(brand):deviceCatalog.filter(d=>catalogCategory(d)===category&&d.brand===brand);
  if(category==='boiler')devices=devices.filter(d=>(d.boiler_type||'gas')===boilerType);
- if((category==='heat_pump'||category==='boiler')&&target){
+ if(category==='air_conditioning'){
+   target=3.5;
+   recommendation=devices.find(d=>d.power_kw!=null&&d.power_kw>=target)||devices[0]||null;
+ }else if((category==='heat_pump'||category==='boiler')&&target){
    let withPower=devices.filter(d=>d.power_kw!=null).sort((a,b)=>a.power_kw-b.power_kw);
    recommendation=withPower.find(d=>d.power_kw>=target)||withPower[withPower.length-1]||devices[0]||null;
  }else recommendation=devices[0]||null;
@@ -530,6 +581,9 @@ function buildBOM(){
        const activeConditional = r.condition==='with_external_dhw_tank' && current.building.with_external_dhw_tank;
        if(r.required===false&&r.default_enabled!==true&&r.role!=='installation_service'&&!activeConditional)return;
        let recipeRow=r;
+       if(category==='air_conditioning'&&r.role==='refrigerant_pipe_pair'){
+         recipeRow={...r,...acPipeRecipeForPower(d.power_kw)};
+       }
        if(r.role==='installation_service'&&r.tier_pohoda_plu){
          recipeRow={...r,pohoda_plu:r.tier_pohoda_plu[current.installation_tier||'standard']||r.pohoda_plu};
        }
@@ -544,7 +598,7 @@ function buildBOM(){
          qty:qty,
          unit:r.unit||'ks',
          pohoda:st,
-         pohoda_code:r.pohoda_code||null,
+         pohoda_code:recipeRow.pohoda_code||null,
          mapping_status:r.mapping_status|| (st?'mapped':'unmapped'),
          price:st?.sell_price_ex_vat??defaultPrice,
          cost:st?.purchase_price_ex_vat??null,
@@ -966,9 +1020,11 @@ function renderRecommendation(){
    ? (current.building.known_loss?'Zadaná tepelná strata: '+required+' kW. Navrhnutá výkonová trieda: '+target+' kW.':'Orientačný návrhový výkon po rezerve: '+required+' kW. Navrhnutá výkonová trieda: '+target+' kW.')
    : category==='boiler'
      ? (current.building.known_loss?'Zadaná tepelná strata: '+required+' kW. Vybraný najbližší výkon kotla.':'Orientačný potrebný výkon: '+required+' kW. Vybraný najbližší výkon kotla.')
-     : 'Pre túto kategóriu sa výkon vyberie podľa konkrétneho modelu a priestoru.';
+     : category==='air_conditioning'
+       ? 'Z POHODY sa načítali konkrétne klimatizácie s cenami. Predvolene je zvolená trieda okolo 3,5 kW; nižšie môžeš vybrať inú výkonovú alternatívu.'
+       : 'Pre túto kategóriu sa výkon vyberie podľa konkrétneho modelu a priestoru.';
  document.getElementById('recommendation').innerHTML='<div class="title"><div><h3>'+esc(d.brand+' '+d.model)+'</h3><div class="sub">'+esc(d.variant||'')+(current.system_type?' · '+esc(current.system_type):'')+'</div></div><div class="kw">'+(d.power_kw||target||'—')+' kW</div></div>';
- let alt=deviceCatalog.filter(x=>catalogCategory(x)===category&&x.brand===brand&&x.id!==d.id&& (category!=='boiler'||(x.boiler_type||'gas')===boilerType)).sort((a,b)=>(a.power_kw||999)-(b.power_kw||999)).slice(0,8);document.getElementById('alternatives').innerHTML=alt.length?'<div class="sub">Alternatívy:</div>'+alt.map(x=>'<div class="row" onclick="pickAlternative(\''+x.id+'\')"><div><b>'+esc(x.model+' '+(x.variant||''))+'</b><small>'+((x.power_kw||'—')+' kW')+'</small></div><span>Vybrať ›</span></div>').join(''):'';
+ let alt=(category==='air_conditioning'?acStockCandidates(brand):deviceCatalog.filter(x=>catalogCategory(x)===category&&x.brand===brand)).filter(x=>x.id!==d.id&& (category!=='boiler'||(x.boiler_type||'gas')===boilerType)).sort((a,b)=>(a.power_kw||999)-(b.power_kw||999)).slice(0,12);document.getElementById('alternatives').innerHTML=alt.length?'<div class="sub">Alternatívy:</div>'+alt.map(x=>'<div class="row" onclick="pickAlternative(\''+x.id+'\')"><div><b>'+esc(x.model+' '+(x.variant||''))+'</b><small>'+((x.power_kw||'—')+' kW')+'</small></div><span>Vybrať ›</span></div>').join(''):'';
  document.getElementById('bomItems').innerHTML=current.items.map(i=>{
    let link='';
    if(i.pohoda) link=' · POHODA: '+esc(i.pohoda.code||i.pohoda.plu||'namapované');
@@ -983,9 +1039,9 @@ function renderRecommendation(){
 function refreshQuoteFromCatalog(){
   if(!current)return;
   let fresh=null;
-  if(current.device?.id) fresh=deviceCatalog.find(x=>x.id===current.device.id)||null;
+  if(current.device?.id) fresh=(current.category==='air_conditioning'?acStockCandidates(current.brand||brand).find(x=>x.id===current.device.id):deviceCatalog.find(x=>x.id===current.device.id))||null;
   if(!fresh){
-    const candidates=deviceCatalog.filter(x=>catalogCategory(x)===(current.category||category) && x.brand===(current.brand||brand) && x.active!==false);
+    const candidates=(current.category==='air_conditioning'?acStockCandidates(current.brand||brand):deviceCatalog.filter(x=>catalogCategory(x)===(current.category||category) && x.brand===(current.brand||brand) && x.active!==false));
     const target=current.target_kw||current.required_kw||current.device?.power_kw||0;
     const powered=candidates.filter(x=>x.power_kw!=null).sort((a,b)=>a.power_kw-b.power_kw);
     fresh=powered.find(x=>x.power_kw>=target)||powered[powered.length-1]||candidates[0]||null;
@@ -998,7 +1054,7 @@ function refreshQuoteFromCatalog(){
   buildBOM();
   renderRecommendation();
 }
-function pickAlternative(id){let d=deviceCatalog.find(x=>x.id===id);if(!d)return;recommendation={...d};current.device={...d};ensurePdfImagesState();buildBOM();renderRecommendation()}
+function pickAlternative(id){let d=category==='air_conditioning'?acStockCandidates(brand).find(x=>x.id===id):deviceCatalog.find(x=>x.id===id);if(!d)return;recommendation={...d};current.device={...d};ensurePdfImagesState();buildBOM();renderRecommendation()}
 async function upsertCurrent(){let i=quotes.findIndex(q=>q.id===current.id);if(i>=0)quotes[i]=JSON.parse(JSON.stringify(current));else quotes.push(JSON.parse(JSON.stringify(current)));persist();if(window.SpektraDB?.isAuthenticated()){try{const ids=await SpektraDB.saveQuote(current);current.remote_id=ids.remote_id;current.remote_customer_id=ids.remote_customer_id}catch(e){console.error('Online quote save failed',e)}}}
 function saveDraft(){current.status='draft';upsertCurrent();alert('Ponuka bola uložená ako rozpracovaná.')}
 function finishQuote(){
