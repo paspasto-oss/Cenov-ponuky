@@ -1,8 +1,8 @@
 {
-  "version": 26,
-  "updated_at": "2026-09-23",
+  "version": 27,
+  "updated_at": "2026-09-24",
   "source": "POHODA export Zásoby1.xlsx",
-  "note": "Aktualizovaná cena montáže kotla na pelety MPEL podľa POHODY na 950 € bez DPH.",
+  "note": "Klimatizácie: nacenenie cez POHODA montáž do 3 m + 2 m predĺženie trasy do 5 m.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -935,82 +935,84 @@
     },
     {
       "key": "ac_single_split_5m",
-      "customer_label": "Montážny materiál klimatizácie do 5 m",
+      "customer_label": "Montáž klimatizácie do 5 m",
       "system_type": "single_split_ac",
       "max_route_m": 5,
-      "status": "pending_mapping",
+      "status": "mapped",
       "items": [
         {
-          "role": "copper_pipe_liquid",
-          "pohoda_code": null,
-          "qty": 5,
-          "unit": "m",
-          "required": true
+          "role": "installation_service",
+          "pohoda_plu": "41",
+          "expected_name": "Montáž klimatizácie s materiálom do 3 m",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped_service",
+          "customer_group": "Montáž",
+          "note": "Základná montáž s materiálom do 3 m podľa POHODY.",
+          "work_scope": [
+            "osadenie vnútornej a vonkajšej jednotky",
+            "prepojenie chladivového potrubia a komunikácie",
+            "odvod kondenzátu",
+            "vákuovanie a skúška tesnosti",
+            "uvedenie klimatizácie do prevádzky"
+          ]
         },
         {
-          "role": "copper_pipe_gas",
-          "pohoda_code": null,
-          "qty": 5,
+          "role": "refrigerant_pipe_pair",
+          "qty": 2,
           "unit": "m",
-          "required": true
-        },
-        {
-          "role": "pipe_insulation",
-          "pohoda_code": null,
-          "qty": 10,
-          "unit": "m",
-          "required": true
+          "required": true,
+          "mapping_status": "dynamic_by_power",
+          "customer_group": "Predĺženie trasy 3–5 m",
+          "note": "Typ potrubia sa vyberie podľa výkonu klimatizácie."
         },
         {
           "role": "communication_cable",
-          "pohoda_code": null,
-          "qty": 5,
+          "pohoda_code": "JYTY-O 4x1",
+          "pohoda_plu": "105109",
+          "expected_name": "Kábel špeciálny JYTY-O 4x1",
+          "qty": 2,
           "unit": "m",
-          "required": true
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Predĺženie trasy 3–5 m"
         },
         {
           "role": "power_cable",
-          "pohoda_code": null,
-          "qty": 5,
+          "pohoda_code": "KÁBEL1",
+          "pohoda_plu": "106389",
+          "expected_name": "Kábel pevný Cu CYKY-J 3x2,5",
+          "qty": 2,
           "unit": "m",
-          "required": true
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Predĺženie trasy 3–5 m"
         },
         {
           "role": "condensate_drain",
-          "pohoda_code": null,
-          "qty": 5,
+          "pohoda_code": "ART01375",
+          "pohoda_plu": "104891",
+          "expected_name": "PVC trubka na odvod kondenzátu 20 mm Artiplastic",
+          "qty": 2,
           "unit": "m",
-          "required": true
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Predĺženie trasy 3–5 m"
         },
         {
           "role": "pvc_trunking",
-          "pohoda_code": null,
-          "qty": 5,
+          "pohoda_code": "LIŠTA0",
+          "pohoda_plu": "106378",
+          "expected_name": "Lišta inštalačná PVC 80x40 biela",
+          "qty": 2,
           "unit": "m",
-          "required": true
-        },
-        {
-          "role": "outdoor_bracket",
-          "pohoda_code": null,
-          "qty": 1,
-          "unit": "ks",
-          "required": true
-        },
-        {
-          "role": "anti_vibration_set",
-          "pohoda_code": null,
-          "qty": 1,
-          "unit": "súb.",
-          "required": true
-        },
-        {
-          "role": "installation_consumables",
-          "pohoda_code": null,
-          "qty": 1,
-          "unit": "súb.",
-          "required": true
+          "required": true,
+          "mapping_status": "mapped",
+          "customer_group": "Predĺženie trasy 3–5 m"
         }
-      ]
+      ],
+      "description": "Základná POHODA montáž klimatizácie s materiálom do 3 m + materiál na predĺženie trasy do 5 m."
     },
     {
       "key": "hp_electrical_standard",
