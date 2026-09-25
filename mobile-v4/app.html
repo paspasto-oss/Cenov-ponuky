@@ -480,7 +480,14 @@ function findStockForDevice(d){
  if(d.power_kw)candidates=candidates.filter(x=>norm(x.name).includes(String(d.power_kw)));
  return candidates[0]||null
 }
-function systemType(d){let m=norm((d.model||'')+' '+(d.variant||''));if(m.includes('monoblok')||m.includes('monoblock')||m.includes('nature')||m.includes('arotherm plus'))return 'monoblock';if(m.includes('split')||m.includes('zubadan'))return 'split';return category==='air_conditioning'?'single_split_ac':null}
+function systemType(d){
+  const cat=catalogCategory(d)||current?.category||category;
+  if(cat==='air_conditioning')return 'single_split_ac';
+  let m=norm((d.model||'')+' '+(d.variant||''));
+  if(m.includes('monoblok')||m.includes('monoblock')||m.includes('nature')||m.includes('arotherm plus'))return 'monoblock';
+  if(m.includes('split')||m.includes('zubadan'))return 'split';
+  return null;
+}
 function makeRecommendation(){
  if(!brand){alert('Vyber značku.');return}
  current.category=category;current.brand=brand;
@@ -569,7 +576,7 @@ function buildBOM(){
  let key=bundleKeyFor(d),recipe=bundleRecipes.find(b=>b.key===key);
  const recipes=[];
  if(recipe) recipes.push(recipe);
- if(category==='heat_pump'){
+ if((current?.category||category)==='heat_pump'){
    const electricalRecipe=bundleRecipes.find(b=>b.key==='hp_electrical_standard');
    if(electricalRecipe) recipes.push(electricalRecipe);
  }
@@ -581,7 +588,7 @@ function buildBOM(){
        const activeConditional = r.condition==='with_external_dhw_tank' && current.building.with_external_dhw_tank;
        if(r.required===false&&r.default_enabled!==true&&r.role!=='installation_service'&&!activeConditional)return;
        let recipeRow=r;
-       if(category==='air_conditioning'&&r.role==='refrigerant_pipe_pair'){
+       if((current?.category||category)==='air_conditioning'&&r.role==='refrigerant_pipe_pair'){
          recipeRow={...r,...acPipeRecipeForPower(d.power_kw)};
        }
        if(r.role==='installation_service'&&r.tier_pohoda_plu){
