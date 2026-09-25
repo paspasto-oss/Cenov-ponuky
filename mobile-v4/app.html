@@ -94,6 +94,23 @@
     <div class="topline"><button class="btn ghost small" onclick="go('step2')">← Späť</button><h1>3. Typ a značka</h1></div>
     <div class="steps"><div class="step on"></div><div class="step on"></div><div class="step on"></div><div class="step"></div><div class="step"></div></div>
     <div class="card"><h2>Čo zákazník chce?</h2><div id="catChoices" class="choiceGrid"></div></div>
+    <div id="acTypeCard" class="card hidden">
+      <h2>Typ klimatizácie</h2>
+      <div class="choiceGrid" style="grid-template-columns:1fr 1fr">
+        <button id="acSingle" class="choice on" onclick="selectAcMode('single')"><span>❄</span><b>SINGLE SPLIT</b></button>
+        <button id="acMulti" class="choice" onclick="selectAcMode('multi')"><span>❄❄</span><b>MULTISPLIT</b></button>
+      </div>
+    </div>
+    <div id="acMultiCountCard" class="card hidden">
+      <h2>Počet vnútorných jednotiek</h2>
+      <div class="choiceGrid" style="grid-template-columns:repeat(4,1fr)">
+        <button id="multi2" class="choice on" onclick="selectMultiCount(2)"><b>2 + 1</b></button>
+        <button id="multi3" class="choice" onclick="selectMultiCount(3)"><b>3 + 1</b></button>
+        <button id="multi4" class="choice" onclick="selectMultiCount(4)"><b>4 + 1</b></button>
+        <button id="multi5" class="choice" onclick="selectMultiCount(5)"><b>5 + 1</b></button>
+      </div>
+      <div class="sub" style="margin-top:8px">Predvolene počítame približne 5 m trasy ku každej vnútornej jednotke.</div>
+    </div>
     <div id="boilerTypeCard" class="card hidden">
       <h2>Typ kotla</h2>
       <div class="choiceGrid">
@@ -270,7 +287,7 @@ let quotes=JSON.parse(localStorage.getItem(QUOTES_KEY)||'[]');
 let stocks=[];
 let deviceCatalog=[];
 let bundleRecipes=[];
-let current=null, category='heat_pump', brand='', recommendation=null, boilerType='gas';
+let current=null, category='heat_pump', brand='', recommendation=null, boilerType='gas', acMode='single', multiCount=2;
 
 const fallbackDevices=[
  {id:'panasonic-aquarea-k-7',category:'tepelne_cerpadlo',brand:'Panasonic',model:'Aquarea K',variant:'7 kW',power_kw:7},
@@ -342,7 +359,7 @@ async function loadConfig(){
     const j=await r.json();deviceCatalog=j.devices||[];
   }catch(e){deviceCatalog=fallbackDevices;configOk=false;console.error('Device catalog load failed:',e)}
   try{
-    const r=await fetch('data/bundle-recipes.json?v=20260924-acprices1',{cache:'no-store'});
+    const r=await fetch('data/bundle-recipes.json?v=20260925-multisplit1',{cache:'no-store'});
     if(!r.ok) throw new Error('bundle-recipes '+r.status);
     const j=await r.json();bundleRecipes=j.bundles||[];
   }catch(e){bundleRecipes=[];configOk=false;console.error('Bundle recipes load failed:',e)}
@@ -382,7 +399,7 @@ function renderHome(){
 }
 function labelStatus(x){return x==='sent'?'Odoslaná':x==='approved'?'Schválená':'Rozpracovaná'}
 function labelCat(x){return x==='heat_pump'?'Tepelné čerpadlo':x==='air_conditioning'?'Klimatizácia':x==='boiler'?'Kotol':'Iné'}
-function startWizard(){current={id:'q_'+Date.now(),quote_no:'26NA'+String(quotes.length+1).padStart(4,'0'),status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_images_enabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;boilerType='gas';['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
+function startWizard(){current={id:'q_'+Date.now(),quote_no:'26NA'+String(quotes.length+1).padStart(4,'0'),status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_images_enabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;boilerType='gas';acMode='single';multiCount=2;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
 function nextBuilding(){let name=s(document.getElementById('cName').value),phone=s(document.getElementById('cPhone').value),addr=s(document.getElementById('cAddress').value);if(!name||!phone||!addr){alert('Vyplň meno, telefón a adresu realizácie.');return}current.customer={name,phone,email:s(document.getElementById('cEmail').value),address:addr,note:s(document.getElementById('cNote').value)};go('step2')}
 function toggleLoss(){let known=document.getElementById('hasLoss').value==='yes';document.getElementById('lossKnown').classList.toggle('hidden',!known);document.getElementById('lossEstimate').classList.toggle('hidden',known)}
 function nextCategory(){let known=document.getElementById('hasLoss').value==='yes',loss=+document.getElementById('heatLoss').value||0,area=+document.getElementById('area').value||0;if(known&&loss<=0){alert('Zadaj tepelnú stratu.');return}if(!known&&area<=0){alert('Zadaj vykurovanú plochu.');return}current.building={known_loss:known,heat_loss_kw:known?loss:null,area_m2:known?null:area,w_per_m2:+document.getElementById('buildingClass').value,heating:document.getElementById('heating').value,with_external_dhw_tank:document.getElementById('dhwMode').value==='external'};renderChoices();go('step3')}
@@ -391,10 +408,15 @@ function renderChoices(){
   document.getElementById('catChoices').innerHTML=cats.map(c=>'<button class="choice '+(category===c[0]?'on':'')+'" onclick="selectCat(\''+c[0]+'\')"><span>'+c[1]+'</span><b>'+c[2]+'</b></button>').join('');
   const boilerCard=document.getElementById('boilerTypeCard');
   if(boilerCard)boilerCard.classList.toggle('hidden',category!=='boiler');
+  const acCard=document.getElementById('acTypeCard');
+  if(acCard)acCard.classList.toggle('hidden',category!=='air_conditioning');
+  const multiCard=document.getElementById('acMultiCountCard');
+  if(multiCard)multiCard.classList.toggle('hidden',category!=='air_conditioning'||acMode!=='multi');
   syncBoilerTypeUI();
+  syncAcModeUI();
   renderBrands();
 }
-function selectCat(c){category=c;brand='';if(c!=='boiler')boilerType='gas';renderChoices()}
+function selectCat(c){category=c;brand='';if(c!=='boiler')boilerType='gas';if(c!=='air_conditioning'){acMode='single';multiCount=2;}renderChoices()}
 function catalogCategory(d){return d.category==='tepelne_cerpadlo'?'heat_pump':d.category==='klimatizacia'?'air_conditioning':d.category==='kotol'?'boiler':d.category}
 function syncBoilerTypeUI(){
   [['gas','boilerGas'],['electric','boilerElectric'],['pellet','boilerPellet']].forEach(([v,id])=>{
@@ -402,10 +424,97 @@ function syncBoilerTypeUI(){
   });
 }
 function selectBoilerType(t){boilerType=t;brand='';syncBoilerTypeUI();renderBrands()}
+function syncAcModeUI(){
+  const s=document.getElementById('acSingle'),m=document.getElementById('acMulti');
+  if(s)s.classList.toggle('on',acMode==='single');
+  if(m)m.classList.toggle('on',acMode==='multi');
+  [2,3,4,5].forEach(n=>{const el=document.getElementById('multi'+n);if(el)el.classList.toggle('on',multiCount===n)});
+}
+function selectAcMode(mode){acMode=mode;brand='';syncAcModeUI();renderChoices()}
+function selectMultiCount(n){multiCount=n;brand='';syncAcModeUI();renderBrands()}
+function multisplitCountFromName(name){
+  const n=norm(name);
+  let m=n.match(/\((\d+)\s*vnutorn/); if(m)return +m[1];
+  m=n.match(/pre\s+(\d+)\s+jednot/); if(m)return +m[1];
+  m=n.match(/(\d+)\s*\+\s*1/); if(m)return +m[1];
+  return null;
+}
+function multisplitBrandFromStock(st){
+  const n=norm((st.name||'')+' '+(st.manufacturer||''));
+  if(n.includes('hyundai'))return 'Hyundai';
+  if(n.includes('samsung'))return 'Samsung';
+  if(n.includes('midea')||n.includes('mdv'))return 'Midea / MDV';
+  if(n.includes('mitsubishi'))return 'Mitsubishi Electric';
+  if(n.includes('lg'))return 'LG';
+  if(n.includes('aux'))return 'AUX';
+  return null;
+}
+function acMultiOutdoorCandidates(selectedBrand,count){
+  const aliases=acBrandAliases(selectedBrand);
+  return stocks.filter(st=>{
+    const n=norm(st.name);
+    if(!aliases.some(a=>n.includes(a)))return false;
+    if(!n.includes('multisplit'))return false;
+    if(n.includes('vnutorna'))return false;
+    const c=multisplitCountFromName(st.name);
+    if(count&&c&&c!==count)return false;
+    if(count&&!c)return false;
+    return Number(st.sell_price_ex_vat)>0;
+  }).map(st=>({
+    id:'ac-multi-'+String(st.plu||st.code||st.id).replace(/[^a-zA-Z0-9_-]/g,'-'),
+    category:'klimatizacia',
+    brand:selectedBrand,
+    model:st.name,
+    variant:(multisplitCountFromName(st.name)||count)+'+1 · POHODA',
+    power_kw:extractPowerKw(st.name),
+    ac_mode:'multi',
+    multisplit_count:multisplitCountFromName(st.name)||count,
+    complete_multisplit_set:/\d+\s*\+\s*1/.test(norm(st.name))&&!norm(st.name).includes('vonkajsia'),
+    pohoda_code:st.code||null,
+    pohoda_plu:st.plu||null,
+    purchase_price_ex_vat:st.purchase_price_ex_vat==null?null:Number(st.purchase_price_ex_vat),
+    sell_price_ex_vat:Number(st.sell_price_ex_vat),
+    source:'pohoda_stock'
+  })).sort((a,b)=>(a.power_kw||99)-(b.power_kw||99)||(a.sell_price_ex_vat||0)-(b.sell_price_ex_vat||0));
+}
+function multisplitBrandsForCount(count){
+  return [...new Set(stocks.filter(st=>{
+    const n=norm(st.name);
+    if(!n.includes('multisplit')||n.includes('vnutorna'))return false;
+    return multisplitCountFromName(st.name)===count&&Number(st.sell_price_ex_vat)>0;
+  }).map(multisplitBrandFromStock).filter(Boolean))];
+}
+function acMultiIndoorStock(selectedBrand){
+  const aliases=acBrandAliases(selectedBrand);
+  const candidates=stocks.filter(st=>{
+    const n=norm(st.name);
+    if(!aliases.some(a=>n.includes(a)))return false;
+    if(!(n.includes('vnutorna')&&n.includes('nastenna')))return false;
+    if(n.includes('kazet')||n.includes('parapet')||n.includes('kanalov')||n.includes('potrubn'))return false;
+    return Number(st.sell_price_ex_vat)>0;
+  });
+  const preferred=candidates.filter(st=>{
+    const p=extractPowerKw(st.name);
+    return p&&p>=2&&p<=2.7;
+  });
+  const pool=preferred.length?preferred:candidates;
+  if(selectedBrand==='Hyundai'){
+    return pool.find(st=>norm(st.name).includes('carbon grey'))||pool.find(st=>norm(st.name).includes('revolution'))||pool[0]||null;
+  }
+  if(selectedBrand==='Samsung'){
+    return pool.find(st=>norm(st.name).includes('windfree avant'))||pool.find(st=>norm(st.name).includes('windfree comfort'))||pool[0]||null;
+  }
+  return pool[0]||null;
+}
 function renderBrands(){
-  let pool=deviceCatalog.filter(d=>catalogCategory(d)===category);
-  if(category==='boiler')pool=pool.filter(d=>(d.boiler_type||'gas')===boilerType);
-  let brands=[...new Set(pool.map(d=>d.brand).filter(Boolean))];
+  let brands=[];
+  if(category==='air_conditioning'&&acMode==='multi'){
+    brands=multisplitBrandsForCount(multiCount);
+  }else{
+    let pool=deviceCatalog.filter(d=>catalogCategory(d)===category);
+    if(category==='boiler')pool=pool.filter(d=>(d.boiler_type||'gas')===boilerType);
+    brands=[...new Set(pool.map(d=>d.brand).filter(Boolean))];
+  }
   document.getElementById('brandChoices').innerHTML=(brands.length?brands:['Zatiaľ bez značiek v katalógu']).map(b=>'<button class="choice '+(brand===b?'on':'')+' '+(b.startsWith('Zatiaľ')?'disabled':'')+'" '+(b.startsWith('Zatiaľ')?'':'onclick="selectBrand(\''+String(b).replace(/'/g,"\\'")+'\')"')+'><span>●</span><b>'+esc(b)+'</b></button>').join('');
 }
 function selectBrand(b){brand=b;renderBrands()}
@@ -482,7 +591,7 @@ function findStockForDevice(d){
 }
 function systemType(d){
   const cat=catalogCategory(d)||current?.category||category;
-  if(cat==='air_conditioning')return 'single_split_ac';
+  if(cat==='air_conditioning')return (d.ac_mode||current?.ac_mode||acMode)==='multi'?'multi_split_ac':'single_split_ac';
   let m=norm((d.model||'')+' '+(d.variant||''));
   if(m.includes('monoblok')||m.includes('monoblock')||m.includes('nature')||m.includes('arotherm plus'))return 'monoblock';
   if(m.includes('split')||m.includes('zubadan'))return 'split';
@@ -494,11 +603,13 @@ function makeRecommendation(){
  if(category==='boiler')current.boiler_type=boilerType;
  let required=calcRequiredKw();
  let target=category==='heat_pump'?(required?nextStepKw(required):null):required;
- let devices=category==='air_conditioning'?acStockCandidates(brand):deviceCatalog.filter(d=>catalogCategory(d)===category&&d.brand===brand);
+ let devices=category==='air_conditioning'?(acMode==='multi'?acMultiOutdoorCandidates(brand,multiCount):acStockCandidates(brand)):deviceCatalog.filter(d=>catalogCategory(d)===category&&d.brand===brand);
  if(category==='boiler')devices=devices.filter(d=>(d.boiler_type||'gas')===boilerType);
  if(category==='air_conditioning'){
-   target=3.5;
-   recommendation=devices.find(d=>d.power_kw!=null&&d.power_kw>=target)||devices[0]||null;
+   current.ac_mode=acMode;
+   current.multisplit_count=acMode==='multi'?multiCount:null;
+   target=acMode==='multi'?null:3.5;
+   recommendation=acMode==='multi'?(devices[0]||null):(devices.find(d=>d.power_kw!=null&&d.power_kw>=target)||devices[0]||null);
  }else if((category==='heat_pump'||category==='boiler')&&target){
    let withPower=devices.filter(d=>d.power_kw!=null).sort((a,b)=>a.power_kw-b.power_kw);
    recommendation=withPower.find(d=>d.power_kw>=target)||withPower[withPower.length-1]||devices[0]||null;
@@ -549,7 +660,7 @@ function bundleKeyFor(d){
     if(bt==='pellet'||bt==='biomass')return 'boiler_biomass_standard';
     return null;
   }
-  return st==='monoblock'?'hp_monoblock_5m':st==='split'?'hp_split_5m':st==='single_split_ac'?'ac_single_split_5m':null
+  return st==='monoblock'?'hp_monoblock_5m':st==='split'?'hp_split_5m':st==='single_split_ac'?'ac_single_split_5m':st==='multi_split_ac'?'ac_multisplit_5m':null
 }
 function consolidateBOM(items){
   const out=[], byKey=new Map();
@@ -620,6 +731,43 @@ function buildBOM(){
    let roles=fallbackBundles[key]||[];
    roles.forEach(role=>{let st=roleToStock(role),q=roleQty[role]||[1,'ks'];items.push({role,name:roleLabels[role]||role,qty:q[0],unit:q[1],pohoda:st,price:st?.sell_price_ex_vat??null,cost:st?.purchase_price_ex_vat??null,visible:false,mapping_status:st?'mapped':'unmapped'})});
    items.push({role:'installation',name:category==='air_conditioning'?'Montáž klimatizácie do 5 m':'Montáž a uvedenie do prevádzky',qty:1,unit:'súb.',pohoda:null,price:category==='heat_pump'?600:null,cost:null,visible:true,mapping_status:'service'});
+ }
+ if((current?.category||category)==='air_conditioning'&&current?.ac_mode==='multi'){
+   const count=Number(current.multisplit_count||d.multisplit_count||2);
+   if(!d.complete_multisplit_set){
+     const indoor=acMultiIndoorStock(current.brand||brand);
+     if(indoor){
+       items.push({
+         role:'multisplit_indoor_units',
+         name:indoor.name,
+         qty:count,
+         unit:indoor.unit||'ks',
+         pohoda:indoor,
+         pohoda_code:indoor.code||null,
+         mapping_status:'mapped',
+         price:Number(indoor.sell_price_ex_vat),
+         cost:indoor.purchase_price_ex_vat==null?null:Number(indoor.purchase_price_ex_vat),
+         visible:true,
+         customer_group:'Vnútorné jednotky'
+       });
+     }
+   }
+   const routeQty=5*count;
+   const routeRows=[
+     {...acPipeRecipeForPower(2.5),role:'refrigerant_pipe_pair',qty:routeQty,unit:'m',customer_group:'Montážny materiál multisplit'},
+     {role:'communication_cable',pohoda_code:'JYTY-O 4x1',pohoda_plu:'105109',expected_name:'Kábel špeciálny JYTY-O 4x1',qty:routeQty,unit:'m',customer_group:'Montážny materiál multisplit'},
+     {role:'condensate_drain',pohoda_code:'ART01375',pohoda_plu:'104891',expected_name:'PVC trubka na odvod kondenzátu 20 mm Artiplastic',qty:routeQty,unit:'m',customer_group:'Montážny materiál multisplit'},
+     {role:'pvc_trunking',pohoda_code:'LIŠTA0',pohoda_plu:'106378',expected_name:'Lišta inštalačná PVC 80x40 biela',qty:routeQty,unit:'m',customer_group:'Montážny materiál multisplit'},
+     {role:'power_cable',pohoda_code:'KÁBEL1',pohoda_plu:'106389',expected_name:'Kábel pevný Cu CYKY-J 3x2,5',qty:5,unit:'m',customer_group:'Montážny materiál multisplit'}
+   ];
+   routeRows.forEach(r=>{
+     const st=stockByRecipe(r);
+     items.push({
+       role:r.role,name:recipeName(r,st),qty:r.qty,unit:r.unit,pohoda:st,pohoda_code:r.pohoda_code||null,
+       mapping_status:st?'mapped':'unmapped',price:st?.sell_price_ex_vat??null,cost:st?.purchase_price_ex_vat??null,
+       visible:false,customer_group:r.customer_group
+     });
+   });
  }
  if(category==='heat_pump'&&current.optional_services?.flush){
    const svcBundle=bundleRecipes.find(b=>b.key==='hp_optional_services');
@@ -1028,10 +1176,12 @@ function renderRecommendation(){
    : category==='boiler'
      ? (current.building.known_loss?'Zadaná tepelná strata: '+required+' kW. Vybraný najbližší výkon kotla.':'Orientačný potrebný výkon: '+required+' kW. Vybraný najbližší výkon kotla.')
      : category==='air_conditioning'
-       ? 'Z POHODY sa načítali konkrétne klimatizácie s cenami. Predvolene je zvolená trieda okolo 3,5 kW; nižšie môžeš vybrať inú výkonovú alternatívu.'
+       ? (current?.ac_mode==='multi'
+          ? 'Multisplit '+(current.multisplit_count||2)+'+1: vonkajšia jednotka, vnútorné jednotky a montáž sa načítavajú z POHODY. Materiál sa počíta orientačne do 5 m ku každej vnútornej jednotke.'
+          : 'Z POHODY sa načítali konkrétne klimatizácie s cenami. Predvolene je zvolená trieda okolo 3,5 kW; nižšie môžeš vybrať inú výkonovú alternatívu.')
        : 'Pre túto kategóriu sa výkon vyberie podľa konkrétneho modelu a priestoru.';
  document.getElementById('recommendation').innerHTML='<div class="title"><div><h3>'+esc(d.brand+' '+d.model)+'</h3><div class="sub">'+esc(d.variant||'')+(current.system_type?' · '+esc(current.system_type):'')+'</div></div><div class="kw">'+(d.power_kw||target||'—')+' kW</div></div>';
- let alt=(category==='air_conditioning'?acStockCandidates(brand):deviceCatalog.filter(x=>catalogCategory(x)===category&&x.brand===brand)).filter(x=>x.id!==d.id&& (category!=='boiler'||(x.boiler_type||'gas')===boilerType)).sort((a,b)=>(a.power_kw||999)-(b.power_kw||999)).slice(0,12);document.getElementById('alternatives').innerHTML=alt.length?'<div class="sub">Alternatívy:</div>'+alt.map(x=>'<div class="row" onclick="pickAlternative(\''+x.id+'\')"><div><b>'+esc(x.model+' '+(x.variant||''))+'</b><small>'+((x.power_kw||'—')+' kW')+'</small></div><span>Vybrať ›</span></div>').join(''):'';
+ let alt=(category==='air_conditioning'?(acMode==='multi'?acMultiOutdoorCandidates(brand,multiCount):acStockCandidates(brand)):deviceCatalog.filter(x=>catalogCategory(x)===category&&x.brand===brand)).filter(x=>x.id!==d.id&& (category!=='boiler'||(x.boiler_type||'gas')===boilerType)).sort((a,b)=>(a.power_kw||999)-(b.power_kw||999)).slice(0,12);document.getElementById('alternatives').innerHTML=alt.length?'<div class="sub">Alternatívy:</div>'+alt.map(x=>'<div class="row" onclick="pickAlternative(\''+x.id+'\')"><div><b>'+esc(x.model+' '+(x.variant||''))+'</b><small>'+((x.power_kw||'—')+' kW')+'</small></div><span>Vybrať ›</span></div>').join(''):'';
  document.getElementById('bomItems').innerHTML=current.items.map(i=>{
    let link='';
    if(i.pohoda) link=' · POHODA: '+esc(i.pohoda.code||i.pohoda.plu||'namapované');
@@ -1046,9 +1196,9 @@ function renderRecommendation(){
 function refreshQuoteFromCatalog(){
   if(!current)return;
   let fresh=null;
-  if(current.device?.id) fresh=(current.category==='air_conditioning'?acStockCandidates(current.brand||brand).find(x=>x.id===current.device.id):deviceCatalog.find(x=>x.id===current.device.id))||null;
+  if(current.device?.id) fresh=(current.category==='air_conditioning'?((current.ac_mode||acMode)==='multi'?acMultiOutdoorCandidates(current.brand||brand,current.multisplit_count||multiCount).find(x=>x.id===current.device.id):acStockCandidates(current.brand||brand).find(x=>x.id===current.device.id)):deviceCatalog.find(x=>x.id===current.device.id))||null;
   if(!fresh){
-    const candidates=(current.category==='air_conditioning'?acStockCandidates(current.brand||brand):deviceCatalog.filter(x=>catalogCategory(x)===(current.category||category) && x.brand===(current.brand||brand) && x.active!==false));
+    const candidates=(current.category==='air_conditioning'?((current.ac_mode||acMode)==='multi'?acMultiOutdoorCandidates(current.brand||brand,current.multisplit_count||multiCount):acStockCandidates(current.brand||brand)):deviceCatalog.filter(x=>catalogCategory(x)===(current.category||category) && x.brand===(current.brand||brand) && x.active!==false));
     const target=current.target_kw||current.required_kw||current.device?.power_kw||0;
     const powered=candidates.filter(x=>x.power_kw!=null).sort((a,b)=>a.power_kw-b.power_kw);
     fresh=powered.find(x=>x.power_kw>=target)||powered[powered.length-1]||candidates[0]||null;
@@ -1061,7 +1211,7 @@ function refreshQuoteFromCatalog(){
   buildBOM();
   renderRecommendation();
 }
-function pickAlternative(id){let d=category==='air_conditioning'?acStockCandidates(brand).find(x=>x.id===id):deviceCatalog.find(x=>x.id===id);if(!d)return;recommendation={...d};current.device={...d};ensurePdfImagesState();buildBOM();renderRecommendation()}
+function pickAlternative(id){let d=category==='air_conditioning'?(acMode==='multi'?acMultiOutdoorCandidates(brand,multiCount).find(x=>x.id===id):acStockCandidates(brand).find(x=>x.id===id)):deviceCatalog.find(x=>x.id===id);if(!d)return;recommendation={...d};current.device={...d};ensurePdfImagesState();buildBOM();renderRecommendation()}
 async function upsertCurrent(){let i=quotes.findIndex(q=>q.id===current.id);if(i>=0)quotes[i]=JSON.parse(JSON.stringify(current));else quotes.push(JSON.parse(JSON.stringify(current)));persist();if(window.SpektraDB?.isAuthenticated()){try{const ids=await SpektraDB.saveQuote(current);current.remote_id=ids.remote_id;current.remote_customer_id=ids.remote_customer_id}catch(e){console.error('Online quote save failed',e)}}}
 function saveDraft(){current.status='draft';upsertCurrent();alert('Ponuka bola uložená ako rozpracovaná.')}
 function finishQuote(){
@@ -1098,7 +1248,7 @@ function renderFinal(){
      : (install?.price!=null?eur(install.price):'podľa cenníka')
  )+'</b></div>'+optional+annual+subsidyHtml+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+ (current.price_complete?eur(current.total):'Cena ešte nie je kompletná') +'</span></div>'
 }
-function openQuote(id){let q=quotes.find(x=>x.id===id);if(!q)return;current=JSON.parse(JSON.stringify(q));ensurePdfImagesState();ensureSubsidyState();if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false};if(current.optional_services.annual_service===undefined)current.optional_services.annual_service=true;if(current.optional_services.condensate_pump===undefined)current.optional_services.condensate_pump=false;if(current.optional_services.dhw_tank_fe120===undefined)current.optional_services.dhw_tank_fe120=false;if(!current.installation_tier)current.installation_tier='standard';category=current.category||'heat_pump';brand=current.brand||'';boilerType=current.boiler_type||'gas';recommendation=current.device||null;document.getElementById('cName').value=current.customer.name||'';document.getElementById('cPhone').value=current.customer.phone||'';document.getElementById('cEmail').value=current.customer.email||'';document.getElementById('cAddress').value=current.customer.address||'';document.getElementById('cNote').value=current.customer.note||'';refreshQuoteFromCatalog();renderFinal();go('step4')}
+function openQuote(id){let q=quotes.find(x=>x.id===id);if(!q)return;current=JSON.parse(JSON.stringify(q));ensurePdfImagesState();ensureSubsidyState();if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false};if(current.optional_services.annual_service===undefined)current.optional_services.annual_service=true;if(current.optional_services.condensate_pump===undefined)current.optional_services.condensate_pump=false;if(current.optional_services.dhw_tank_fe120===undefined)current.optional_services.dhw_tank_fe120=false;if(!current.installation_tier)current.installation_tier='standard';category=current.category||'heat_pump';brand=current.brand||'';boilerType=current.boiler_type||'gas';acMode=current.ac_mode||'single';multiCount=current.multisplit_count||2;recommendation=current.device||null;document.getElementById('cName').value=current.customer.name||'';document.getElementById('cPhone').value=current.customer.phone||'';document.getElementById('cEmail').value=current.customer.email||'';document.getElementById('cAddress').value=current.customer.address||'';document.getElementById('cNote').value=current.customer.note||'';refreshQuoteFromCatalog();renderFinal();go('step4')}
 function message(){
   const sub=calculateSubsidy();
   let subsidyText='';
@@ -1139,7 +1289,7 @@ function offerHtml(){
   if(materialItems.length){
     customerRows.push({
       role:'customer_material_bundle',
-      name:'Inštalačný materiál a príslušenstvo do 5 m',
+      name:current.category==='air_conditioning'&&current.ac_mode==='multi'?'Inštalačný materiál multisplit – do 5 m / vnútornú jednotku':'Inštalačný materiál a príslušenstvo do 5 m',
       qty:1,
       unit:'súb.',
       price:materialTotal
@@ -1187,6 +1337,10 @@ function offerHtml(){
     materialScopeParts.push('skupina SMT 125 s čerpadlom Wilo Yonos Para');
     materialScopeParts.push('Wi-Fi izbový termostat E20i-W');
     materialScopeParts.push('uhlíková oceľ SANHA THERM 28 mm: prechody 28x1, kolená a potrubie');
+  }else if(current.category==='air_conditioning'&&current.ac_mode==='multi'){
+    materialScopeParts.push('multisplit vonkajšia jednotka + '+(current.multisplit_count||2)+' vnútorné jednotky');
+    materialScopeParts.push('chladivové potrubie, komunikačný kábel, kondenzát a PVC lišta do 5 m ku každej vnútornej jednotke');
+    materialScopeParts.push('montáž multisplit podľa POHODA položky MM3');
   }else{
     materialScopeParts.push('štandardný montážny a pripojovací materiál podľa zvoleného zariadenia');
   }
