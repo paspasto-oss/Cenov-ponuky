@@ -1,8 +1,8 @@
 {
-  "version": 27,
-  "updated_at": "2026-09-24",
+  "version": 28,
+  "updated_at": "2026-09-25",
   "source": "POHODA export Zásoby1.xlsx",
-  "note": "Klimatizácie: nacenenie cez POHODA montáž do 3 m + 2 m predĺženie trasy do 5 m.",
+  "note": "Doplnený multisplit AC balík s montážou MM3 z POHODY.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -1460,6 +1460,34 @@
             "montáž regulácie E20i-W",
             "napustenie a odvzdušnenie vykurovacieho systému",
             "základná kontrola funkcie a príprava na uvedenie do prevádzky"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ac_multisplit_5m",
+      "customer_label": "Montážny materiál multisplit klimatizácie",
+      "system_type": "multi_split_ac",
+      "max_route_m": 5,
+      "status": "mapped",
+      "description": "Multisplit: montážna služba z POHODY + materiál do 5 m pre každú vnútornú jednotku.",
+      "items": [
+        {
+          "role": "installation_service",
+          "pohoda_code": "MM3",
+          "pohoda_plu": "43",
+          "expected_name": "Montáž klimatizácie Multisplit",
+          "qty": 1,
+          "unit": "ks",
+          "required": true,
+          "mapping_status": "mapped_service",
+          "customer_group": "Montáž",
+          "work_scope": [
+            "osadenie vonkajšej a vnútorných jednotiek",
+            "chladivové prepojenie jednotlivých vetiev",
+            "komunikačné a napájacie prepojenie",
+            "odvod kondenzátu",
+            "vákuovanie, skúška tesnosti a uvedenie do prevádzky"
           ]
         }
       ]
