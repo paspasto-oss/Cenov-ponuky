@@ -1044,6 +1044,7 @@ function syncProductImagesFromStock(stock){
       source:'pohoda'
     }));
   }
+  if(urls.length) current.pdf_images_enabled=true;
 }
 function ensurePdfImagesState(){
   if(!current)return;
