@@ -386,6 +386,8 @@ function renderSummary(){
   const hasBase=baseline().length>0;
   document.getElementById('summaryCard').classList.remove('hidden');document.getElementById('detailCard').classList.remove('hidden');document.getElementById('applyCard').classList.remove('hidden');
   document.getElementById('nNew').textContent=count('new');document.getElementById('nPrice').textContent=count('price');document.getElementById('nStock').textContent=count('stock');document.getElementById('nRemoved').textContent=count('removed');document.getElementById('nMeta').textContent=count('meta');document.getElementById('nConflict').textContent=count('conflict');document.getElementById('nRows').textContent=sourceRows.toLocaleString('sk-SK');document.getElementById('nUnique').textContent=normalized.length.toLocaleString('sk-SK');
+  document.getElementById('nImageRefs').textContent=countImageRefs().toLocaleString('sk-SK');
+  document.getElementById('nImageMatches').textContent=countImageMatches().toLocaleString('sk-SK');
   document.getElementById('firstImport').classList.toggle('hidden',hasBase);document.getElementById('conflictWarning').classList.toggle('hidden',!conflicts.length);
   const meta=baselineMeta;document.getElementById('baselineInfo').textContent=meta?'Posledný baseline: '+new Date(meta.applied_at).toLocaleString('sk-SK')+' · '+meta.count.toLocaleString('sk-SK')+' zásob':'Na tomto zariadení ešte nie je baseline.';
   document.getElementById('syncWarning').textContent=(effectiveMode==='partial'?'ČIASTOČNÝ import · ':'ÚPLNÝ import · ')+(conflicts.length?'skontrolovať konflikty':'pripravené');
@@ -398,11 +400,63 @@ function renderTable(){
     let buy=money(x.purchase_price_ex_vat),sell=money(x.sell_price_ex_vat),stock=qty(x.quantity_available);
     if(c.type==='price'&&o){buy=money(o.purchase_price_ex_vat)+' → <b>'+money(x.purchase_price_ex_vat)+'</b>';sell=money(o.sell_price_ex_vat)+' → <b>'+money(x.sell_price_ex_vat)+'</b>'}
     if(c.type==='stock'&&o)stock=qty(o.quantity_available)+' → <b>'+qty(x.quantity_available)+'</b>';
-    return '<tr><td><span class="chg '+c.type+'">'+typeLabel(c.type)+'</span></td><td>'+esc(x.plu||'')+'<br><span class="sub">'+esc(x.code||'')+'</span></td><td>'+esc(x.name)+'</td><td>'+esc(x.storage_name||'')+'</td><td class="money">'+buy+'</td><td class="money">'+sell+'</td><td class="money">'+stock+'</td><td>'+esc((x.suppliers||[]).join(', ')||x.supplier_name||'')+'</td></tr>'
+    return '<tr><td><span class="chg '+c.type+'">'+typeLabel(c.type)+'</span></td><td>'+esc(x.plu||'')+'<br><span class="sub">'+esc(x.code||'')+'</span></td><td>'+((x.image_url||(x.image_urls||[]).length||(x.image_source_refs||[]).length||(x._embedded_images||[]).length)?'📷 ':'')+esc(x.name)+'</td><td>'+esc(x.storage_name||'')+'</td><td class="money">'+buy+'</td><td class="money">'+sell+'</td><td class="money">'+stock+'</td><td>'+esc((x.suppliers||[]).join(', ')||x.supplier_name||'')+'</td></tr>'
   }).join('')||'<tr><td colspan="8" style="text-align:center;color:#999;padding:25px">Bez zmien v tejto skupine.</td></tr>';
   document.getElementById('limitInfo').textContent=data.length>limit?'Zobrazených prvých '+limit+' z '+data.length.toLocaleString('sk-SK')+' záznamov.':'Záznamov: '+data.length.toLocaleString('sk-SK');
 }
 function setTab(t,btn){activeTab=t;document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));btn.classList.add('on');renderTable()}
+async function prepareProductImages(rows,btn){
+  const localOrEmbedded=rows.some(x=>matchedImageFiles(x).length||(x._embedded_images||[]).length);
+  if(localOrEmbedded && !window.SpektraDB?.isAuthenticated()){
+    throw new Error('Na nahratie obrázkov z lokálneho priečinka musí byť aplikácia ONLINE a prihlásená ako admin.');
+  }
+  const uploadCache=new Map();
+  let totalUploads=0;
+  rows.forEach(x=>{totalUploads+=matchedImageFiles(x).length+(x._embedded_images||[]).length});
+  let done=0;
+  for(const row of rows){
+    inheritExistingImages(row);
+    const remote=uniqueStrings((row.image_source_refs||[]).filter(isRemoteImageRef));
+    const files=matchedImageFiles(row);
+    const embedded=row._embedded_images||[];
+    const urls=[...remote],paths=[];
+    for(let i=0;i<files.length;i++){
+      const file=files[i];
+      const stockKey=row.code||row.plu||row.pohoda_stock_id||row.fingerprint;
+      const cacheKey=norm(stockKey)+'|'+norm(file.name);
+      let uploaded=uploadCache.get(cacheKey);
+      if(!uploaded){
+        btn.textContent='OBRÁZKY '+(done+1)+' / '+Math.max(totalUploads,1);
+        document.getElementById('applyResult').textContent='Nahrávam obrázky produktov: '+(done+1)+' z '+Math.max(totalUploads,1)+'.';
+        uploaded=await SpektraDB.uploadProductImage(file,stockKey,file.name);
+        uploadCache.set(cacheKey,uploaded);
+      }
+      urls.push(uploaded.url);paths.push(uploaded.path);done++;
+    }
+    for(let i=0;i<embedded.length;i++){
+      const stockKey=row.code||row.plu||row.pohoda_stock_id||row.fingerprint;
+      const file=dataUrlToFile(embedded[i],String(stockKey||'stock')+'-'+(i+1));
+      const cacheKey=norm(stockKey)+'|embedded|'+i;
+      let uploaded=uploadCache.get(cacheKey);
+      if(!uploaded){
+        btn.textContent='OBRÁZKY '+(done+1)+' / '+Math.max(totalUploads,1);
+        document.getElementById('applyResult').textContent='Nahrávam vložené obrázky: '+(done+1)+' z '+Math.max(totalUploads,1)+'.';
+        uploaded=await SpektraDB.uploadProductImage(file,stockKey,file.name);
+        uploadCache.set(cacheKey,uploaded);
+      }
+      urls.push(uploaded.url);paths.push(uploaded.path);done++;
+    }
+    if(urls.length){
+      row.image_urls=uniqueStrings(urls);
+      row.image_url=row.image_urls[0]||null;
+      row.image_storage_paths=uniqueStrings([...(row.image_storage_paths||[]),...paths]);
+      row.image_storage_path=row.image_storage_paths[0]||null;
+      row.image_source_ref=(row.image_source_refs||[])[0]||row.image_source_ref||null;
+    }
+  }
+  return done;
+}
+
 async function applySync(){
   if(!normalized.length)return;
   const btn=document.getElementById('applyBtn');
@@ -410,22 +464,24 @@ async function applySync(){
   try{
     const conflictSet=new Set(conflicts.map(c=>c.fingerprint));
     const clean=normalized.filter(x=>!conflictSet.has(x.fingerprint)).map(x=>({...x,active:true,last_seen_at:new Date().toISOString()}));
+    const imageUploads=await prepareProductImages(clean,btn);
     if(window.SpektraDB?.isAuthenticated()){
       const uploaded=await SpektraDB.upsertStocks(clean,p=>{
         btn.textContent='ONLINE '+p.count.toLocaleString('sk-SK')+' / '+p.total.toLocaleString('sk-SK')+' ('+p.percent+' %)';
         document.getElementById('applyResult').textContent='Nahrávam do Supabase: '+p.count.toLocaleString('sk-SK')+' z '+p.total.toLocaleString('sk-SK')+' zásob.';
       });
-      document.getElementById('applyResult').textContent='Supabase: nahraných '+uploaded.toLocaleString('sk-SK')+' zásob. Ukladám lokálnu cache…';
+      document.getElementById('applyResult').textContent='Supabase: '+uploaded.toLocaleString('sk-SK')+' zásob · '+imageUploads.toLocaleString('sk-SK')+' obrázkov. Ukladám lokálnu cache…';
     }
-    if(effectiveMode==='partial'){
-      await SpektraStockDB.merge(clean);
-    }else{
-      await SpektraStockDB.replaceAll(clean);
-    }
+    if(effectiveMode==='partial')await SpektraStockDB.merge(clean);
+    else await SpektraStockDB.replaceAll(clean);
     baselineRows=await SpektraStockDB.getAll();
-    baselineMeta={applied_at:new Date().toISOString(),filename,count:baselineRows.length,source_rows:sourceRows,conflicts:conflicts.length,mode:effectiveMode};
+    baselineMeta={
+      applied_at:new Date().toISOString(),filename,count:baselineRows.length,source_rows:sourceRows,
+      conflicts:conflicts.length,mode:effectiveMode,format:sourceFormat,
+      image_refs:countImageRefs(),image_uploads:imageUploads
+    };
     await SpektraStockDB.setMeta('stock_sync',baselineMeta);
-    document.getElementById('applyResult').textContent='Aktualizácia uložená do IndexedDB ('+(effectiveMode==='partial'?'čiastočný':'úplný')+' import). Databáza obsahuje '+baselineRows.length.toLocaleString('sk-SK')+' zásob. Konfliktné zásoby neboli aplikované.';
+    document.getElementById('applyResult').textContent='Aktualizácia hotová: '+baselineRows.length.toLocaleString('sk-SK')+' zásob, '+imageUploads.toLocaleString('sk-SK')+' nahraných obrázkov. Konfliktné zásoby neboli aplikované.';
     renderSummary();
   }catch(err){
     console.error(err);
@@ -436,7 +492,18 @@ async function applySync(){
 }
 async function resetBaseline(){if(confirm('Naozaj vymazať lokálnu databázu zásob?')){await SpektraStockDB.clear();location.reload()}}
 function exportNormalized(){if(!normalized.length)return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({source:filename,created_at:new Date().toISOString(),rows:normalized,conflicts},null,2)],{type:'application/json'}));a.download='pohoda-zasoby-normalized.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),300)}
-const fi=document.getElementById('fileInput'),drop=document.getElementById('drop');fi.addEventListener('change',e=>handleFile(e.target.files[0]));['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));drop.addEventListener('drop',e=>handleFile(e.dataTransfer.files[0]));
+const fi=document.getElementById('fileInput'),drop=document.getElementById('drop'),imgInput=document.getElementById('imageFolderInput');
+fi.addEventListener('change',e=>handleFile(e.target.files[0]));
+imgInput.addEventListener('change',e=>indexImageFiles(e.target.files));
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));
+drop.addEventListener('drop',e=>{
+  const files=Array.from(e.dataTransfer.files||[]);
+  const source=files.find(f=>/\.(xml|xlsx|xls)$/i.test(f.name));
+  const imgs=files.filter(f=>/^image\//i.test(f.type)||/\.(jpe?g|png|webp|gif)$/i.test(f.name));
+  if(imgs.length)indexImageFiles(imgs);
+  if(source)handleFile(source);
+});
 async function refreshOnlineState(){
   try{
     const state=await SpektraDB.init();
