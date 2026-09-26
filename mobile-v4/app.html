@@ -291,9 +291,9 @@ let stocks=[];
 let deviceCatalog=[];
 let bundleRecipes=[];
 let current=null, category='heat_pump', brand='', recommendation=null, boilerType='gas', acMode='single', multiCount=2;
-let stockByCodeMap=new Map(),stockByPluMap=new Map(),stockByNameMap=new Map();
+let stockByCodeMap=new Map(),stockByPluMap=new Map(),stockByNameMap=new Map(),acStockPool=[];
 function rebuildStockIndexes(){
-  stockByCodeMap=new Map();stockByPluMap=new Map();stockByNameMap=new Map();
+  stockByCodeMap=new Map();stockByPluMap=new Map();stockByNameMap=new Map();acStockPool=[];
   for(const st of stocks){
     const code=norm(st.code),plu=norm(st.plu),name=norm(st.name);
     if(plu&&!stockByPluMap.has(plu))stockByPluMap.set(plu,st);
@@ -302,6 +302,7 @@ function rebuildStockIndexes(){
       const prev=stockByCodeMap.get(code);
       if(!prev||(+st.quantity_available||0)>(+prev.quantity_available||0))stockByCodeMap.set(code,st);
     }
+    if(name.includes('klimatiz')||name.includes('split')||name.includes('multisplit')||name.includes('vnutorna')||name.includes('vonkajsia'))acStockPool.push(st);
   }
 }
 
@@ -499,7 +500,7 @@ function multisplitBrandFromStock(st){
 }
 function acMultiOutdoorCandidates(selectedBrand,count){
   const aliases=acBrandAliases(selectedBrand);
-  return stocks.filter(st=>{
+  return acStockPool.filter(st=>{
     const n=norm(st.name),code=String(st.code||'').toUpperCase(),selected=norm(selectedBrand);
     if(selected==='mdv'){
       if(!['CMDV000071','CMDV000072','CMDV000073'].includes(code))return false;
@@ -530,7 +531,7 @@ function acMultiOutdoorCandidates(selectedBrand,count){
   })).sort((a,b)=>(a.power_kw||99)-(b.power_kw||99)||(a.sell_price_ex_vat||0)-(b.sell_price_ex_vat||0));
 }
 function multisplitBrandsForCount(count){
-  return [...new Set(stocks.filter(st=>{
+  return [...new Set(acStockPool.filter(st=>{
     const n=norm(st.name);
     if(!(n.includes('multisplit')||n.includes('multi'))||n.includes('vnutorna'))return false;
     return multisplitCountFromName(st.name)===count&&Number(st.sell_price_ex_vat)>0;
@@ -538,7 +539,7 @@ function multisplitBrandsForCount(count){
 }
 function acMultiIndoorStock(selectedBrand){
   const aliases=acBrandAliases(selectedBrand);
-  const candidates=stocks.filter(st=>{
+  const candidates=acStockPool.filter(st=>{
     const n=norm(st.name),code=String(st.code||'').toUpperCase(),selected=norm(selectedBrand);
     if(selected==='mdv'){
       if(!['CMDV000132','CMDV000133','CMDV000134','CMDV000135'].includes(code) && !(n.includes('evo')&&n.includes('multi')&&n.includes('vnut')))return false;
@@ -593,7 +594,7 @@ function extractPowerKw(text){
 }
 function acStockCandidates(selectedBrand){
   const aliases=acBrandAliases(selectedBrand);
-  return stocks.filter(st=>{
+  return acStockPool.filter(st=>{
     const n=norm(st.name),code=String(st.code||'').toUpperCase();
     const selected=norm(selectedBrand);
     if(selected==='mdv'){
