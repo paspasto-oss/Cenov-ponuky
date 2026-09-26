@@ -155,11 +155,12 @@ window.SpektraDB = (() => {
     return out;
   }
 
-  async function upsertStocks(rows, onProgress) {
+  async function upsertStocks(rows, onProgress, options={}) {
     if (!client || !user) throw new Error('Online databáza nie je prihlásená.');
-    const chunkSize = 200;
+    const chunkSize = 300;
     let count = 0;
     const total = rows.length;
+    const syncToken = 'sync_'+Date.now()+'_'+Math.random().toString(36).slice(2,10);
 
     const toPayload = chunk => chunk.map(x => ({
       fingerprint:x.fingerprint,
@@ -190,6 +191,7 @@ window.SpektraDB = (() => {
       margin_pct:x.margin_pct,
       discount_pct:x.discount_pct,
       active:true,
+      sync_token:syncToken,
       raw_payload:(()=>{
         const raw={...x};
         delete raw._embedded_images;
@@ -214,6 +216,13 @@ window.SpektraDB = (() => {
       count += payload.length;
       if (onProgress) onProgress({count,total,percent:Math.round(count/total*100)});
       await new Promise(r=>setTimeout(r,35));
+    }
+    if (options.fullSync) {
+      const { error } = await client.from('pohoda_stocks')
+        .update({active:false})
+        .eq('active',true)
+        .neq('sync_token',syncToken);
+      if (error) throw error;
     }
     return count;
   }
