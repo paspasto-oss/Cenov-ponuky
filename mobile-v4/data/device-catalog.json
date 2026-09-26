@@ -2,7 +2,7 @@
   "schema_version": 1,
   "currency": "EUR",
   "vat_default_pct": 23,
-  "updated_at": "2026-09-23",
+  "updated_at": "2026-09-26",
   "fields": {
     "id": "interný identifikátor",
     "category": "kategória zariadenia",
@@ -374,21 +374,21 @@
       "notes": "Základ kategórie, doplniť konkrétne modely."
     },
     {
-      "id": "ac-midea-wall",
+      "id": "ac-mdv-evo-wall",
       "category": "klimatizacia",
-      "brand": "Midea / MDV",
-      "model": "Nástenná klimatizácia",
-      "variant": "doplníme modely",
+      "brand": "MDV",
+      "model": "EVO",
+      "variant": "monosplit",
       "power_kw": null,
       "refrigerant": null,
       "phase": "1f",
-      "supplier": "Midea",
+      "supplier": "Midea / MDV",
       "purchase_price_ex_vat": null,
       "sell_price_ex_vat": null,
       "discount_pct": null,
       "margin_pct": null,
       "active": true,
-      "notes": "Základ kategórie, doplniť konkrétne modely."
+      "notes": "MDV EVO klimatizácie sa načítavajú z POHODY podľa kódov CMDV."
     },
     {
       "id": "ac-hyundai-wall",
@@ -873,6 +873,21 @@
       "active": true,
       "supplier": "OPOP",
       "notes": "Presná skladová karta z POHODY."
+    },
+    {
+      "id": "ac-midea-wall",
+      "category": "klimatizacia",
+      "brand": "Midea",
+      "model": "Nástenná klimatizácia",
+      "variant": "POHODA",
+      "power_kw": null,
+      "refrigerant": "R32",
+      "phase": "1f",
+      "supplier": "Midea",
+      "purchase_price_ex_vat": null,
+      "sell_price_ex_vat": null,
+      "active": true,
+      "notes": "Konkrétne modely sa načítavajú z POHODY."
     }
   ]
 }
