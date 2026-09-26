@@ -95,6 +95,7 @@ create table if not exists public.pohoda_stocks (
   margin_pct numeric(10,4),
   discount_pct numeric(10,4),
   active boolean not null default true,
+  sync_token text,
   raw_payload jsonb not null default '{}'::jsonb,
   synced_at timestamptz not null default now()
 );
@@ -105,6 +106,11 @@ create index if not exists idx_quote_items_quote on public.quote_items(quote_id)
 create index if not exists idx_stocks_code on public.pohoda_stocks(code);
 create index if not exists idx_stocks_plu on public.pohoda_stocks(plu);
 create index if not exists idx_stocks_name on public.pohoda_stocks using gin (to_tsvector('simple', name));
+create index if not exists idx_stocks_active_synced on public.pohoda_stocks(active, synced_at desc);
+create index if not exists idx_stocks_synced on public.pohoda_stocks(synced_at desc);
+create index if not exists idx_stocks_sync_token on public.pohoda_stocks(sync_token);
+create index if not exists idx_stocks_code_lower on public.pohoda_stocks(lower(code)) where code is not null;
+create index if not exists idx_stocks_plu_lower on public.pohoda_stocks(lower(plu)) where plu is not null;
 
 alter table public.app_users enable row level security;
 alter table public.customers enable row level security;
