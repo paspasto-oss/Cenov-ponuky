@@ -216,11 +216,17 @@ window.SpektraDB = (() => {
       await new Promise(r=>setTimeout(r,35));
     }
     if (options.fullSync) {
-      const { error } = await client.from('pohoda_stocks')
+      const legacy = await client.from('pohoda_stocks')
+        .update({active:false})
+        .eq('active',true)
+        .is('sync_token',null);
+      if (legacy.error) throw legacy.error;
+
+      const stale = await client.from('pohoda_stocks')
         .update({active:false})
         .eq('active',true)
         .neq('sync_token',syncToken);
-      if (error) throw error;
+      if (stale.error) throw stale.error;
     }
     return count;
   }
