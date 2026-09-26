@@ -357,7 +357,7 @@ async function loadConfig(){
     console.error('DB load failed',e);
   }
   try{
-    const r=await fetch('data/device-catalog.json?v=20260923-gasboiler3',{cache:'no-store'});
+    const r=await fetch('data/device-catalog.json?v=20260926-mdvevo1',{cache:'no-store'});
     if(!r.ok) throw new Error('device-catalog '+r.status);
     const j=await r.json();deviceCatalog=j.devices||[];
   }catch(e){deviceCatalog=fallbackDevices;configOk=false;console.error('Device catalog load failed:',e)}
@@ -437,16 +437,19 @@ function selectAcMode(mode){acMode=mode;brand='';syncAcModeUI();renderChoices()}
 function selectMultiCount(n){multiCount=n;brand='';syncAcModeUI();renderBrands()}
 function multisplitCountFromName(name){
   const n=norm(name);
-  let m=n.match(/\((\d+)\s*vnutorn/); if(m)return +m[1];
+  let m=n.match(/max\.?\s*(\d+)\s*vnut/); if(m)return +m[1];
+  m=n.match(/\((\d+)\s*vnutorn/); if(m)return +m[1];
   m=n.match(/pre\s+(\d+)\s+jednot/); if(m)return +m[1];
   m=n.match(/(\d+)\s*\+\s*1/); if(m)return +m[1];
   return null;
 }
 function multisplitBrandFromStock(st){
-  const n=norm((st.name||'')+' '+(st.manufacturer||''));
+  const n=norm((st.name||'')+' '+(st.manufacturer||'')),code=String(st.code||'').toUpperCase();
+  if(['CMDV000071','CMDV000072','CMDV000073'].includes(code)||/RM[234]C-/.test(String(st.name||'').toUpperCase()))return 'MDV';
   if(n.includes('hyundai'))return 'Hyundai';
   if(n.includes('samsung'))return 'Samsung';
-  if(n.includes('midea')||n.includes('mdv'))return 'Midea / MDV';
+  if(n.includes('mdv'))return 'MDV';
+  if(n.includes('midea'))return 'Midea';
   if(n.includes('mitsubishi'))return 'Mitsubishi Electric';
   if(n.includes('lg'))return 'LG';
   if(n.includes('aux'))return 'AUX';
@@ -455,9 +458,13 @@ function multisplitBrandFromStock(st){
 function acMultiOutdoorCandidates(selectedBrand,count){
   const aliases=acBrandAliases(selectedBrand);
   return stocks.filter(st=>{
-    const n=norm(st.name);
-    if(!aliases.some(a=>n.includes(a)))return false;
-    if(!n.includes('multisplit'))return false;
+    const n=norm(st.name),code=String(st.code||'').toUpperCase(),selected=norm(selectedBrand);
+    if(selected==='mdv'){
+      if(!['CMDV000071','CMDV000072','CMDV000073'].includes(code))return false;
+    }else{
+      if(!aliases.some(a=>n.includes(a)))return false;
+      if(!(n.includes('multisplit')||n.includes('multi')))return false;
+    }
     if(n.includes('vnutorna'))return false;
     const c=multisplitCountFromName(st.name);
     if(count&&c&&c!==count)return false;
@@ -483,16 +490,20 @@ function acMultiOutdoorCandidates(selectedBrand,count){
 function multisplitBrandsForCount(count){
   return [...new Set(stocks.filter(st=>{
     const n=norm(st.name);
-    if(!n.includes('multisplit')||n.includes('vnutorna'))return false;
+    if(!(n.includes('multisplit')||n.includes('multi'))||n.includes('vnutorna'))return false;
     return multisplitCountFromName(st.name)===count&&Number(st.sell_price_ex_vat)>0;
   }).map(multisplitBrandFromStock).filter(Boolean))];
 }
 function acMultiIndoorStock(selectedBrand){
   const aliases=acBrandAliases(selectedBrand);
   const candidates=stocks.filter(st=>{
-    const n=norm(st.name);
-    if(!aliases.some(a=>n.includes(a)))return false;
-    if(!(n.includes('vnutorna')&&n.includes('nastenna')))return false;
+    const n=norm(st.name),code=String(st.code||'').toUpperCase(),selected=norm(selectedBrand);
+    if(selected==='mdv'){
+      if(!['CMDV000132','CMDV000133','CMDV000134','CMDV000135'].includes(code) && !(n.includes('evo')&&n.includes('multi')&&n.includes('vnut')))return false;
+    }else{
+      if(!aliases.some(a=>n.includes(a)))return false;
+      if(!(n.includes('vnutorna')&&n.includes('nastenna')))return false;
+    }
     if(n.includes('kazet')||n.includes('parapet')||n.includes('kanalov')||n.includes('potrubn'))return false;
     return Number(st.sell_price_ex_vat)>0;
   });
@@ -501,6 +512,9 @@ function acMultiIndoorStock(selectedBrand){
     return p&&p>=2&&p<=2.7;
   });
   const pool=preferred.length?preferred:candidates;
+  if(selectedBrand==='MDV'){
+    return pool.find(st=>String(st.code||'').toUpperCase()==='CMDV000132')||pool[0]||null;
+  }
   if(selectedBrand==='Hyundai'){
     return pool.find(st=>norm(st.name).includes('carbon grey'))||pool.find(st=>norm(st.name).includes('revolution'))||pool[0]||null;
   }
@@ -523,7 +537,9 @@ function renderBrands(){
 function selectBrand(b){brand=b;renderBrands()}
 function acBrandAliases(b){
   const x=norm(b);
-  if(x.includes('midea')||x.includes('mdv'))return ['midea','mdv'];
+  if(x==='mdv'||x.includes(' mdv'))return ['mdv'];
+  if(x==='midea'||x.startsWith('midea'))return ['midea'];
+  if(x.includes('midea')&&x.includes('mdv'))return ['midea','mdv'];
   if(x.includes('mitsubishi'))return ['mitsubishi'];
   return [x];
 }
@@ -536,7 +552,13 @@ function extractPowerKw(text){
 function acStockCandidates(selectedBrand){
   const aliases=acBrandAliases(selectedBrand);
   return stocks.filter(st=>{
-    const n=norm(st.name);
+    const n=norm(st.name),code=String(st.code||'').toUpperCase();
+    const selected=norm(selectedBrand);
+    if(selected==='mdv'){
+      const evoSet=['CMDV000122','CMDV000125','CMDV000128','CMDV000131'].includes(code) || (n.includes('mdv')&&n.includes('evo'));
+      if(!evoSet)return false;
+      return Number(st.sell_price_ex_vat)>0;
+    }
     if(!aliases.some(a=>n.includes(a)))return false;
     if(!(n.includes('klimatiz')||n.includes('split')))return false;
     if(n.includes('tepelne cerpad')||n.includes('m-thermal'))return false;
@@ -550,8 +572,8 @@ function acStockCandidates(selectedBrand){
       id:'ac-stock-'+String(st.plu||st.code||st.id).replace(/[^a-zA-Z0-9_-]/g,'-'),
       category:'klimatizacia',
       brand:selectedBrand,
-      model:st.name,
-      variant:'POHODA',
+      model:norm(selectedBrand)==='mdv'?'EVO '+(power?String(power).replace('.',',')+' kW':st.name):st.name,
+      variant:norm(selectedBrand)==='mdv'?'MDV EVO · POHODA':'POHODA',
       power_kw:power,
       phase:/400\s*v|3f/i.test(st.name)?'3f':'1f',
       pohoda_code:st.code||null,
