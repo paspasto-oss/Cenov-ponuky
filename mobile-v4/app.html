@@ -292,16 +292,23 @@ let deviceCatalog=[];
 let bundleRecipes=[];
 let current=null, category='heat_pump', brand='', recommendation=null, boilerType='gas', acMode='single', multiCount=2;
 let stockByCodeMap=new Map(),stockByPluMap=new Map(),stockByNameMap=new Map(),acStockPool=[];
+function stockChoiceScore(st){
+  return (st?.image_url?1000000000:0)
+    +(Number(st?.sell_price_ex_vat)>0?1000000:0)
+    +Math.max(0,Number(st?.quantity_available)||0);
+}
+function putPreferred(map,key,st){
+  if(!key)return;
+  const prev=map.get(key);
+  if(!prev||stockChoiceScore(st)>stockChoiceScore(prev))map.set(key,st);
+}
 function rebuildStockIndexes(){
   stockByCodeMap=new Map();stockByPluMap=new Map();stockByNameMap=new Map();acStockPool=[];
   for(const st of stocks){
     const code=norm(st.code),plu=norm(st.plu),name=norm(st.name);
-    if(plu&&!stockByPluMap.has(plu))stockByPluMap.set(plu,st);
-    if(name&&!stockByNameMap.has(name))stockByNameMap.set(name,st);
-    if(code){
-      const prev=stockByCodeMap.get(code);
-      if(!prev||(+st.quantity_available||0)>(+prev.quantity_available||0))stockByCodeMap.set(code,st);
-    }
+    putPreferred(stockByPluMap,plu,st);
+    putPreferred(stockByNameMap,name,st);
+    putPreferred(stockByCodeMap,code,st);
     if(name.includes('klimatiz')||name.includes('split')||name.includes('multisplit')||name.includes('vnutorna')||name.includes('vonkajsia'))acStockPool.push(st);
   }
 }
