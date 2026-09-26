@@ -594,7 +594,17 @@ async function prepareProductImages(rows,btn){
       const t=tasks[idx];
       btn.textContent='OBRÁZKY '+(done+1)+' / '+Math.max(total,1);
       document.getElementById('applyResult').textContent='Nahrávam iba nové alebo zmenené obrázky: '+(done+1)+' z '+Math.max(total,1)+'.';
-      const uploaded=await SpektraDB.uploadProductImage(t.file,t.stockKey,t.filename);
+      let uploaded=null,lastError=null;
+      for(let attempt=1;attempt<=3;attempt++){
+        try{
+          uploaded=await SpektraDB.uploadProductImage(t.file,t.stockKey,t.filename);
+          lastError=null;break;
+        }catch(e){
+          lastError=e;
+          if(attempt<3)await new Promise(r=>setTimeout(r,400*attempt));
+        }
+      }
+      if(lastError)throw lastError;
       t.row.__prepared_urls.push(uploaded.url);
       t.row.__prepared_paths.push(uploaded.path);
       done++;
