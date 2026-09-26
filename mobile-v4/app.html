@@ -291,6 +291,19 @@ let stocks=[];
 let deviceCatalog=[];
 let bundleRecipes=[];
 let current=null, category='heat_pump', brand='', recommendation=null, boilerType='gas', acMode='single', multiCount=2;
+let stockByCodeMap=new Map(),stockByPluMap=new Map(),stockByNameMap=new Map();
+function rebuildStockIndexes(){
+  stockByCodeMap=new Map();stockByPluMap=new Map();stockByNameMap=new Map();
+  for(const st of stocks){
+    const code=norm(st.code),plu=norm(st.plu),name=norm(st.name);
+    if(plu&&!stockByPluMap.has(plu))stockByPluMap.set(plu,st);
+    if(name&&!stockByNameMap.has(name))stockByNameMap.set(name,st);
+    if(code){
+      const prev=stockByCodeMap.get(code);
+      if(!prev||(+st.quantity_available||0)>(+prev.quantity_available||0))stockByCodeMap.set(code,st);
+    }
+  }
+}
 
 const fallbackDevices=[
  {id:'panasonic-aquarea-k-7',category:'tepelne_cerpadlo',brand:'Panasonic',model:'Aquarea K',variant:'7 kW',power_kw:7},
@@ -366,6 +379,7 @@ async function loadConfig(){
     document.getElementById('onlineState').textContent='OFFLINE';
     console.error('DB load failed',e);
   }
+  rebuildStockIndexes();
   try{
     const r=await fetch('data/device-catalog.json?v=20260926-mdvevo1',{cache:'no-store'});
     if(!r.ok) throw new Error('device-catalog '+r.status);
@@ -393,7 +407,7 @@ async function mainLogin(){
     document.getElementById('mainAuthCard').classList.add('hidden');
     try{
       const online=await SpektraDB.listStocks();
-      if(online.length){stocks=online;if(!window.SPEKTRA_STOCKS_FROM_CACHE)await SpektraStockDB.replaceAll(online.map(x=>({...x,suppliers:x.supplier_name?[x.supplier_name]:[]})));document.getElementById('catalogState').textContent='Katalóg POHODA: '+stocks.length.toLocaleString('sk-SK')+' zásob';}
+      if(online.length){stocks=online;rebuildStockIndexes();if(!window.SPEKTRA_STOCKS_FROM_CACHE)await SpektraStockDB.replaceAll(online.map(x=>({...x,suppliers:x.supplier_name?[x.supplier_name]:[]})));document.getElementById('catalogState').textContent='Katalóg POHODA: '+stocks.length.toLocaleString('sk-SK')+' zásob';}
     }catch(e){console.error(e)}
   }catch(e){msg.textContent='Chyba: '+e.message}
 }
@@ -630,11 +644,11 @@ function nextStepKw(required){let steps=[5,7,9,12,16];return steps.find(x=>x>=re
 function findStockForDevice(d){
  if(!stocks.length)return null;
  if(d.pohoda_code){
-   const byCode=stocks.find(x=>norm(x.code)===norm(d.pohoda_code));
+   const byCode=stockByCodeMap.get(norm(d.pohoda_code));
    if(byCode)return byCode;
  }
  if(d.pohoda_plu){
-   const byPlu=stocks.find(x=>norm(x.plu)===norm(d.pohoda_plu));
+   const byPlu=stockByPluMap.get(norm(d.pohoda_plu));
    if(byPlu)return byPlu;
  }
  let terms=[d.brand,d.model,d.variant].filter(Boolean).map(norm);
@@ -678,21 +692,15 @@ function roleToStock(role){
 function stockByRecipe(r){
  if(!r||!stocks.length)return null;
  if(r.pohoda_plu){
-   const rp=norm(r.pohoda_plu);
-   let byPlu=stocks.find(x=>norm(x.plu)===rp);
+   const byPlu=stockByPluMap.get(norm(r.pohoda_plu));
    if(byPlu)return byPlu;
  }
  if(r.pohoda_code){
-   const rc=norm(r.pohoda_code);
-   const matches=stocks.filter(x=>norm(x.code)===rc);
-   if(matches.length){
-     matches.sort((a,b)=>(+b.quantity_available||0)-(+a.quantity_available||0));
-     return matches[0];
-   }
+   const byCode=stockByCodeMap.get(norm(r.pohoda_code));
+   if(byCode)return byCode;
  }
  if(r.expected_name){
-   const rn=norm(r.expected_name);
-   let byName=stocks.find(x=>norm(x.name)===rn);
+   const byName=stockByNameMap.get(norm(r.expected_name));
    if(byName)return byName;
  }
  return null
