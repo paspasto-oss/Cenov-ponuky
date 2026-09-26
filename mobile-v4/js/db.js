@@ -59,14 +59,84 @@ window.SpektraDB = (() => {
 
   async function listStocks() {
     if (!client || !user) return [];
-    const pageSize = 1000, out = [];
+
+    const fields = [
+      'id','pohoda_stock_id','fingerprint','plu','code','ean','name','unit',
+      'storage_ref','storage_name','stock_group_ref','stock_group',
+      'supplier_name','manufacturer',
+      'purchase_price_ex_vat','sell_price_ex_vat','sell_price_inc_vat',
+      'quantity_available','min_limit','max_limit','quantity_to_order',
+      'margin_pct','discount_pct','active','synced_at','image_url'
+    ].join(',');
+
+    const local = window.SpektraStockDB
+      ? (await window.SpektraStockDB.getAll().catch(()=>[])).filter(x=>x.active!==false)
+      : [];
+    const localVersion = window.SpektraStockDB
+      ? await window.SpektraStockDB.getMeta('remote_stock_version').catch(()=>null)
+      : null;
+
+    let remoteVersion = null;
+    try {
+      const { data, error } = await client.from('pohoda_stocks')
+        .select('synced_at').order('synced_at',{ascending:false}).limit(1).maybeSingle();
+      if (error) throw error;
+      remoteVersion = data?.synced_at || null;
+    } catch (e) {
+      console.warn('Stock version check failed', e);
+      if (local.length) {
+        window.SPEKTRA_STOCKS_FROM_CACHE = true;
+        return local;
+      }
+    }
+
+    if (local.length && localVersion && remoteVersion && localVersion >= remoteVersion) {
+      window.SPEKTRA_STOCKS_FROM_CACHE = true;
+      return local;
+    }
+
+    const pageSize = 2000;
+
+    if (local.length && localVersion && remoteVersion) {
+      const changed = [];
+      for (let from=0;;from+=pageSize) {
+        const { data, error } = await client.from('pohoda_stocks')
+          .select(fields)
+          .gt('synced_at',localVersion)
+          .order('synced_at',{ascending:true})
+          .order('id',{ascending:true})
+          .range(from,from+pageSize-1);
+        if (error) throw error;
+        changed.push(...(data||[]));
+        if (!data || data.length < pageSize) break;
+      }
+      if (changed.length && window.SpektraStockDB) {
+        await window.SpektraStockDB.merge(changed);
+      }
+      if (window.SpektraStockDB && remoteVersion) {
+        await window.SpektraStockDB.setMeta('remote_stock_version',remoteVersion);
+      }
+      const merged = new Map(local.map(x=>[x.fingerprint,x]));
+      changed.forEach(x=>merged.set(x.fingerprint,x));
+      window.SPEKTRA_STOCKS_FROM_CACHE = true;
+      return [...merged.values()].filter(x=>x.active!==false);
+    }
+
+    const out = [];
     for (let from=0;;from+=pageSize) {
       const { data, error } = await client.from('pohoda_stocks')
-        .select('*').eq('active',true).range(from, from+pageSize-1);
+        .select(fields).eq('active',true)
+        .order('id',{ascending:true})
+        .range(from,from+pageSize-1);
       if (error) throw error;
       out.push(...(data||[]));
       if (!data || data.length < pageSize) break;
     }
+    if (window.SpektraStockDB) {
+      await window.SpektraStockDB.replaceAll(out);
+      if (remoteVersion) await window.SpektraStockDB.setMeta('remote_stock_version',remoteVersion);
+    }
+    window.SPEKTRA_STOCKS_FROM_CACHE = true;
     return out;
   }
 
