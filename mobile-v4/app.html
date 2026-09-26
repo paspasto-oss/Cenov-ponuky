@@ -358,11 +358,11 @@ async function loadConfig(){
       document.getElementById('onlineState').textContent='ONLINE';
       if(!window.SPEKTRA_STOCKS_FROM_CACHE)await SpektraStockDB.replaceAll(stocks.map(x=>({...x,suppliers:x.supplier_name?[x.supplier_name]:[]})));
     }else{
-      stocks=await SpektraStockDB.getAll();
+      stocks=await (SpektraStockDB.getAllLiteOrFull?SpektraStockDB.getAllLiteOrFull():SpektraStockDB.getAll());
       document.getElementById('onlineState').textContent='OFFLINE';
     }
   }catch(e){
-    stocks=await SpektraStockDB.getAll().catch(()=>[]);
+    stocks=await (SpektraStockDB.getAllLiteOrFull?SpektraStockDB.getAllLiteOrFull():SpektraStockDB.getAll()).catch(()=>[]);
     document.getElementById('onlineState').textContent='OFFLINE';
     console.error('DB load failed',e);
   }
