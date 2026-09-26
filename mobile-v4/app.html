@@ -152,7 +152,7 @@
           <input id="pdfImagesInput" type="file" accept="image/jpeg,image/png,image/webp" multiple style="display:none" onchange="handlePdfImages(this.files)">
         </label>
       </div>
-      <div id="quoteImageStatus" class="sub" style="margin-top:8px">Predvolený Spektra banner je pripravený. Obrázky sa do PDF vložia iba po zaškrtnutí.</div>
+      <div id="quoteImageStatus" class="sub" style="margin-top:8px">Obrázky produktov z POHODY a vlastné obrázky sa do PDF vložia iba po zaškrtnutí.</div>
     </div>
     <div class="card">
       <h2>Položky na pozadí</h2>
@@ -1413,6 +1413,7 @@ function offerHtml(){
       const stockUrls=stockImageUrls(i.pohoda);
       if(stockUrls.length)imgUrl=stockUrls[0];
       else if(i===deviceItem && current.device?.image_url)imgUrl=current.device.image_url;
+      else if(i===deviceItem && Array.isArray(current.pdf_images) && current.pdf_images.length)imgUrl=current.pdf_images[0].url||'';
     }
     let desc='';
     if(i===deviceItem){
@@ -1668,7 +1669,12 @@ function markSent(){current.status='sent';current.updated=Date.now();upsertCurre
 
 function printPDF(){
   const w=window.open('','_blank');
-  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+esc(current.quote_no)+'</title><style>@page{size:A4;margin:0}body{margin:0;background:#fff}</style></head><body>'+offerHtml()+'<script>window.onload=()=>window.print()<\/script></body></html>');
+  const waitScript='<script>(async()=>{'+
+    'const imgs=[...document.images];'+
+    'await Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(r=>{img.onload=r;img.onerror=r;setTimeout(r,4000)})));'+
+    'setTimeout(()=>window.print(),250);'+
+  '})()<\/script>';
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+esc(current.quote_no)+'</title><style>@page{size:A4;margin:0}body{margin:0;background:#fff}</style></head><body>'+offerHtml()+waitScript+'</body></html>');
   w.document.close();
 }
 function exportQuotes(){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(quotes,null,2)],{type:'application/json'}));a.download='spektra-ponuky-v4.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),300)}
