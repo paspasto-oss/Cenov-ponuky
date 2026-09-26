@@ -42,15 +42,23 @@ button,input,select{font:inherit}button{cursor:pointer}input,select{background:#
 
   <div class="card">
     <div class="row">
-      <div><h2>1. Nahraj aktuálny export Zásoby.xlsx</h2><div class="sub">Aplikácia nič neprepíše, kým nepotvrdíš náhľad zmien.</div></div>
+      <div><h2>1. Nahraj celý sklad z POHODY</h2><div class="sub">Odporúčané: XML export celého skladu. XLSX ostáva podporovaný ako záloha. Aplikácia nič neprepíše, kým nepotvrdíš náhľad.</div></div>
       <div class="actions"><button class="btn ghost" onclick="resetBaseline()">Vymazať lokálny baseline</button></div>
     </div>
     <label id="drop" class="drop" style="display:block;margin-top:12px">
-      <input id="fileInput" type="file" accept=".xlsx,.xls">
-      <b>Vybrať Zásoby.xlsx</b>
-      <small>alebo súbor sem presuň</small>
+      <input id="fileInput" type="file" accept=".xml,.xlsx,.xls">
+      <b>Vybrať Zásoby.xml alebo Zásoby.xlsx</b>
+      <small>XML načíta všetky dostupné údaje z karty zásoby vrátane odkazov na obrázky.</small>
     </label>
     <div id="fileInfo" class="sub" style="margin-top:8px"></div>
+    <div id="imageFolderWrap" style="margin-top:12px">
+      <label class="drop" style="display:block;padding:14px">
+        <input id="imageFolderInput" type="file" accept="image/*" multiple webkitdirectory directory>
+        <b>Obrázky POHODA – vybrať priečinok</b>
+        <small>Potrebné iba ak XML obsahuje lokálne cesty (napr. \\Spektra\...\Obrázky\produkt.jpg). Pri URL alebo vloženom obrázku sa načíta automaticky.</small>
+      </label>
+      <div id="imageFolderInfo" class="sub" style="margin-top:6px">Priečinok obrázkov zatiaľ nie je vybraný.</div>
+    </div>
     <div class="field" style="margin-top:12px">
       <label>Typ importu</label>
       <select id="syncMode">
@@ -78,6 +86,8 @@ button,input,select{font:inherit}button{cursor:pointer}input,select{background:#
       <div class="stat conf"><small>Konflikty</small><strong id="nConflict">0</strong></div>
       <div class="stat"><small>Načítané riadky</small><strong id="nRows">0</strong></div>
       <div class="stat"><small>Unikátne zásoby</small><strong id="nUnique">0</strong></div>
+      <div class="stat"><small>Odkazy na obrázky</small><strong id="nImageRefs">0</strong></div>
+      <div class="stat"><small>Spárované obrázky</small><strong id="nImageMatches">0</strong></div>
     </div>
     <div id="firstImport" class="notice hidden" style="margin-top:12px">Toto je prvý import na tomto zariadení. Všetky zásoby budú označené ako nové a po potvrdení sa uložia ako lokálny baseline.</div>
     <div id="conflictWarning" class="notice warn hidden" style="margin-top:12px">Súbor obsahuje konfliktné duplikáty. Aktualizáciu môžeš prezrieť, ale pred produkčným zápisom do spoločnej databázy sa tieto konflikty musia vyriešiť.</div>
@@ -101,7 +111,7 @@ button,input,select{font:inherit}button{cursor:pointer}input,select{background:#
 
   <div id="applyCard" class="card hidden">
     <h2>3. Použiť aktualizáciu</h2>
-    <div class="notice">Ak je stav hore ONLINE, zásoby sa najprv nahrajú do Supabase a potom sa uložia aj do IndexedDB ako offline cache. Pri opakovanom importe sa existujúce karty aktualizujú, nevytvárajú sa duplicitne.</div>
+    <div class="notice">Ak je stav hore ONLINE, zásoby sa nahrajú do Supabase a obrázky do úložiska <b>product-images</b>. XML odkazy na lokálne súbory sa spárujú s vybraným priečinkom obrázkov. Následne sa všetko uloží aj do IndexedDB ako offline cache.</div>
     <div class="actions" style="margin-top:12px">
       <button id="applyBtn" class="btn green" onclick="applySync()">Použiť aktualizáciu</button>
       <button class="btn ghost" onclick="exportNormalized()">Exportovať normalizovaný JSON</button>
