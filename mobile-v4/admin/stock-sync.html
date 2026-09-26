@@ -545,11 +545,34 @@ async function applySync(){
       const uploaded=await SpektraDB.upsertStocks(clean,p=>{
         btn.textContent='ONLINE '+p.count.toLocaleString('sk-SK')+' / '+p.total.toLocaleString('sk-SK')+' ('+p.percent+' %)';
         document.getElementById('applyResult').textContent='Nahrávam do Supabase: '+p.count.toLocaleString('sk-SK')+' z '+p.total.toLocaleString('sk-SK')+' zásob.';
-      });
+      },{fullSync:effectiveMode==='full'});
       document.getElementById('applyResult').textContent='Supabase: '+uploaded.toLocaleString('sk-SK')+' zásob · '+imageUploads.toLocaleString('sk-SK')+' obrázkov. Ukladám lokálnu cache…';
     }
     if(effectiveMode==='partial')await SpektraStockDB.merge(clean);
     else await SpektraStockDB.replaceAll(clean);
+
+    if(SpektraStockDB.replaceAllLite){
+      const lite=clean.map(x=>({
+        id:x.id||null,pohoda_stock_id:x.pohoda_stock_id||null,fingerprint:x.fingerprint,
+        plu:x.plu||null,code:x.code||null,ean:x.ean||null,name:x.name,unit:x.unit||null,
+        storage_ref:x.storage_ref||null,storage_name:x.storage_name||null,
+        stock_group_ref:x.stock_group_ref||null,stock_group:x.stock_group||null,
+        supplier_name:(x.suppliers||[]).join(', ')||x.supplier_name||null,
+        manufacturer:x.manufacturer||null,
+        purchase_price_ex_vat:x.purchase_price_ex_vat,
+        sell_price_ex_vat:x.sell_price_ex_vat,
+        sell_price_inc_vat:x.sell_price_inc_vat,
+        quantity_available:x.quantity_available,min_limit:x.min_limit,max_limit:x.max_limit,
+        quantity_to_order:x.quantity_to_order,margin_pct:x.margin_pct,discount_pct:x.discount_pct,
+        active:true,synced_at:new Date().toISOString(),image_url:x.image_url||null
+      }));
+      if(effectiveMode==='partial')await SpektraStockDB.mergeLite(lite);
+      else await SpektraStockDB.replaceAllLite(lite);
+      const cacheVersion=new Date().toISOString();
+      await SpektraStockDB.setMeta('remote_stock_version_lite',cacheVersion);
+      await SpektraStockDB.setMeta('remote_stock_version_admin',cacheVersion);
+    }
+
     baselineRows=await SpektraStockDB.getAll();
     baselineMeta={
       applied_at:new Date().toISOString(),filename,count:baselineRows.length,source_rows:sourceRows,
