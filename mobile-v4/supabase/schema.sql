@@ -79,6 +79,12 @@ create table if not exists public.pohoda_stocks (
   stock_group text,
   supplier_name text,
   manufacturer text,
+  image_url text,
+  image_urls jsonb not null default '[]'::jsonb,
+  image_storage_path text,
+  image_storage_paths jsonb not null default '[]'::jsonb,
+  image_source_ref text,
+  image_source_refs jsonb not null default '[]'::jsonb,
   purchase_price_ex_vat numeric(12,4),
   sell_price_ex_vat numeric(12,4),
   sell_price_inc_vat numeric(12,4),
@@ -142,3 +148,21 @@ drop policy if exists "admins write stock" on public.pohoda_stocks;
 create policy "admins write stock" on public.pohoda_stocks
   for all to authenticated using (exists(select 1 from public.app_users u where u.user_id=auth.uid() and u.active and u.role='admin'))
   with check (exists(select 1 from public.app_users u where u.user_id=auth.uid() and u.active and u.role='admin'));
+
+insert into storage.buckets (id,name,public,file_size_limit,allowed_mime_types)
+values ('product-images','product-images',true,10485760,array['image/jpeg','image/png','image/webp','image/gif'])
+on conflict (id) do update
+set public=true,file_size_limit=10485760,allowed_mime_types=array['image/jpeg','image/png','image/webp','image/gif'];
+
+drop policy if exists "admins upload product images" on storage.objects;
+create policy "admins upload product images" on storage.objects for insert to authenticated
+with check (bucket_id='product-images' and exists(select 1 from public.app_users u where u.user_id=auth.uid() and u.active and u.role='admin'));
+
+drop policy if exists "admins update product images" on storage.objects;
+create policy "admins update product images" on storage.objects for update to authenticated
+using (bucket_id='product-images' and exists(select 1 from public.app_users u where u.user_id=auth.uid() and u.active and u.role='admin'))
+with check (bucket_id='product-images' and exists(select 1 from public.app_users u where u.user_id=auth.uid() and u.active and u.role='admin'));
+
+drop policy if exists "admins delete product images" on storage.objects;
+create policy "admins delete product images" on storage.objects for delete to authenticated
+using (bucket_id='product-images' and exists(select 1 from public.app_users u where u.user_id=auth.uid() and u.active and u.role='admin'));
