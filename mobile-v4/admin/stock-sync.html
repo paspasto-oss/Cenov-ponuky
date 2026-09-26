@@ -125,7 +125,7 @@ button,input,select{font:inherit}button{cursor:pointer}input,select{background:#
 <script>
 let normalized=[], changes=[], conflicts=[], activeTab='all', sourceRows=0, filename='', effectiveMode='partial', sourceFormat='xlsx', sourceEncoding='';
 let baselineRows=[], baselineMeta=null;
-let baselineByFingerprint=new Map(),baselineByCode=new Map(),baselineByPlu=new Map();
+let baselineByFingerprint=new Map(),baselineByCode=new Map(),baselineByPlu=new Map(),baselineCommercialByCode=new Map(),baselineCommercialByPlu=new Map();
 let imageFiles=[], imageFileIndex=new Map();
 
 const aliases={
@@ -148,16 +148,20 @@ function setProgress(p,text){document.getElementById('processCard').classList.re
 function baseline(){return baselineRows}
 function rebuildBaselineIndexes(){
   baselineByFingerprint=new Map();baselineByCode=new Map();baselineByPlu=new Map();
-  const score=x=>(x?.image_url?1000000000:0)+(Number(x?.sell_price_ex_vat)>0?1000000:0)+Math.max(0,Number(x?.quantity_available)||0);
-  const put=(map,key,x)=>{
+  baselineCommercialByCode=new Map();baselineCommercialByPlu=new Map();
+  const imageScore=x=>(x?.image_url?1000000000:0)+(Number(x?.sell_price_ex_vat)>0?1000000:0)+Math.max(0,Number(x?.quantity_available)||0);
+  const commercialScore=x=>(Number(x?.purchase_price_ex_vat)>0?1000000000:0)+(s(x?.storage_name)||s(x?.storage_ref)?100000000:0)+(Number(x?.sell_price_ex_vat)>0?10000000:0)+Math.max(0,Number(x?.quantity_available)||0);
+  const put=(map,key,x,score)=>{
     if(!key)return;
     const prev=map.get(key);
     if(!prev||score(x)>score(prev))map.set(key,x);
   };
   for(const x of baselineRows){
     if(x.fingerprint)baselineByFingerprint.set(x.fingerprint,x);
-    put(baselineByCode,norm(x.code),x);
-    put(baselineByPlu,norm(x.plu),x);
+    put(baselineByCode,norm(x.code),x,imageScore);
+    put(baselineByPlu,norm(x.plu),x,imageScore);
+    put(baselineCommercialByCode,norm(x.code),x,commercialScore);
+    put(baselineCommercialByPlu,norm(x.plu),x,commercialScore);
   }
 }
 function baselineMap(){
@@ -478,6 +482,7 @@ function setTab(t,btn){activeTab=t;document.querySelectorAll('.tab').forEach(x=>
 
 function collapseImageOnlyRows(rows){
   const groups=new Map();
+  const added=[];
   rows.forEach(row=>{
     const key=row.code?('c:'+norm(row.code)):(row.plu?('p:'+norm(row.plu)):null);
     if(!key)return;
@@ -487,12 +492,27 @@ function collapseImageOnlyRows(rows){
 
   const drop=new Set();
   groups.forEach(group=>{
-    const commercial=group.filter(x=>s(x.storage_name)||s(x.storage_ref));
-    if(!commercial.length)return;
+    let commercial=group.filter(x=>s(x.storage_name)||s(x.storage_ref));
     const imageOnly=group.filter(x=>!s(x.storage_name)&&!s(x.storage_ref)&&(
       x.image_url||(x.image_urls||[]).length||(x.image_source_refs||[]).length||(x._embedded_images||[]).length
     ));
     if(!imageOnly.length)return;
+
+    if(!commercial.length){
+      const sample=group[0];
+      const base=(sample.code?baselineCommercialByCode.get(norm(sample.code)):null)
+        ||(sample.plu?baselineCommercialByPlu.get(norm(sample.plu)):null)
+        ||null;
+      if(base){
+        const clone={...base,suppliers:base.supplier_name?[base.supplier_name]:[],active:true};
+        clone.image_urls=Array.isArray(base.image_urls)?[...base.image_urls]:(base.image_url?[base.image_url]:[]);
+        clone.image_source_refs=Array.isArray(base.image_source_refs)?[...base.image_source_refs]:(base.image_source_ref?[base.image_source_ref]:[]);
+        clone._embedded_images=[];
+        commercial=[clone];
+        added.push(clone);
+      }
+    }
+    if(!commercial.length)return;
 
     for(const src of imageOnly){
       for(const target of commercial){
@@ -505,7 +525,7 @@ function collapseImageOnlyRows(rows){
       drop.add(src);
     }
   });
-  return rows.filter(x=>!drop.has(x));
+  return [...rows,...added].filter(x=>!drop.has(x));
 }
 
 async function prepareProductImages(rows,btn){
