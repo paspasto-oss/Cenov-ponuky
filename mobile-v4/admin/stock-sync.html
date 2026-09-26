@@ -123,7 +123,7 @@ button,input,select{font:inherit}button{cursor:pointer}input,select{background:#
 <div class="nav"><button class="btn primary" onclick="location.href='../index.html'">← Späť do Spektra Ponuky</button></div>
 
 <script>
-let normalized=[], changes=[], conflicts=[], activeTab='all', sourceRows=0, filename='', effectiveMode='partial', sourceFormat='xlsx';
+let normalized=[], changes=[], conflicts=[], activeTab='all', sourceRows=0, filename='', effectiveMode='partial', sourceFormat='xlsx', sourceEncoding='';
 let baselineRows=[], baselineMeta=null;
 let imageFiles=[], imageFileIndex=new Map();
 
@@ -309,7 +309,7 @@ function mergeRows(rows){
   conflicts=localConf;
 }
 async function parseXlsx(file){
-  sourceFormat='xlsx';setProgress(8,'Načítavam Excel…');
+  sourceFormat='xlsx';sourceEncoding='';setProgress(8,'Načítavam Excel…');
   const buf=await file.arrayBuffer();setProgress(22,'Čítam hárok Zásoby…');
   const wb=XLSX.read(buf,{type:'array',cellDates:false});
   const ws=wb.Sheets['Zásoby']||wb.Sheets[wb.SheetNames[0]];
@@ -325,9 +325,47 @@ async function parseXlsx(file){
   });
   mergeRows(out);
 }
+function decodePohodaXml(buffer){
+  const bytes=new Uint8Array(buffer);
+  const probe=new TextDecoder('ascii').decode(bytes.slice(0,Math.min(bytes.length,512)));
+  const declared=(probe.match(/encoding\s*=\s*["']([^"']+)["']/i)||[])[1]||'';
+  let enc=declared.trim().toLowerCase();
+
+  if(bytes.length>=3&&bytes[0]===0xEF&&bytes[1]===0xBB&&bytes[2]===0xBF)enc='utf-8';
+  if(bytes.length>=2&&bytes[0]===0xFF&&bytes[1]===0xFE)enc='utf-16le';
+  if(bytes.length>=2&&bytes[0]===0xFE&&bytes[1]===0xFF)enc='utf-16be';
+
+  const aliases={
+    'windows-1250':'windows-1250','cp1250':'windows-1250','win-1250':'windows-1250',
+    'windows1250':'windows-1250','x-cp1250':'windows-1250',
+    'iso-8859-2':'iso-8859-2','iso8859-2':'iso-8859-2','latin2':'iso-8859-2',
+    'utf8':'utf-8','utf-8':'utf-8','utf16':'utf-16le','utf-16':'utf-16le',
+    'utf-16le':'utf-16le','utf-16be':'utf-16be'
+  };
+  enc=aliases[enc]||enc||'utf-8';
+
+  let text;
+  try{text=new TextDecoder(enc).decode(bytes)}
+  catch(e){text=new TextDecoder('utf-8').decode(bytes)}
+
+  // POHODA exporty sú často Windows-1250. Ak UTF-8 dekódovanie vytvorí náhradné znaky,
+  // skúsime Windows-1250 a zvolíme variant s menším počtom poškodených znakov.
+  const bad=(str)=>(String(str).match(/\uFFFD/g)||[]).length;
+  if(bad(text)){
+    try{
+      const cp=new TextDecoder('windows-1250').decode(bytes);
+      if(bad(cp)<bad(text))text=cp;
+    }catch(e){}
+  }
+  return {text,encoding:enc};
+}
 async function parseXml(file){
   sourceFormat='xml';setProgress(8,'Načítavam XML…');
-  const text=await file.text();setProgress(20,'Čítam POHODA XML…');
+  const buffer=await file.arrayBuffer();
+  const decoded=decodePohodaXml(buffer);
+  sourceEncoding=decoded.encoding;
+  const text=decoded.text;
+  setProgress(20,'Čítam POHODA XML ('+decoded.encoding+')…');
   const doc=new DOMParser().parseFromString(text,'application/xml');
   if(doc.querySelector('parsererror'))throw new Error('XML súbor nie je platný.');
   const stocks=allDesc(doc).filter(x=>localName(x)==='stock');
@@ -478,7 +516,7 @@ async function applySync(){
     baselineMeta={
       applied_at:new Date().toISOString(),filename,count:baselineRows.length,source_rows:sourceRows,
       conflicts:conflicts.length,mode:effectiveMode,format:sourceFormat,
-      image_refs:countImageRefs(),image_uploads:imageUploads
+      image_refs:countImageRefs(),image_uploads:imageUploads,encoding:sourceEncoding||null
     };
     await SpektraStockDB.setMeta('stock_sync',baselineMeta);
     document.getElementById('applyResult').textContent='Aktualizácia hotová: '+baselineRows.length.toLocaleString('sk-SK')+' zásob, '+imageUploads.toLocaleString('sk-SK')+' nahraných obrázkov. Konfliktné zásoby neboli aplikované.';
