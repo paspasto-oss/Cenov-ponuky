@@ -192,12 +192,10 @@ window.SpektraDB = (() => {
       discount_pct:x.discount_pct,
       active:true,
       sync_token:syncToken,
-      raw_payload:(()=>{
-        const raw={...x};
-        delete raw._embedded_images;
-        delete raw._matched_image_files;
-        return raw;
-      })(),
+      raw_payload:{
+        source_format:x.source_format||null,
+        source_row:x.source_row||null
+      },
       synced_at:new Date().toISOString()
     }));
 
