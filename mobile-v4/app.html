@@ -1600,6 +1600,15 @@ async function createPdfFile(){
   holder.innerHTML=offerHtml();
   document.body.appendChild(holder);
   try{
+    const imgs=[...holder.querySelectorAll('img')];
+    await Promise.all(imgs.map(img=>new Promise(resolve=>{
+      if(img.complete&&img.naturalWidth>0){resolve();return}
+      const done=()=>resolve();
+      img.addEventListener('load',done,{once:true});
+      img.addEventListener('error',done,{once:true});
+      setTimeout(done,5000);
+    })));
+    await new Promise(r=>setTimeout(r,120));
     const blob=await html2pdf()
       .set({
         margin:0,
