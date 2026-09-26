@@ -1403,14 +1403,45 @@ function offerHtml(){
   if(installationItem) customerRows.push(installationItem);
   customerRows.push(...otherVisible);
 
+  const showProductImages=!!current.pdf_images_enabled;
   const rows=customerRows.map(i=>{
     const unit=Number(i.price||0);
     const amount=unit*Number(i.qty||0);
-    return '<tr>'+
-      '<td style="padding:7px 5px;border-bottom:1px solid #d8d8d8">'+esc(i.name)+'</td>'+
-      '<td style="padding:7px 5px;border-bottom:1px solid #d8d8d8;text-align:center">'+i.qty+' '+esc(i.unit)+'</td>'+
-      '<td style="padding:7px 5px;border-bottom:1px solid #d8d8d8;text-align:right">'+eur(unit)+'</td>'+
-      '<td style="padding:7px 5px;border-bottom:1px solid #d8d8d8;text-align:right;font-weight:700">'+eur(amount)+'</td>'+
+    const gross=amount*(1+(Number(current.vat_pct||23)/100));
+    let imgUrl='';
+    if(showProductImages){
+      const stockUrls=stockImageUrls(i.pohoda);
+      if(stockUrls.length)imgUrl=stockUrls[0];
+      else if(i===deviceItem && current.device?.image_url)imgUrl=current.device.image_url;
+    }
+    let desc='';
+    if(i===deviceItem){
+      const bits=[current.device?.variant||'',i.pohoda?.code?('Kód: '+i.pohoda.code):''].filter(Boolean);
+      desc=bits.join(' · ');
+    }else if(i.role==='customer_material_bundle'){
+      desc='Kompletný inštalačný materiál podľa rozsahu uvedeného nižšie v ponuke.';
+    }else if(i===installationItem){
+      desc='Montáž, pripojenie a uvedenie zariadenia do prevádzky podľa uvedeného rozsahu montáže.';
+    }else{
+      desc=i.note||i.customer_group||'';
+    }
+    const productImage=imgUrl
+      ? '<div style="width:31mm;min-width:31mm;height:27mm;display:flex;align-items:center;justify-content:center;background:#fff;margin-right:4mm"><img crossorigin="anonymous" src="'+esc(imgUrl)+'" style="max-width:100%;max-height:100%;object-fit:contain"></div>'
+      : '';
+    const textWidth=imgUrl?'calc(100% - 35mm)':'100%';
+    return '<tr style="page-break-inside:avoid">'+
+      '<td style="padding:7px 5px;border-bottom:1px solid #d7dce3;vertical-align:top">'+
+        '<div style="display:flex;align-items:flex-start">'+productImage+
+          '<div style="width:'+textWidth+'">'+
+            '<div style="font-weight:700;font-size:10px;line-height:1.25;margin-bottom:3px">'+esc(i.name)+'</div>'+
+            (desc?'<div style="font-size:8.2px;color:#5c6670;line-height:1.35">'+esc(desc)+'</div>':'')+
+          '</div>'+
+        '</div>'+
+      '</td>'+
+      '<td style="padding:7px 4px;border-bottom:1px solid #d7dce3;text-align:center;vertical-align:top;font-weight:600">'+i.qty+' '+esc(i.unit)+'</td>'+
+      '<td style="padding:7px 4px;border-bottom:1px solid #d7dce3;text-align:right;vertical-align:top">'+eur(unit)+'</td>'+
+      '<td style="padding:7px 4px;border-bottom:1px solid #d7dce3;text-align:right;vertical-align:top;font-weight:700">'+eur(amount)+'</td>'+
+      '<td style="padding:7px 4px;border-bottom:1px solid #d7dce3;text-align:right;vertical-align:top;font-weight:700">'+eur(gross)+'</td>'+
     '</tr>';
   }).join('');
 
@@ -1528,18 +1559,19 @@ function offerHtml(){
       '<div style="background:#333;color:#fff;padding:9px 11px"><div style="font-size:8px;opacity:.9">Cena spolu s DPH</div><div style="font-size:14px;font-weight:700">'+(current.price_complete?eur(total):'—')+'</div></div>'+
     '</div>'+
 
-    '<div style="font-size:9px;font-style:italic;margin-bottom:6px">Ponuka</div>'+
-    '<table style="width:100%;border-collapse:collapse;font-size:9.5px">'+
-      '<thead><tr>'+
-        '<th style="text-align:left;padding:7px 5px;border-bottom:1px solid #999">Popis</th>'+
-        '<th style="text-align:center;padding:7px 5px;border-bottom:1px solid #999;width:70px">Množstvo</th>'+
-        '<th style="text-align:right;padding:7px 5px;border-bottom:1px solid #999;width:92px">Jedn. cena</th>'+
-        '<th style="text-align:right;padding:7px 5px;border-bottom:1px solid #999;width:92px">Spolu</th>'+
+    '<div style="font-size:22px;color:#00539B;font-weight:700;margin:2px 0 12px">Cenová ponuka</div>'+
+    '<table style="width:100%;border-collapse:collapse;font-size:9.2px;border:1px solid #d7dce3">'+
+      '<thead><tr style="background:#00539B;color:#fff">'+
+        '<th style="text-align:left;padding:7px 5px;width:auto">Názov položky</th>'+
+        '<th style="text-align:center;padding:7px 4px;width:22mm">Množstvo</th>'+
+        '<th style="text-align:right;padding:7px 4px;width:25mm">Cena bez DPH</th>'+
+        '<th style="text-align:right;padding:7px 4px;width:26mm">Cena celkom</th>'+
+        '<th style="text-align:right;padding:7px 4px;width:27mm">Celkom s DPH</th>'+
       '</tr></thead>'+
       '<tbody>'+rows+'</tbody>'+
     '</table>'+
 
-    '<div style="display:flex;justify-content:flex-end;margin-top:8px">'+
+    '<div style="display:flex;justify-content:flex-end;margin-top:12px">'+
       '<div style="width:255px">'+
         '<div style="display:flex;justify-content:space-between;padding:3px 0"><span>Základ dane:</span><b>'+eur(net)+'</b></div>'+
         '<div style="display:flex;justify-content:space-between;padding:3px 0"><span>DPH '+(current.vat_pct||23)+' %:</span><b>'+eur(vat)+'</b></div>'+
