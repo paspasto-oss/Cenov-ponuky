@@ -475,6 +475,39 @@ function renderTable(){
   document.getElementById('limitInfo').textContent=data.length>limit?'Zobrazených prvých '+limit+' z '+data.length.toLocaleString('sk-SK')+' záznamov.':'Záznamov: '+data.length.toLocaleString('sk-SK');
 }
 function setTab(t,btn){activeTab=t;document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));btn.classList.add('on');renderTable()}
+
+function collapseImageOnlyRows(rows){
+  const groups=new Map();
+  rows.forEach(row=>{
+    const key=row.code?('c:'+norm(row.code)):(row.plu?('p:'+norm(row.plu)):null);
+    if(!key)return;
+    if(!groups.has(key))groups.set(key,[]);
+    groups.get(key).push(row);
+  });
+
+  const drop=new Set();
+  groups.forEach(group=>{
+    const commercial=group.filter(x=>s(x.storage_name)||s(x.storage_ref));
+    if(!commercial.length)return;
+    const imageOnly=group.filter(x=>!s(x.storage_name)&&!s(x.storage_ref)&&(
+      x.image_url||(x.image_urls||[]).length||(x.image_source_refs||[]).length||(x._embedded_images||[]).length
+    ));
+    if(!imageOnly.length)return;
+
+    for(const src of imageOnly){
+      for(const target of commercial){
+        target.image_urls=uniqueStrings([...(target.image_urls||[]),...(src.image_urls||[]),src.image_url]);
+        if(!target.image_url&&target.image_urls.length)target.image_url=target.image_urls[0];
+        target.image_source_refs=uniqueStrings([...(target.image_source_refs||[]),...(src.image_source_refs||[]),src.image_source_ref]);
+        if(!target.image_source_ref&&target.image_source_refs.length)target.image_source_ref=target.image_source_refs[0];
+        target._embedded_images=uniqueStrings([...(target._embedded_images||[]),...(src._embedded_images||[])]);
+      }
+      drop.add(src);
+    }
+  });
+  return rows.filter(x=>!drop.has(x));
+}
+
 async function prepareProductImages(rows,btn){
   const localOrEmbedded=rows.some(x=>matchedImageFiles(x).length||(x._embedded_images||[]).length);
   if(localOrEmbedded && !window.SpektraDB?.isAuthenticated()){
@@ -571,7 +604,7 @@ async function applySync(){
   btn.disabled=true;btn.textContent='Ukladám…';
   try{
     const conflictSet=new Set(conflicts.map(c=>c.fingerprint));
-    const clean=normalized.filter(x=>!conflictSet.has(x.fingerprint)).map(x=>({...x,active:true,last_seen_at:new Date().toISOString()}));
+    const clean=collapseImageOnlyRows(normalized.filter(x=>!conflictSet.has(x.fingerprint)).map(x=>({...x,active:true,last_seen_at:new Date().toISOString()})));
     const imageUploads=await prepareProductImages(clean,btn);
     if(window.SpektraDB?.isAuthenticated()){
       const uploaded=await SpektraDB.upsertStocks(clean,p=>{
