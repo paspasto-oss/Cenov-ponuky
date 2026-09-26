@@ -148,11 +148,16 @@ function setProgress(p,text){document.getElementById('processCard').classList.re
 function baseline(){return baselineRows}
 function rebuildBaselineIndexes(){
   baselineByFingerprint=new Map();baselineByCode=new Map();baselineByPlu=new Map();
+  const score=x=>(x?.image_url?1000000000:0)+(Number(x?.sell_price_ex_vat)>0?1000000:0)+Math.max(0,Number(x?.quantity_available)||0);
+  const put=(map,key,x)=>{
+    if(!key)return;
+    const prev=map.get(key);
+    if(!prev||score(x)>score(prev))map.set(key,x);
+  };
   for(const x of baselineRows){
     if(x.fingerprint)baselineByFingerprint.set(x.fingerprint,x);
-    const code=norm(x.code),plu=norm(x.plu);
-    if(code&&!baselineByCode.has(code))baselineByCode.set(code,x);
-    if(plu&&!baselineByPlu.has(plu))baselineByPlu.set(plu,x);
+    put(baselineByCode,norm(x.code),x);
+    put(baselineByPlu,norm(x.plu),x);
   }
 }
 function baselineMap(){
@@ -293,10 +298,13 @@ function dataUrlToFile(dataUrl,name){
 }
 function existingStockFor(row){
   if(!baselineByFingerprint.size&&baselineRows.length)rebuildBaselineIndexes();
-  return baselineByFingerprint.get(row.fingerprint)
-    ||(row.code?baselineByCode.get(norm(row.code)):null)
-    ||(row.plu?baselineByPlu.get(norm(row.plu)):null)
-    ||null;
+  const exact=baselineByFingerprint.get(row.fingerprint)||null;
+  if(exact?.image_url)return exact;
+  const byCode=row.code?baselineByCode.get(norm(row.code)):null;
+  if(byCode?.image_url)return byCode;
+  const byPlu=row.plu?baselineByPlu.get(norm(row.plu)):null;
+  if(byPlu?.image_url)return byPlu;
+  return exact||byCode||byPlu||null;
 }
 function inheritExistingImages(row){
   const old=existingStockFor(row);
