@@ -448,53 +448,91 @@ async function prepareProductImages(rows,btn){
   if(localOrEmbedded && !window.SpektraDB?.isAuthenticated()){
     throw new Error('Na nahratie obrázkov z lokálneho priečinka musí byť aplikácia ONLINE a prihlásená ako admin.');
   }
-  const uploadCache=new Map();
-  let totalUploads=0;
-  rows.forEach(x=>{totalUploads+=matchedImageFiles(x).length+(x._embedded_images||[]).length});
-  let done=0;
-  for(const row of rows){
+
+  const safeBase=name=>String(name||'').replace(/[^a-zA-Z0-9._-]/g,'_').slice(-140);
+  const oldArrays=row=>{
+    const old=existingStockFor(row);
+    if(!old)return {paths:[],urls:[]};
+    const paths=Array.isArray(old.image_storage_paths)?old.image_storage_paths:(old.image_storage_path?[old.image_storage_path]:[]);
+    const urls=Array.isArray(old.image_urls)?old.image_urls:(old.image_url?[old.image_url]:[]);
+    return {paths,urls};
+  };
+  const reusable=(row,file)=>{
+    const {paths,urls}=oldArrays(row);
+    const wanted=norm(safeBase(file.name));
+    const idx=paths.findIndex(p=>{
+      const base=String(p||'').split('/').pop();
+      return norm(base)===wanted;
+    });
+    if(idx<0)return null;
+    const url=urls[idx]||urls[0]||null;
+    return url?{path:paths[idx],url}:null;
+  };
+
+  const tasks=[];
+  rows.forEach(row=>{
     inheritExistingImages(row);
-    const remote=uniqueStrings((row.image_source_refs||[]).filter(isRemoteImageRef));
+    row.__prepared_urls=uniqueStrings((row.image_source_refs||[]).filter(isRemoteImageRef));
+    row.__prepared_paths=[];
     const files=matchedImageFiles(row);
+    files.forEach(file=>{
+      const reused=reusable(row,file);
+      if(reused){
+        row.__prepared_urls.push(reused.url);
+        row.__prepared_paths.push(reused.path);
+      }else{
+        tasks.push({row,file,stockKey:row.code||row.plu||row.pohoda_stock_id||row.fingerprint,filename:file.name});
+      }
+    });
+
     const embedded=row._embedded_images||[];
-    const urls=[...remote],paths=[];
-    for(let i=0;i<files.length;i++){
-      const file=files[i];
+    embedded.forEach((dataUrl,i)=>{
       const stockKey=row.code||row.plu||row.pohoda_stock_id||row.fingerprint;
-      const cacheKey=norm(stockKey)+'|'+norm(file.name);
-      let uploaded=uploadCache.get(cacheKey);
-      if(!uploaded){
-        btn.textContent='OBRÁZKY '+(done+1)+' / '+Math.max(totalUploads,1);
-        document.getElementById('applyResult').textContent='Nahrávam obrázky produktov: '+(done+1)+' z '+Math.max(totalUploads,1)+'.';
-        uploaded=await SpektraDB.uploadProductImage(file,stockKey,file.name);
-        uploadCache.set(cacheKey,uploaded);
+      const file=dataUrlToFile(dataUrl,String(stockKey||'stock')+'-'+(i+1));
+      const reused=reusable(row,file);
+      if(reused){
+        row.__prepared_urls.push(reused.url);
+        row.__prepared_paths.push(reused.path);
+      }else{
+        tasks.push({row,file,stockKey,filename:file.name});
       }
-      urls.push(uploaded.url);paths.push(uploaded.path);done++;
-    }
-    for(let i=0;i<embedded.length;i++){
-      const stockKey=row.code||row.plu||row.pohoda_stock_id||row.fingerprint;
-      const file=dataUrlToFile(embedded[i],String(stockKey||'stock')+'-'+(i+1));
-      const cacheKey=norm(stockKey)+'|embedded|'+i;
-      let uploaded=uploadCache.get(cacheKey);
-      if(!uploaded){
-        btn.textContent='OBRÁZKY '+(done+1)+' / '+Math.max(totalUploads,1);
-        document.getElementById('applyResult').textContent='Nahrávam vložené obrázky: '+(done+1)+' z '+Math.max(totalUploads,1)+'.';
-        uploaded=await SpektraDB.uploadProductImage(file,stockKey,file.name);
-        uploadCache.set(cacheKey,uploaded);
-      }
-      urls.push(uploaded.url);paths.push(uploaded.path);done++;
-    }
-    if(urls.length){
-      row.image_urls=uniqueStrings(urls);
-      row.image_url=row.image_urls[0]||null;
-      row.image_storage_paths=uniqueStrings([...(row.image_storage_paths||[]),...paths]);
-      row.image_storage_path=row.image_storage_paths[0]||null;
-      row.image_source_ref=(row.image_source_refs||[])[0]||row.image_source_ref||null;
+    });
+  });
+
+  let cursor=0,done=0;
+  const total=tasks.length;
+  const workers=Math.min(5,Math.max(1,total));
+  async function worker(){
+    while(true){
+      const idx=cursor++;
+      if(idx>=total)return;
+      const t=tasks[idx];
+      btn.textContent='OBRÁZKY '+(done+1)+' / '+Math.max(total,1);
+      document.getElementById('applyResult').textContent='Nahrávam iba nové alebo zmenené obrázky: '+(done+1)+' z '+Math.max(total,1)+'.';
+      const uploaded=await SpektraDB.uploadProductImage(t.file,t.stockKey,t.filename);
+      t.row.__prepared_urls.push(uploaded.url);
+      t.row.__prepared_paths.push(uploaded.path);
+      done++;
     }
   }
+  await Promise.all(Array.from({length:workers},()=>worker()));
+
+  rows.forEach(row=>{
+    const urls=uniqueStrings([...(row.__prepared_urls||[]),...(row.image_urls||[])]);
+    const paths=uniqueStrings([...(row.__prepared_paths||[]),...(row.image_storage_paths||[])]);
+    if(urls.length){
+      row.image_urls=urls;
+      row.image_url=urls[0]||null;
+      row.image_storage_paths=paths;
+      row.image_storage_path=paths[0]||null;
+      row.image_source_ref=(row.image_source_refs||[])[0]||row.image_source_ref||null;
+    }
+    delete row.__prepared_urls;
+    delete row.__prepared_paths;
+  });
+
   return done;
 }
-
 async function applySync(){
   if(!normalized.length)return;
   const btn=document.getElementById('applyBtn');
