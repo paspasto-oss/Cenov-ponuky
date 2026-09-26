@@ -356,7 +356,7 @@ async function loadConfig(){
     if(st.online&&st.authenticated){
       stocks=await SpektraDB.listStocks();
       document.getElementById('onlineState').textContent='ONLINE';
-      await SpektraStockDB.replaceAll(stocks.map(x=>({...x,suppliers:x.supplier_name?[x.supplier_name]:[]})));
+      if(!window.SPEKTRA_STOCKS_FROM_CACHE)await SpektraStockDB.replaceAll(stocks.map(x=>({...x,suppliers:x.supplier_name?[x.supplier_name]:[]})));
     }else{
       stocks=await SpektraStockDB.getAll();
       document.getElementById('onlineState').textContent='OFFLINE';
@@ -393,7 +393,7 @@ async function mainLogin(){
     document.getElementById('mainAuthCard').classList.add('hidden');
     try{
       const online=await SpektraDB.listStocks();
-      if(online.length){stocks=online;await SpektraStockDB.replaceAll(online.map(x=>({...x,suppliers:x.supplier_name?[x.supplier_name]:[]})));document.getElementById('catalogState').textContent='Katalóg POHODA: '+stocks.length.toLocaleString('sk-SK')+' zásob';}
+      if(online.length){stocks=online;if(!window.SPEKTRA_STOCKS_FROM_CACHE)await SpektraStockDB.replaceAll(online.map(x=>({...x,suppliers:x.supplier_name?[x.supplier_name]:[]})));document.getElementById('catalogState').textContent='Katalóg POHODA: '+stocks.length.toLocaleString('sk-SK')+' zásob';}
     }catch(e){console.error(e)}
   }catch(e){msg.textContent='Chyba: '+e.message}
 }
