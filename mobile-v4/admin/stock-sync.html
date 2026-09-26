@@ -125,6 +125,7 @@ button,input,select{font:inherit}button{cursor:pointer}input,select{background:#
 <script>
 let normalized=[], changes=[], conflicts=[], activeTab='all', sourceRows=0, filename='', effectiveMode='partial', sourceFormat='xlsx', sourceEncoding='';
 let baselineRows=[], baselineMeta=null;
+let baselineByFingerprint=new Map(),baselineByCode=new Map(),baselineByPlu=new Map();
 let imageFiles=[], imageFileIndex=new Map();
 
 const aliases={
@@ -145,7 +146,19 @@ function qty(v){return v==null?'—':new Intl.NumberFormat('sk-SK',{maximumFract
 function esc(x){return s(x).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
 function setProgress(p,text){document.getElementById('processCard').classList.remove('hidden');document.getElementById('bar').style.width=p+'%';document.getElementById('processPct').textContent=p+' %';document.getElementById('processText').textContent=text}
 function baseline(){return baselineRows}
-function baselineMap(){return new Map(baselineRows.map(x=>[x.fingerprint,x]))}
+function rebuildBaselineIndexes(){
+  baselineByFingerprint=new Map();baselineByCode=new Map();baselineByPlu=new Map();
+  for(const x of baselineRows){
+    if(x.fingerprint)baselineByFingerprint.set(x.fingerprint,x);
+    const code=norm(x.code),plu=norm(x.plu);
+    if(code&&!baselineByCode.has(code))baselineByCode.set(code,x);
+    if(plu&&!baselineByPlu.has(plu))baselineByPlu.set(plu,x);
+  }
+}
+function baselineMap(){
+  if(baselineByFingerprint.size!==baselineRows.length)rebuildBaselineIndexes();
+  return baselineByFingerprint;
+}
 function localName(el){return String(el?.localName||el?.nodeName||'').split(':').pop().toLowerCase()}
 function allDesc(root){return Array.from(root?.getElementsByTagName?.('*')||[])}
 function firstLeafText(root,names){
@@ -269,9 +282,10 @@ function dataUrlToFile(dataUrl,name){
   return new File([bytes],(name||'embedded')+'.'+ext,{type:mime});
 }
 function existingStockFor(row){
-  return baselineRows.find(x=>x.fingerprint===row.fingerprint)
-    ||(row.code?baselineRows.find(x=>norm(x.code)===norm(row.code)):null)
-    ||(row.plu?baselineRows.find(x=>norm(x.plu)===norm(row.plu)):null)
+  if(!baselineByFingerprint.size&&baselineRows.length)rebuildBaselineIndexes();
+  return baselineByFingerprint.get(row.fingerprint)
+    ||(row.code?baselineByCode.get(norm(row.code)):null)
+    ||(row.plu?baselineByPlu.get(norm(row.plu)):null)
     ||null;
 }
 function inheritExistingImages(row){
@@ -573,7 +587,7 @@ async function applySync(){
       await SpektraStockDB.setMeta('remote_stock_version_admin',cacheVersion);
     }
 
-    baselineRows=await SpektraStockDB.getAll();
+    baselineRows=await SpektraStockDB.getAll();rebuildBaselineIndexes();
     baselineMeta={
       applied_at:new Date().toISOString(),filename,count:baselineRows.length,source_rows:sourceRows,
       conflicts:conflicts.length,mode:effectiveMode,format:sourceFormat,
@@ -615,7 +629,7 @@ async function refreshOnlineState(){
       try{
         const onlineStocks=await SpektraDB.listStocks({admin:true});
         if(onlineStocks.length){
-          baselineRows=onlineStocks.map(x=>({...x,fingerprint:x.fingerprint,suppliers:x.supplier_name?[x.supplier_name]:[]}));
+          baselineRows=onlineStocks.map(x=>({...x,fingerprint:x.fingerprint,suppliers:x.supplier_name?[x.supplier_name]:[]}));rebuildBaselineIndexes();
           baselineMeta={applied_at:new Date().toISOString(),filename:'Supabase',count:baselineRows.length,mode:'online'};
           await SpektraStockDB.setMeta('stock_sync',baselineMeta);
         }
@@ -648,6 +662,7 @@ async function registerOnline(){
   await refreshOnlineState();
   try{
     if(!baselineRows.length) baselineRows=await SpektraStockDB.getAll();
+    rebuildBaselineIndexes();
     baselineMeta=await SpektraStockDB.getMeta('stock_sync');
     if(baselineMeta)document.getElementById('fileInfo').textContent='Posledná lokálna aktualizácia: '+new Date(baselineMeta.applied_at).toLocaleString('sk-SK')+' · '+baselineRows.length.toLocaleString('sk-SK')+' zásob';
   }catch(err){console.error('IndexedDB init failed',err)}
