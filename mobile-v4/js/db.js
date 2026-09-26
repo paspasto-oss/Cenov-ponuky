@@ -57,21 +57,30 @@ window.SpektraDB = (() => {
   function isAuthenticated() { return !!user; }
   function getUser() { return user; }
 
-  async function listStocks() {
+  async function listStocks(options={}) {
     if (!client || !user) return [];
 
-    const fields = [
+    const adminMode = !!options.admin;
+    const fieldList = [
       'id','pohoda_stock_id','fingerprint','plu','code','ean','name','unit',
       'storage_ref','storage_name','stock_group_ref','stock_group',
       'supplier_name','manufacturer',
       'purchase_price_ex_vat','sell_price_ex_vat','sell_price_inc_vat',
       'quantity_available','min_limit','max_limit','quantity_to_order',
       'margin_pct','discount_pct','active','synced_at','image_url'
-    ].join(',');
+    ];
+    if (adminMode) fieldList.push(
+      'image_urls','image_storage_path','image_storage_paths',
+      'image_source_ref','image_source_refs'
+    );
+    const fields = fieldList.join(',');
 
-    const local = window.SpektraStockDB
+    let local = window.SpektraStockDB
       ? (await window.SpektraStockDB.getAll().catch(()=>[])).filter(x=>x.active!==false)
       : [];
+    const localHasAdminImages = !adminMode || !local.length ||
+      Object.prototype.hasOwnProperty.call(local[0],'image_source_refs');
+    if (adminMode && local.length && !localHasAdminImages) local = [];
     const localVersion = window.SpektraStockDB
       ? await window.SpektraStockDB.getMeta('remote_stock_version').catch(()=>null)
       : null;
@@ -110,14 +119,18 @@ window.SpektraDB = (() => {
         changed.push(...(data||[]));
         if (!data || data.length < pageSize) break;
       }
-      if (changed.length && window.SpektraStockDB) {
-        await window.SpektraStockDB.merge(changed);
+      const merged = new Map(local.map(x=>[x.fingerprint,x]));
+      const mergedChanged = changed.map(x=>{
+        const old = merged.get(x.fingerprint);
+        return old ? {...old,...x} : x;
+      });
+      if (mergedChanged.length && window.SpektraStockDB) {
+        await window.SpektraStockDB.merge(mergedChanged);
       }
       if (window.SpektraStockDB && remoteVersion) {
         await window.SpektraStockDB.setMeta('remote_stock_version',remoteVersion);
       }
-      const merged = new Map(local.map(x=>[x.fingerprint,x]));
-      changed.forEach(x=>merged.set(x.fingerprint,x));
+      mergedChanged.forEach(x=>merged.set(x.fingerprint,x));
       window.SPEKTRA_STOCKS_FROM_CACHE = true;
       return [...merged.values()].filter(x=>x.active!==false);
     }
