@@ -89,6 +89,12 @@ window.SpektraDB = (() => {
       stock_group:x.stock_group||null,
       supplier_name:(x.suppliers||[]).join(', ')||x.supplier_name||null,
       manufacturer:x.manufacturer||null,
+      image_url:x.image_url||null,
+      image_urls:Array.isArray(x.image_urls)?x.image_urls:[],
+      image_storage_path:x.image_storage_path||null,
+      image_storage_paths:Array.isArray(x.image_storage_paths)?x.image_storage_paths:[],
+      image_source_ref:x.image_source_ref||null,
+      image_source_refs:Array.isArray(x.image_source_refs)?x.image_source_refs:[],
       purchase_price_ex_vat:x.purchase_price_ex_vat,
       sell_price_ex_vat:x.sell_price_ex_vat,
       sell_price_inc_vat:x.sell_price_inc_vat,
@@ -99,7 +105,12 @@ window.SpektraDB = (() => {
       margin_pct:x.margin_pct,
       discount_pct:x.discount_pct,
       active:true,
-      raw_payload:x,
+      raw_payload:(()=>{
+        const raw={...x};
+        delete raw._embedded_images;
+        delete raw._matched_image_files;
+        return raw;
+      })(),
       synced_at:new Date().toISOString()
     }));
 
@@ -120,6 +131,25 @@ window.SpektraDB = (() => {
       await new Promise(r=>setTimeout(r,35));
     }
     return count;
+  }
+
+  async function uploadProductImage(file, stockKey, filename) {
+    if (!client || !user) throw new Error('Online databáza nie je prihlásená.');
+    if (!file) throw new Error('Chýba obrázok produktu.');
+    const type=(file.type||'').toLowerCase();
+    const ext=type==='image/png'?'png':type==='image/webp'?'webp':type==='image/gif'?'gif':'jpg';
+    const safeKey=String(stockKey||'stock').replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,100);
+    const base=String(filename||file.name||('image.'+ext)).replace(/[^a-zA-Z0-9._-]/g,'_').slice(-140);
+    const finalName=/\.[a-z0-9]+$/i.test(base)?base:(base+'.'+ext);
+    const path=safeKey+'/'+finalName;
+    const { error } = await client.storage.from('product-images').upload(path,file,{
+      cacheControl:'86400',
+      upsert:true,
+      contentType:file.type||'image/jpeg'
+    });
+    if (error) throw error;
+    const { data } = client.storage.from('product-images').getPublicUrl(path);
+    return { path, url:data.publicUrl };
   }
 
   async function uploadQuoteImage(file, quoteKey) {
@@ -206,5 +236,5 @@ window.SpektraDB = (() => {
     return { remote_id:remoteId, remote_customer_id:customerId };
   }
 
-  return { configured, init, signIn, signUp, signOut, isAuthenticated, getUser, getProfile, listStocks, upsertStocks, uploadQuoteImage, listQuotes, saveQuote };
+  return { configured, init, signIn, signUp, signOut, isAuthenticated, getUser, getProfile, listStocks, upsertStocks, uploadProductImage, uploadQuoteImage, listQuotes, saveQuote };
 })();
