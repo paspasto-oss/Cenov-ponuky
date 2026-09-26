@@ -256,7 +256,7 @@ function indexImageFiles(files){
     const rel=f.webkitRelativePath||f.name;
     const base=rel.split(/[\\/]/).pop();
     const stem=base.replace(/\.[^.]+$/,'');
-    add(rel,f);add(base,f);add(stem,f);
+    add(base,f);add(stem,f);
   });
   document.getElementById('imageFolderInfo').textContent=imageFiles.length
     ? 'Načítaných '+imageFiles.length.toLocaleString('sk-SK')+' obrázkov z priečinka.'
