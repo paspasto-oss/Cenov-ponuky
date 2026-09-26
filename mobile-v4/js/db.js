@@ -75,14 +75,16 @@ window.SpektraDB = (() => {
     );
     const fields = fieldList.join(',');
 
-    let local = window.SpektraStockDB
-      ? (await window.SpektraStockDB.getAll().catch(()=>[])).filter(x=>x.active!==false)
+    const cacheGet = adminMode ? 'getAll' : 'getAllLite';
+    const cacheMerge = adminMode ? 'merge' : 'mergeLite';
+    const cacheReplace = adminMode ? 'replaceAll' : 'replaceAllLite';
+    const versionKey = adminMode ? 'remote_stock_version_admin' : 'remote_stock_version_lite';
+
+    let local = window.SpektraStockDB && window.SpektraStockDB[cacheGet]
+      ? (await window.SpektraStockDB[cacheGet]().catch(()=>[])).filter(x=>x.active!==false)
       : [];
-    const localHasAdminImages = !adminMode || !local.length ||
-      Object.prototype.hasOwnProperty.call(local[0],'image_source_refs');
-    if (adminMode && local.length && !localHasAdminImages) local = [];
     const localVersion = window.SpektraStockDB
-      ? await window.SpektraStockDB.getMeta('remote_stock_version').catch(()=>null)
+      ? await window.SpektraStockDB.getMeta(versionKey).catch(()=>null)
       : null;
 
     let remoteVersion = null;
@@ -125,10 +127,10 @@ window.SpektraDB = (() => {
         return old ? {...old,...x} : x;
       });
       if (mergedChanged.length && window.SpektraStockDB) {
-        await window.SpektraStockDB.merge(mergedChanged);
+        await window.SpektraStockDB[cacheMerge](mergedChanged);
       }
       if (window.SpektraStockDB && remoteVersion) {
-        await window.SpektraStockDB.setMeta('remote_stock_version',remoteVersion);
+        await window.SpektraStockDB.setMeta(versionKey,remoteVersion);
       }
       mergedChanged.forEach(x=>merged.set(x.fingerprint,x));
       window.SPEKTRA_STOCKS_FROM_CACHE = true;
@@ -146,8 +148,8 @@ window.SpektraDB = (() => {
       if (!data || data.length < pageSize) break;
     }
     if (window.SpektraStockDB) {
-      await window.SpektraStockDB.replaceAll(out);
-      if (remoteVersion) await window.SpektraStockDB.setMeta('remote_stock_version',remoteVersion);
+      await window.SpektraStockDB[cacheReplace](out);
+      if (remoteVersion) await window.SpektraStockDB.setMeta(versionKey,remoteVersion);
     }
     window.SPEKTRA_STOCKS_FROM_CACHE = true;
     return out;
