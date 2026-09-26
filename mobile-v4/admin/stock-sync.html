@@ -123,8 +123,9 @@ button,input,select{font:inherit}button{cursor:pointer}input,select{background:#
 <div class="nav"><button class="btn primary" onclick="location.href='../index.html'">← Späť do Spektra Ponuky</button></div>
 
 <script>
-let normalized=[], changes=[], conflicts=[], activeTab='all', sourceRows=0, filename='', effectiveMode='partial';
+let normalized=[], changes=[], conflicts=[], activeTab='all', sourceRows=0, filename='', effectiveMode='partial', sourceFormat='xlsx';
 let baselineRows=[], baselineMeta=null;
+let imageFiles=[], imageFileIndex=new Map();
 
 const aliases={
   'PLU':'plu','Názov':'name','Mj':'unit','Predajná DPH':'sell_price_inc_vat','Nákupná':'purchase_price_ex_vat',
@@ -137,7 +138,7 @@ const aliases={
 const numFields=new Set(['sell_price_inc_vat','purchase_price_ex_vat','sell_price_ex_vat','quantity_available','min_limit','max_limit','quantity_to_order','margin_pct','discount_pct']);
 function s(v){return v==null?'':String(v).trim()}
 function norm(v){return s(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ')}
-function n(v){if(v==null||v==='')return null;let x=Number(String(v).replace(',','.'));return Number.isFinite(x)?x:null}
+function n(v){if(v==null||v==='')return null;let x=Number(String(v).replace(',','.').replace(/\s/g,''));return Number.isFinite(x)?x:null}
 function fingerprint(r){return [norm(r.plu),norm(r.code),norm(r.storage_ref||r.storage_name),norm(r.name)].join('|')}
 function money(v){return v==null?'—':new Intl.NumberFormat('sk-SK',{style:'currency',currency:'EUR'}).format(v)}
 function qty(v){return v==null?'—':new Intl.NumberFormat('sk-SK',{maximumFractionDigits:3}).format(v)}
@@ -145,36 +146,223 @@ function esc(x){return s(x).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&
 function setProgress(p,text){document.getElementById('processCard').classList.remove('hidden');document.getElementById('bar').style.width=p+'%';document.getElementById('processPct').textContent=p+' %';document.getElementById('processText').textContent=text}
 function baseline(){return baselineRows}
 function baselineMap(){return new Map(baselineRows.map(x=>[x.fingerprint,x]))}
-
-async function handleFile(file){
-  if(!file)return;filename=file.name;document.getElementById('fileInfo').textContent=file.name+' · '+Math.round(file.size/1024)+' kB';
-  setProgress(8,'Načítavam Excel…');
-  try{
-    const buf=await file.arrayBuffer();setProgress(22,'Čítam hárok Zásoby…');
-    const wb=XLSX.read(buf,{type:'array',cellDates:false});
-    const ws=wb.Sheets['Zásoby']||wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(ws,{defval:null,raw:true});sourceRows=rows.length;
-    const requested=document.getElementById('syncMode').value;
-    const baseCount=baseline().length;
-    effectiveMode=requested==='auto' ? ((sourceRows<1000 || (baseCount&&sourceRows<Math.max(500,baseCount*0.5)))?'partial':'full') : requested;
-    setProgress(40,'Normalizujem '+sourceRows.toLocaleString('sk-SK')+' riadkov…');
-    await new Promise(r=>setTimeout(r,10));
-    const merged=new Map(), localConf=[];
-    rows.forEach((raw,idx)=>{
-      const x={};Object.entries(raw).forEach(([k,v])=>{const key=aliases[s(k)]||null;if(key)x[key]=numFields.has(key)?n(v):s(v)});
-      if(!x.name)return;
-      x.source_row=idx+2;x.fingerprint=fingerprint(x);x.suppliers=x.supplier_name?[x.supplier_name]:[];
-      if(!merged.has(x.fingerprint)){merged.set(x.fingerprint,x);return}
-      const prev=merged.get(x.fingerprint);
-      if(x.supplier_name&&!prev.suppliers.includes(x.supplier_name))prev.suppliers.push(x.supplier_name);
-      const core=['purchase_price_ex_vat','sell_price_ex_vat','sell_price_inc_vat','quantity_available','unit'];
-      const bad=core.some(k=>prev[k]!=null&&x[k]!=null&&String(prev[k])!==String(x[k]));
-      if(bad)localConf.push({fingerprint:x.fingerprint,a:prev,b:x,reason:'Rovnaká identita, rozdielna cena/množstvo/MJ'});
+function localName(el){return String(el?.localName||el?.nodeName||'').split(':').pop().toLowerCase()}
+function allDesc(root){return Array.from(root?.getElementsByTagName?.('*')||[])}
+function firstLeafText(root,names){
+  const wanted=new Set(names.map(x=>String(x).toLowerCase()));
+  const el=allDesc(root).find(x=>wanted.has(localName(x)) && !x.children.length && s(x.textContent));
+  return el?s(el.textContent):'';
+}
+function rawLeafFields(root){
+  const out={};
+  allDesc(root).forEach(el=>{
+    if(el.children.length)return;
+    const key=localName(el), val=s(el.textContent);
+    if(!key||!val||val.length>1000)return;
+    if(/^[A-Za-z0-9+/=\r\n]{500,}$/.test(val))return;
+    if(out[key]===undefined)out[key]=val;
+    else if(Array.isArray(out[key])){if(!out[key].includes(val))out[key].push(val)}
+    else if(out[key]!==val)out[key]=[out[key],val];
+  });
+  return out;
+}
+function uniqueStrings(arr){return [...new Set((arr||[]).map(s).filter(Boolean))]}
+function isRemoteImageRef(v){return /^https?:\/\//i.test(s(v)) && /\.(jpe?g|png|webp|gif)(?:[?#].*)?$/i.test(s(v))}
+function isLocalImageRef(v){return !/^https?:\/\//i.test(s(v)) && /\.(jpe?g|png|webp|gif)(?:[?#].*)?$/i.test(s(v))}
+function extractImages(stock){
+  const refs=[], embedded=[];
+  const candidates=[stock,...allDesc(stock)];
+  candidates.forEach(el=>{
+    const ln=localName(el);
+    const text=s(el.textContent);
+    if(!el.children.length && text){
+      if((isRemoteImageRef(text)||isLocalImageRef(text)) && text.length<1000)refs.push(text);
+      if(/(image|picture|photo|obraz|data|content|binary)/i.test(ln) && text.length>500){
+        if(/^data:image\//i.test(text))embedded.push(text);
+        else if(/^[A-Za-z0-9+/=\r\n]+$/.test(text))embedded.push('data:image/jpeg;base64,'+text.replace(/\s/g,''));
+      }
+    }
+    Array.from(el.attributes||[]).forEach(a=>{
+      const v=s(a.value);
+      if((isRemoteImageRef(v)||isLocalImageRef(v))&&v.length<1000)refs.push(v);
     });
-    normalized=[...merged.values()];conflicts=localConf;setProgress(62,'Porovnávam s poslednou synchronizáciou…');
-    await new Promise(r=>setTimeout(r,10));buildChanges();setProgress(100,'Hotovo');
-    setTimeout(()=>document.getElementById('processCard').classList.add('hidden'),450);renderSummary();renderTable();
-  }catch(err){setProgress(100,'Chyba: '+err.message);alert('Súbor sa nepodarilo načítať: '+err.message)}
+  });
+  return {refs:uniqueStrings(refs).slice(0,20),embedded:uniqueStrings(embedded).slice(0,10)};
+}
+function normalizeXmlStock(stock,idx){
+  const header=allDesc(stock).find(x=>localName(x)==='stockheader')||stock;
+  const raw=rawLeafFields(stock);
+  const images=extractImages(stock);
+  const row={
+    pohoda_stock_id:firstLeafText(header,['id','idstock','stockid'])||null,
+    plu:firstLeafText(header,['plu'])||null,
+    code:firstLeafText(header,['code','stockcode'])||null,
+    ean:firstLeafText(header,['ean','barcode'])||null,
+    name:firstLeafText(header,['name','stockname','description'])||null,
+    unit:firstLeafText(header,['unit'])||null,
+    storage_ref:firstLeafText(header,['storageref','idstorage'])||null,
+    storage_name:firstLeafText(header,['storage','storagename'])||null,
+    stock_group_ref:firstLeafText(header,['stockgroupref','idstockgroup'])||null,
+    stock_group:firstLeafText(header,['stockgroup','group'])||null,
+    supplier_name:firstLeafText(header,['suppliername','supplier','company'])||null,
+    manufacturer:firstLeafText(header,['manufacturer','producer','producername'])||null,
+    purchase_price_ex_vat:n(firstLeafText(header,['purchaseprice','weightedpurchaseprice','buyprice','purchasepricewithoutvat'])),
+    sell_price_ex_vat:n(firstLeafText(header,['sellingprice','sellprice','sellingpricewithoutvat','price'])),
+    sell_price_inc_vat:n(firstLeafText(header,['sellingpricevat','sellpricevat','pricevat'])),
+    quantity_available:n(firstLeafText(header,['count','quantity','stockamount','amount'])),
+    min_limit:n(firstLeafText(header,['minstock','minlimit'])),
+    max_limit:n(firstLeafText(header,['maxstock','maxlimit'])),
+    quantity_to_order:n(firstLeafText(header,['orderquantity','quantitytoorder'])),
+    margin_pct:n(firstLeafText(header,['margin','marginpct'])),
+    discount_pct:n(firstLeafText(header,['discount','discountpct'])),
+    source_row:idx+1,
+    source_format:'xml',
+    raw_xml_fields:raw,
+    image_source_refs:images.refs,
+    image_source_ref:images.refs[0]||null,
+    image_urls:images.refs.filter(isRemoteImageRef),
+    image_url:images.refs.find(isRemoteImageRef)||null,
+    _embedded_images:images.embedded
+  };
+  if(!row.name)return null;
+  row.fingerprint=fingerprint(row);
+  row.suppliers=row.supplier_name?[row.supplier_name]:[];
+  return row;
+}
+function indexImageFiles(files){
+  imageFiles=Array.from(files||[]).filter(f=>/^image\//i.test(f.type)||/\.(jpe?g|png|webp|gif)$/i.test(f.name));
+  imageFileIndex=new Map();
+  const add=(k,f)=>{k=norm(k).replace(/\\/g,'/');if(!k)return;if(!imageFileIndex.has(k))imageFileIndex.set(k,[]);imageFileIndex.get(k).push(f)};
+  imageFiles.forEach(f=>{
+    const rel=f.webkitRelativePath||f.name;
+    const base=rel.split(/[\\/]/).pop();
+    const stem=base.replace(/\.[^.]+$/,'');
+    add(rel,f);add(base,f);add(stem,f);
+  });
+  document.getElementById('imageFolderInfo').textContent=imageFiles.length
+    ? 'Načítaných '+imageFiles.length.toLocaleString('sk-SK')+' obrázkov z priečinka.'
+    : 'V priečinku neboli nájdené podporované obrázky.';
+  if(normalized.length){renderSummary();renderTable()}
+}
+function matchedImageFiles(row){
+  const found=[];
+  const pushFiles=arr=>(arr||[]).forEach(f=>{if(!found.includes(f))found.push(f)});
+  (row.image_source_refs||[]).filter(isLocalImageRef).forEach(ref=>{
+    const clean=decodeURIComponent(String(ref).split(/[?#]/)[0]).replace(/\\/g,'/');
+    const base=clean.split('/').pop();
+    const stem=base.replace(/\.[^.]+$/,'');
+    pushFiles(imageFileIndex.get(norm(clean))||imageFileIndex.get(norm(base))||imageFileIndex.get(norm(stem)));
+  });
+  if(!found.length){
+    [row.code,row.plu].filter(Boolean).forEach(k=>pushFiles(imageFileIndex.get(norm(k))));
+  }
+  return found.slice(0,10);
+}
+function countImageRefs(){return normalized.reduce((a,x)=>a+(x.image_source_refs?.length||0)+(x._embedded_images?.length||0),0)}
+function countImageMatches(){return normalized.reduce((a,x)=>a+matchedImageFiles(x).length+(x._embedded_images?.length||0)+(x.image_urls?.filter(isRemoteImageRef).length||0),0)}
+function dataUrlToFile(dataUrl,name){
+  const parts=String(dataUrl).split(','),meta=parts[0]||'',data=parts[1]||'';
+  const mime=(meta.match(/data:([^;]+)/)||[])[1]||'image/jpeg';
+  const bin=atob(data),bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  const ext=mime.includes('png')?'png':mime.includes('webp')?'webp':mime.includes('gif')?'gif':'jpg';
+  return new File([bytes],(name||'embedded')+'.'+ext,{type:mime});
+}
+function existingStockFor(row){
+  return baselineRows.find(x=>x.fingerprint===row.fingerprint)
+    ||(row.code?baselineRows.find(x=>norm(x.code)===norm(row.code)):null)
+    ||(row.plu?baselineRows.find(x=>norm(x.plu)===norm(row.plu)):null)
+    ||null;
+}
+function inheritExistingImages(row){
+  const old=existingStockFor(row);
+  if(!old)return row;
+  if(!(row.image_urls||[]).length && !matchedImageFiles(row).length && !(row._embedded_images||[]).length){
+    row.image_url=old.image_url||null;
+    row.image_urls=Array.isArray(old.image_urls)?old.image_urls:(old.image_url?[old.image_url]:[]);
+    row.image_storage_path=old.image_storage_path||null;
+    row.image_storage_paths=Array.isArray(old.image_storage_paths)?old.image_storage_paths:(old.image_storage_path?[old.image_storage_path]:[]);
+    if(!(row.image_source_refs||[]).length){
+      row.image_source_ref=old.image_source_ref||null;
+      row.image_source_refs=Array.isArray(old.image_source_refs)?old.image_source_refs:(old.image_source_ref?[old.image_source_ref]:[]);
+    }
+  }
+  return row;
+}
+function mergeRows(rows){
+  const merged=new Map(),localConf=[];
+  rows.filter(Boolean).forEach((x,idx)=>{
+    if(!x.name)return;
+    x.source_row=x.source_row||idx+1;
+    x.fingerprint=x.fingerprint||fingerprint(x);
+    x.suppliers=x.suppliers|| (x.supplier_name?[x.supplier_name]:[]);
+    if(!merged.has(x.fingerprint)){merged.set(x.fingerprint,x);return}
+    const prev=merged.get(x.fingerprint);
+    if(x.supplier_name&&!prev.suppliers.includes(x.supplier_name))prev.suppliers.push(x.supplier_name);
+    prev.image_source_refs=uniqueStrings([...(prev.image_source_refs||[]),...(x.image_source_refs||[])]);
+    prev._embedded_images=uniqueStrings([...(prev._embedded_images||[]),...(x._embedded_images||[])]);
+    const core=['purchase_price_ex_vat','sell_price_ex_vat','sell_price_inc_vat','quantity_available','unit'];
+    const bad=core.some(k=>prev[k]!=null&&x[k]!=null&&String(prev[k])!==String(x[k]));
+    if(bad)localConf.push({fingerprint:x.fingerprint,a:prev,b:x,reason:'Rovnaká identita, rozdielna cena/množstvo/MJ'});
+  });
+  normalized=[...merged.values()].map(inheritExistingImages);
+  conflicts=localConf;
+}
+async function parseXlsx(file){
+  sourceFormat='xlsx';setProgress(8,'Načítavam Excel…');
+  const buf=await file.arrayBuffer();setProgress(22,'Čítam hárok Zásoby…');
+  const wb=XLSX.read(buf,{type:'array',cellDates:false});
+  const ws=wb.Sheets['Zásoby']||wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{defval:null,raw:true});sourceRows=rows.length;
+  const requested=document.getElementById('syncMode').value,baseCount=baseline().length;
+  effectiveMode=requested==='auto'?((sourceRows<1000||(baseCount&&sourceRows<Math.max(500,baseCount*0.5)))?'partial':'full'):requested;
+  setProgress(40,'Normalizujem '+sourceRows.toLocaleString('sk-SK')+' riadkov…');
+  const out=rows.map((raw,idx)=>{
+    const x={};Object.entries(raw).forEach(([k,v])=>{const key=aliases[s(k)]||null;if(key)x[key]=numFields.has(key)?n(v):s(v)});
+    if(!x.name)return null;
+    x.source_row=idx+2;x.source_format='xlsx';x.fingerprint=fingerprint(x);x.suppliers=x.supplier_name?[x.supplier_name]:[];
+    return x;
+  });
+  mergeRows(out);
+}
+async function parseXml(file){
+  sourceFormat='xml';setProgress(8,'Načítavam XML…');
+  const text=await file.text();setProgress(20,'Čítam POHODA XML…');
+  const doc=new DOMParser().parseFromString(text,'application/xml');
+  if(doc.querySelector('parsererror'))throw new Error('XML súbor nie je platný.');
+  const stocks=allDesc(doc).filter(x=>localName(x)==='stock');
+  if(!stocks.length)throw new Error('V XML som nenašiel žiadne uzly <stock>. Exportuj agendu Zásoby z POHODY.');
+  sourceRows=stocks.length;
+  const requested=document.getElementById('syncMode').value;
+  effectiveMode=requested==='auto'?'full':requested;
+  setProgress(40,'Spracúvam '+sourceRows.toLocaleString('sk-SK')+' skladových kariet…');
+  const out=[];
+  const batch=500;
+  for(let i=0;i<stocks.length;i++){
+    out.push(normalizeXmlStock(stocks[i],i));
+    if(i%batch===0){setProgress(40+Math.round(i/stocks.length*18),'XML '+i.toLocaleString('sk-SK')+' / '+stocks.length.toLocaleString('sk-SK'));await new Promise(r=>setTimeout(r,0))}
+  }
+  mergeRows(out);
+}
+async function handleFile(file){
+  if(!file)return;
+  filename=file.name;
+  document.getElementById('fileInfo').textContent=file.name+' · '+Math.round(file.size/1024)+' kB';
+  try{
+    const ext=(file.name.split('.').pop()||'').toLowerCase();
+    if(ext==='xml')await parseXml(file);
+    else if(ext==='xlsx'||ext==='xls')await parseXlsx(file);
+    else throw new Error('Podporovaný je XML alebo XLSX/XLS export POHODY.');
+    setProgress(62,'Porovnávam s poslednou synchronizáciou…');
+    await new Promise(r=>setTimeout(r,10));
+    buildChanges();
+    setProgress(100,'Hotovo · '+normalized.length.toLocaleString('sk-SK')+' zásob · '+countImageRefs().toLocaleString('sk-SK')+' odkazov na obrázky');
+    setTimeout(()=>document.getElementById('processCard').classList.add('hidden'),550);
+    renderSummary();renderTable();
+  }catch(err){
+    setProgress(100,'Chyba: '+err.message);
+    alert('Súbor sa nepodarilo načítať: '+err.message)
+  }
 }
 function same(a,b,k){const av=a?.[k],bv=b?.[k];if(av==null&&bv==null)return true;if(typeof av==='number'||typeof bv==='number')return Math.abs(Number(av||0)-Number(bv||0))<0.0001;return s(av)===s(bv)}
 function buildChanges(){
