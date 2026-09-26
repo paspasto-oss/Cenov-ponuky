@@ -245,7 +245,13 @@ function normalizeXmlStock(stock,idx){
 function indexImageFiles(files){
   imageFiles=Array.from(files||[]).filter(f=>/^image\//i.test(f.type)||/\.(jpe?g|png|webp|gif)$/i.test(f.name));
   imageFileIndex=new Map();
-  const add=(k,f)=>{k=norm(k).replace(/\\/g,'/');if(!k)return;if(!imageFileIndex.has(k))imageFileIndex.set(k,[]);imageFileIndex.get(k).push(f)};
+  const add=(k,f)=>{
+    k=norm(k).replace(/\\/g,'/');if(!k)return;
+    const prev=imageFileIndex.get(k);
+    if(!prev)imageFileIndex.set(k,f);
+    else if(Array.isArray(prev)){if(!prev.includes(f))prev.push(f)}
+    else if(prev!==f)imageFileIndex.set(k,[prev,f]);
+  };
   imageFiles.forEach(f=>{
     const rel=f.webkitRelativePath||f.name;
     const base=rel.split(/[\\/]/).pop();
@@ -259,7 +265,11 @@ function indexImageFiles(files){
 }
 function matchedImageFiles(row){
   const found=[];
-  const pushFiles=arr=>(arr||[]).forEach(f=>{if(!found.includes(f))found.push(f)});
+  const pushFiles=value=>{
+    if(!value)return;
+    const arr=Array.isArray(value)?value:[value];
+    arr.forEach(f=>{if(!found.includes(f))found.push(f)});
+  };
   (row.image_source_refs||[]).filter(isLocalImageRef).forEach(ref=>{
     const clean=decodeURIComponent(String(ref).split(/[?#]/)[0]).replace(/\\/g,'/');
     const base=clean.split('/').pop();
