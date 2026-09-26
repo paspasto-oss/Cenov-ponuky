@@ -552,11 +552,10 @@ async function refreshOnlineState(){
       dbState.textContent='ONLINE · '+(p?.display_name||'používateľ')+' · '+(p?.role||'');
       authCard.classList.add('hidden');
       try{
-        const onlineStocks=await SpektraDB.listStocks();
+        const onlineStocks=await SpektraDB.listStocks({admin:true});
         if(onlineStocks.length){
           baselineRows=onlineStocks.map(x=>({...x,fingerprint:x.fingerprint,suppliers:x.supplier_name?[x.supplier_name]:[]}));
           baselineMeta={applied_at:new Date().toISOString(),filename:'Supabase',count:baselineRows.length,mode:'online'};
-          await SpektraStockDB.replaceAll(baselineRows);
           await SpektraStockDB.setMeta('stock_sync',baselineMeta);
         }
       }catch(e){console.error('Online stock load failed',e)}
