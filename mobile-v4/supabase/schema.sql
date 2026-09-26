@@ -154,6 +154,10 @@ values ('product-images','product-images',true,10485760,array['image/jpeg','imag
 on conflict (id) do update
 set public=true,file_size_limit=10485760,allowed_mime_types=array['image/jpeg','image/png','image/webp','image/gif'];
 
+drop policy if exists "admins read product image objects" on storage.objects;
+create policy "admins read product image objects" on storage.objects for select to authenticated
+using (bucket_id='product-images' and exists(select 1 from public.app_users u where u.user_id=auth.uid() and u.active and u.role='admin'));
+
 drop policy if exists "admins upload product images" on storage.objects;
 create policy "admins upload product images" on storage.objects for insert to authenticated
 with check (bucket_id='product-images' and exists(select 1 from public.app_users u where u.user_id=auth.uid() and u.active and u.role='admin'));
