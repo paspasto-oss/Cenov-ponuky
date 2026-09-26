@@ -19,7 +19,7 @@
 </style>
 <script src="js/idb-stock.js"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="js/db.js"></script>
+<script src="js/db.js?v=20260926-pohodaxml1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 </head>
 <body>
@@ -708,6 +708,7 @@ function consolidateBOM(items){
 }
 function buildBOM(){
  let d=recommendation,stock=findStockForDevice(d),items=[];
+ if(stock){syncProductImagesFromStock(stock);d=recommendation;}
  items.push({role:'device',name:(d.brand+' '+d.model+' '+(d.variant||'')).trim(),qty:1,unit:'ks',pohoda:stock,price:stock?.sell_price_ex_vat??d.sell_price_ex_vat??null,cost:stock?.purchase_price_ex_vat??d.purchase_price_ex_vat??null,visible:true,mapping_status:stock?'mapped':'unmapped'});
  let key=bundleKeyFor(d),recipe=bundleRecipes.find(b=>b.key===key);
  const recipes=[];
@@ -977,18 +978,59 @@ function updateFlushPrice(){
 }
 const DEFAULT_PDF_BANNER='assets/pdf-images/tepelne-cerpadla-banner.jpg';
 
+function stockImageUrls(stock){
+  if(!stock)return [];
+  let arr=stock.image_urls;
+  if(typeof arr==='string'){try{arr=JSON.parse(arr)}catch(e){arr=[]}}
+  if(!Array.isArray(arr))arr=[];
+  if(stock.image_url)arr=[stock.image_url,...arr];
+  return [...new Set(arr.filter(Boolean))];
+}
+function stockImagePaths(stock){
+  if(!stock)return [];
+  let arr=stock.image_storage_paths;
+  if(typeof arr==='string'){try{arr=JSON.parse(arr)}catch(e){arr=[]}}
+  if(!Array.isArray(arr))arr=[];
+  if(stock.image_storage_path)arr=[stock.image_storage_path,...arr];
+  return [...new Set(arr.filter(Boolean))];
+}
+function syncProductImagesFromStock(stock){
+  if(!current||!stock)return;
+  const urls=stockImageUrls(stock);
+  if(!urls.length)return;
+  const paths=stockImagePaths(stock);
+  const base={...(recommendation||current.device||{})};
+  base.image_url=urls[0];
+  base.image_storage_path=paths[0]||null;
+  base.product_image_urls=urls;
+  base.product_image_storage_paths=paths;
+  recommendation=base;
+  current.device={...base};
+  const imgs=Array.isArray(current.pdf_images)?current.pdf_images:[];
+  const replaceable=!imgs.length||imgs.every(x=>x.source==='default'||x.source==='pohoda');
+  if(replaceable){
+    current.pdf_images=urls.map((url,i)=>({
+      url,
+      path:paths[i]||null,
+      name:(stock.name||base.model||'Produkt')+(urls.length>1?' '+(i+1):''),
+      source:'pohoda'
+    }));
+  }
+}
 function ensurePdfImagesState(){
   if(!current)return;
   if(!Array.isArray(current.pdf_images)){
     const migrated=[];
-    if(current.device?.image_url){
-      migrated.push({
-        url:current.device.image_url,
-        path:current.device.image_storage_path||null,
-        name:'Obrázok zariadenia',
-        source:current.device.image_storage_path?'upload':'legacy'
-      });
-    }
+    const productUrls=Array.isArray(current.device?.product_image_urls)&&current.device.product_image_urls.length
+      ? current.device.product_image_urls
+      : (current.device?.image_url?[current.device.image_url]:[]);
+    const productPaths=Array.isArray(current.device?.product_image_storage_paths)?current.device.product_image_storage_paths:[];
+    productUrls.forEach((url,i)=>migrated.push({
+      url,
+      path:productPaths[i]||current.device?.image_storage_path||null,
+      name:'Obrázok zariadenia'+(productUrls.length>1?' '+(i+1):''),
+      source:'pohoda'
+    }));
     if(!migrated.length && (current.category||category)==='heat_pump'){
       migrated.push({url:DEFAULT_PDF_BANNER,path:null,name:'Spektra – tepelné čerpadlá',source:'default'});
     }
@@ -1205,7 +1247,8 @@ function renderRecommendation(){
           ? 'Multisplit '+(current.multisplit_count||2)+'+1: vonkajšia jednotka, vnútorné jednotky a montáž sa načítavajú z POHODY. Materiál sa počíta orientačne do 5 m ku každej vnútornej jednotke.'
           : 'Z POHODY sa načítali konkrétne klimatizácie s cenami. Predvolene je zvolená trieda okolo 3,5 kW; nižšie môžeš vybrať inú výkonovú alternatívu.')
        : 'Pre túto kategóriu sa výkon vyberie podľa konkrétneho modelu a priestoru.';
- document.getElementById('recommendation').innerHTML='<div class="title"><div><h3>'+esc(d.brand+' '+d.model)+'</h3><div class="sub">'+esc(d.variant||'')+(current.system_type?' · '+esc(current.system_type):'')+'</div></div><div class="kw">'+(d.power_kw||target||'—')+' kW</div></div>';
+ const recImage=d.image_url?'<div style="width:116px;min-width:116px;height:92px;background:#fff;border:1px solid #d6e4ec;border-radius:10px;padding:5px;display:flex;align-items:center;justify-content:center"><img src="'+esc(d.image_url)+'" alt="" style="max-width:100%;max-height:100%;object-fit:contain"></div>':'';
+ document.getElementById('recommendation').innerHTML='<div style="display:flex;gap:12px;align-items:center">'+recImage+'<div class="title" style="flex:1"><div><h3>'+esc(d.brand+' '+d.model)+'</h3><div class="sub">'+esc(d.variant||'')+(current.system_type?' · '+esc(current.system_type):'')+'</div></div><div class="kw">'+(d.power_kw||target||'—')+' kW</div></div></div>';
  let alt=(category==='air_conditioning'?(acMode==='multi'?acMultiOutdoorCandidates(brand,multiCount):acStockCandidates(brand)):deviceCatalog.filter(x=>catalogCategory(x)===category&&x.brand===brand)).filter(x=>x.id!==d.id&& (category!=='boiler'||(x.boiler_type||'gas')===boilerType)).sort((a,b)=>(a.power_kw||999)-(b.power_kw||999)).slice(0,12);
  const altDetails=document.getElementById('alternativesDetails');
  const altCount=document.getElementById('alternativesCount');
