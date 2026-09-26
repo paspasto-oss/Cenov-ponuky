@@ -124,7 +124,7 @@
   </section>
 
   <section id="step4" class="screen">
-    <div class="topline"><button class="btn ghost small" onclick="go('step3')">← Späť</button><h1>4. Návrh aplikácie</h1></div>
+    <div class="topline"><button class="btn ghost small" onclick="backToTypeBrand()">← Späť</button><h1>4. Návrh aplikácie</h1></div>
     <div class="steps"><div class="step on"></div><div class="step on"></div><div class="step on"></div><div class="step on"></div><div class="step"></div></div>
     <div id="calcNotice" class="notice" style="margin-bottom:10px"></div>
     <button class="btn ghost full" style="margin-bottom:10px" onclick="refreshQuoteFromCatalog()">↻ Obnoviť zariadenie a ceny z aktuálnej POHODY</button>
@@ -337,7 +337,17 @@ const eur=n=>n==null?'—':new Intl.NumberFormat('sk-SK',{style:'currency',curre
 const s=x=>String(x==null?'':x).trim();
 const norm=x=>s(x).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const esc=x=>s(x).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
-function go(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('on'));document.getElementById(id).classList.add('on');window.scrollTo(0,0)}
+function go(id){
+  if(id==='step3'){
+    // Krok 3 je dynamický. Po návrate zo zariadenia alebo po otvorení starej ponuky
+    // znovu vykreslíme typ zdroja, typ kotla/klimatizácie a značky.
+    renderChoices();
+  }
+  document.querySelectorAll('.screen').forEach(x=>x.classList.remove('on'));
+  const target=document.getElementById(id);
+  if(target)target.classList.add('on');
+  window.scrollTo(0,0);
+}
 function persist(){localStorage.setItem(QUOTES_KEY,JSON.stringify(quotes));renderHome()}
 async function loadConfig(){
   let configOk=true;
@@ -406,6 +416,17 @@ function startWizard(){current={id:'q_'+Date.now(),quote_no:'26NA'+String(quotes
 function nextBuilding(){let name=s(document.getElementById('cName').value),phone=s(document.getElementById('cPhone').value),addr=s(document.getElementById('cAddress').value);if(!name||!phone||!addr){alert('Vyplň meno, telefón a adresu realizácie.');return}current.customer={name,phone,email:s(document.getElementById('cEmail').value),address:addr,note:s(document.getElementById('cNote').value)};go('step2')}
 function toggleLoss(){let known=document.getElementById('hasLoss').value==='yes';document.getElementById('lossKnown').classList.toggle('hidden',!known);document.getElementById('lossEstimate').classList.toggle('hidden',known)}
 function nextCategory(){let known=document.getElementById('hasLoss').value==='yes',loss=+document.getElementById('heatLoss').value||0,area=+document.getElementById('area').value||0;if(known&&loss<=0){alert('Zadaj tepelnú stratu.');return}if(!known&&area<=0){alert('Zadaj vykurovanú plochu.');return}current.building={known_loss:known,heat_loss_kw:known?loss:null,area_m2:known?null:area,w_per_m2:+document.getElementById('buildingClass').value,heating:document.getElementById('heating').value,with_external_dhw_tank:document.getElementById('dhwMode').value==='external'};renderChoices();go('step3')}
+function backToTypeBrand(){
+  if(current){
+    category=current.category||category||'heat_pump';
+    brand=current.brand||brand||'';
+    boilerType=current.boiler_type||boilerType||'gas';
+    acMode=current.ac_mode||acMode||'single';
+    multiCount=current.multisplit_count||multiCount||2;
+  }
+  renderChoices();
+  go('step3');
+}
 function renderChoices(){
   let cats=[['heat_pump','♨','Tepelné čerpadlo'],['air_conditioning','❄','Klimatizácia'],['boiler','🔥','Kotol']];
   document.getElementById('catChoices').innerHTML=cats.map(c=>'<button class="choice '+(category===c[0]?'on':'')+'" onclick="selectCat(\''+c[0]+'\')"><span>'+c[1]+'</span><b>'+c[2]+'</b></button>').join('');
@@ -419,22 +440,29 @@ function renderChoices(){
   syncAcModeUI();
   renderBrands();
 }
-function selectCat(c){category=c;brand='';if(c!=='boiler')boilerType='gas';if(c!=='air_conditioning'){acMode='single';multiCount=2;}renderChoices()}
+function selectCat(c){
+  category=c;
+  brand='';
+  if(current){current.category=c;current.brand='';}
+  if(c!=='boiler')boilerType='gas';
+  if(c!=='air_conditioning'){acMode='single';multiCount=2;}
+  renderChoices();
+}
 function catalogCategory(d){return d.category==='tepelne_cerpadlo'?'heat_pump':d.category==='klimatizacia'?'air_conditioning':d.category==='kotol'?'boiler':d.category}
 function syncBoilerTypeUI(){
   [['gas','boilerGas'],['electric','boilerElectric'],['pellet','boilerPellet']].forEach(([v,id])=>{
     const el=document.getElementById(id);if(el)el.classList.toggle('on',boilerType===v);
   });
 }
-function selectBoilerType(t){boilerType=t;brand='';syncBoilerTypeUI();renderBrands()}
+function selectBoilerType(t){boilerType=t;brand='';if(current){current.boiler_type=t;current.brand='';}syncBoilerTypeUI();renderBrands()}
 function syncAcModeUI(){
   const s=document.getElementById('acSingle'),m=document.getElementById('acMulti');
   if(s)s.classList.toggle('on',acMode==='single');
   if(m)m.classList.toggle('on',acMode==='multi');
   [2,3,4,5].forEach(n=>{const el=document.getElementById('multi'+n);if(el)el.classList.toggle('on',multiCount===n)});
 }
-function selectAcMode(mode){acMode=mode;brand='';syncAcModeUI();renderChoices()}
-function selectMultiCount(n){multiCount=n;brand='';syncAcModeUI();renderBrands()}
+function selectAcMode(mode){acMode=mode;brand='';if(current){current.ac_mode=mode;current.brand='';}syncAcModeUI();renderChoices()}
+function selectMultiCount(n){multiCount=n;brand='';if(current){current.multisplit_count=n;current.brand='';}syncAcModeUI();renderBrands()}
 function multisplitCountFromName(name){
   const n=norm(name);
   let m=n.match(/max\.?\s*(\d+)\s*vnut/); if(m)return +m[1];
@@ -534,7 +562,7 @@ function renderBrands(){
   }
   document.getElementById('brandChoices').innerHTML=(brands.length?brands:['Zatiaľ bez značiek v katalógu']).map(b=>'<button class="choice '+(brand===b?'on':'')+' '+(b.startsWith('Zatiaľ')?'disabled':'')+'" '+(b.startsWith('Zatiaľ')?'':'onclick="selectBrand(\''+String(b).replace(/'/g,"\\'")+'\')"')+'><span>●</span><b>'+esc(b)+'</b></button>').join('');
 }
-function selectBrand(b){brand=b;renderBrands()}
+function selectBrand(b){brand=b;if(current)current.brand=b;renderBrands()}
 function acBrandAliases(b){
   const x=norm(b);
   if(x==='mdv'||x.includes(' mdv'))return ['mdv'];
