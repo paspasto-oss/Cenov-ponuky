@@ -19,7 +19,7 @@
 </style>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="js/db.js?v=20260927-quote0009fix1"></script>
+<script src="js/db.js?v=20260927-functionalcheck2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
@@ -130,7 +130,7 @@
     <div class="topline"><button class="btn ghost small" onclick="backToTypeBrand()">← Späť</button><h1>4. Návrh aplikácie</h1></div>
     <div class="steps"><div class="step on"></div><div class="step on"></div><div class="step on"></div><div class="step on"></div><div class="step"></div></div>
     <div id="calcNotice" class="notice" style="margin-bottom:10px"></div>
-    <button class="btn ghost full" style="margin-bottom:10px" onclick="refreshQuoteFromCatalog()">↻ Obnoviť zariadenie a ceny z aktuálnej POHODY</button>
+    <button id="refreshPriceBtn" class="btn ghost full" style="margin-bottom:10px" onclick="refreshQuoteFromCatalog(this)">↻ Načítať aktuálne ceny z POHODY</button>
     <div class="card">
       <h2>Odporučené zariadenie</h2>
       <div id="recommendation" class="reco"></div>
@@ -370,8 +370,6 @@ const fallbackDevices=[
  {id:'midea-nature-10',category:'tepelne_cerpadlo',brand:'Midea',model:'M-Thermal Nature',variant:'10 kW',power_kw:10,refrigerant:'R290'},
  {id:'midea-nature-12',category:'tepelne_cerpadlo',brand:'Midea',model:'M-Thermal Nature',variant:'12 kW',power_kw:12,refrigerant:'R290'},
  {id:'midea-nature-16',category:'tepelne_cerpadlo',brand:'Midea',model:'M-Thermal Nature',variant:'16 kW',power_kw:16,refrigerant:'R290'},
- {id:'midea-arctic-10',category:'tepelne_cerpadlo',brand:'Midea',model:'Arctic monoblok',variant:'10 kW',power_kw:10},
- {id:'midea-arctic-12',category:'tepelne_cerpadlo',brand:'Midea',model:'Arctic monoblok',variant:'12 kW',power_kw:12},
  {id:'mitsubishi-zubadan',category:'tepelne_cerpadlo',brand:'Mitsubishi Electric',model:'Zubadan PUZ-SHWM',variant:'',power_kw:null},
  {id:'hyundai-supreme',category:'tepelne_cerpadlo',brand:'Hyundai',model:'Supreme',variant:'',power_kw:null},
  {id:'ac-lg-wall',category:'klimatizacia',brand:'LG',model:'Nástenná klimatizácia',variant:'',power_kw:null},
@@ -379,7 +377,7 @@ const fallbackDevices=[
  {id:'ac-samsung-wall',category:'klimatizacia',brand:'Samsung',model:'Nástenná klimatizácia',variant:'',power_kw:null},
  {id:'ac-daikin-wall',category:'klimatizacia',brand:'Daikin',model:'Nástenná klimatizácia',variant:'',power_kw:null},
  {id:'ac-mitsubishi-wall',category:'klimatizacia',brand:'Mitsubishi Electric',model:'Nástenná klimatizácia',variant:'',power_kw:null},
- {id:'ac-midea-wall',category:'klimatizacia',brand:'Midea / MDV',model:'Nástenná klimatizácia',variant:'',power_kw:null},
+ {id:'ac-midea-wall',category:'klimatizacia',brand:'Midea',model:'Nástenná klimatizácia',variant:'',power_kw:null},
  {id:'ac-hyundai-wall',category:'klimatizacia',brand:'Hyundai',model:'Nástenná klimatizácia',variant:'',power_kw:null}
 ];
 
@@ -452,12 +450,12 @@ async function loadConfig(){
     }
   }
   try{
-    const r=await fetch('data/device-catalog.json?v=20260927-solunarprice1',{cache:'no-store'});
+    const r=await fetch('data/device-catalog.json?v=20260927-functionalcheck2',{cache:'no-store'});
     if(!r.ok) throw new Error('device-catalog '+r.status);
     const j=await r.json();deviceCatalog=j.devices||[];
   }catch(e){deviceCatalog=fallbackDevices;configOk=false;console.error('Device catalog load failed:',e)}
   try{
-    const r=await fetch('data/bundle-recipes.json?v=20260927-acmountfix1',{cache:'no-store'});
+    const r=await fetch('data/bundle-recipes.json?v=20260927-functionalcheck2',{cache:'no-store'});
     if(!r.ok) throw new Error('bundle-recipes '+r.status);
     const j=await r.json();bundleRecipes=j.bundles||[];
   }catch(e){bundleRecipes=[];configOk=false;console.error('Bundle recipes load failed:',e)}
@@ -939,14 +937,14 @@ function calcRequiredKw(){
 }
 function nextStepKw(required){let steps=[5,7,9,12,16];return steps.find(x=>x>=required)||16}
 function findStockForDevice(d){
- if(!stocks.length)return null;
- if(d.pohoda_code){
-   const byCode=stockByCodeMap.get(norm(d.pohoda_code));
-   if(byCode)return byCode;
- }
+ if(!d||!stocks.length)return null;
  if(d.pohoda_plu){
    const byPlu=stockByPluMap.get(norm(d.pohoda_plu));
    if(byPlu)return byPlu;
+ }
+ if(d.pohoda_code){
+   const byCode=stockByCodeMap.get(norm(d.pohoda_code));
+   if(byCode)return byCode;
  }
  let terms=[d.brand,d.model,d.variant].filter(Boolean).map(norm);
  let candidates=stocks.filter(x=>terms.every(t=>!t||norm((x.name||'')+' '+(x.manufacturer||'')).includes(t.split(' ')[0])));
@@ -979,7 +977,10 @@ function makeRecommendation(){
    let withPower=devices.filter(d=>d.power_kw!=null).sort((a,b)=>a.power_kw-b.power_kw);
    recommendation=withPower.find(d=>d.power_kw>=target)||withPower[withPower.length-1]||devices[0]||null;
  }else recommendation=devices[0]||null;
- if(!recommendation){recommendation={id:'manual-'+brand,brand,model:'Model doplníme po naplnení cenníka',variant:'',power_kw:target,category:category}}
+ if(!recommendation){
+   alert('Pre značku '+brand+' sa nepodarilo načítať žiadne zariadenie s cenou. Skontroluj ONLINE stav a katalóg POHODA.');
+   return;
+ }
  current.required_kw=required;current.target_kw=target;buildBOM();renderRecommendation();go('step4')
 }
 function roleToStock(role){
@@ -1616,27 +1617,107 @@ function renderRecommendation(){
    return '<div class="item"><div><b>'+esc(customerText(i.name))+'</b><small>'+i.qty+' '+esc(i.unit)+link+'</small></div><div>'+eur(i.price)+'</div></div>'
  }).join('');
  let net=0,missing=false;current.items.forEach(i=>{if(i.price==null)missing=true;else net+=(+i.price||0)*(+i.qty||0)});current.net=net;current.vat_pct=23;current.vat=net*.23;current.total=net*1.23;
- let dev=current.items[0]?.price,install=current.items.slice(1).reduce((a,i)=>a+(i.price==null?0:(+i.price||0)*(+i.qty||0)),0);document.getElementById('devicePrice').textContent=eur(dev);document.getElementById('installPrice').textContent=missing?eur(install)+' (známe položky)':eur(install);document.getElementById('netPrice').textContent=missing?'Neúplná cena':eur(net);document.getElementById('vatPrice').textContent=missing?'—':eur(current.vat);document.getElementById('grossPrice').textContent=missing?'—':eur(current.total);document.getElementById('priceWarning').classList.toggle('hidden',!missing);current.price_complete=!missing;
+ let dev=current.items[0]?.price,install=current.items.slice(1).reduce((a,i)=>a+(i.price==null?0:(+i.price||0)*(+i.qty||0)),0);document.getElementById('devicePrice').textContent=eur(dev);document.getElementById('installPrice').textContent=missing?eur(install)+' (známe položky)':eur(install);document.getElementById('netPrice').textContent=missing?'Neúplná cena':eur(net);document.getElementById('vatPrice').textContent=missing?'—':eur(current.vat);document.getElementById('grossPrice').textContent=missing?'—':eur(current.total);const warning=document.getElementById('priceWarning');
+ if(warning){
+   warning.classList.toggle('hidden',!missing);
+   if(missing){
+     const miss=current.items.filter(i=>i.price==null);
+     warning.innerHTML='Cena je neúplná. Chýba cena pri: <b>'+miss.slice(0,5).map(i=>esc(customerText(i.name))).join(', ')+'</b>'+(miss.length>5?' a ďalších '+(miss.length-5)+' položkách.':'.')+' Použi tlačidlo <b>Načítať aktuálne ceny z POHODY</b>.';
+   }
+ }
+ current.price_complete=!missing;
  syncSubsidyUI();
 }
-function refreshQuoteFromCatalog(){
+async function refreshQuoteFromCatalog(button=null){
   if(!current)return;
-  let fresh=null;
-  if(current.device?.id) fresh=(current.category==='air_conditioning'?((current.ac_mode||acMode)==='multi'?acMultiOutdoorCandidates(current.brand||brand,current.multisplit_count||multiCount).find(x=>x.id===current.device.id):acStockCandidates(current.brand||brand).find(x=>x.id===current.device.id)):deviceCatalog.find(x=>x.id===current.device.id))||null;
-  if(!fresh){
-    const candidates=(current.category==='air_conditioning'?((current.ac_mode||acMode)==='multi'?acMultiOutdoorCandidates(current.brand||brand,current.multisplit_count||multiCount):acStockCandidates(current.brand||brand)):deviceCatalog.filter(x=>catalogCategory(x)===(current.category||category) && x.brand===(current.brand||brand) && x.active!==false));
-    const target=current.target_kw||current.required_kw||current.device?.power_kw||0;
-    const powered=candidates.filter(x=>x.power_kw!=null).sort((a,b)=>a.power_kw-b.power_kw);
-    fresh=powered.find(x=>x.power_kw>=target)||powered[powered.length-1]||candidates[0]||null;
-  }
-  if(fresh){
+  const btn=button||document.getElementById('refreshPriceBtn');
+  const oldText=btn?.textContent||'';
+  if(btn){btn.disabled=true;btn.textContent='↻ Načítavam aktuálne ceny…';}
+  try{
+    if(window.SpektraDB?.isAuthenticated()){
+      const freshStocks=await SpektraDB.listStocks({force:true});
+      if(!freshStocks.length)throw new Error('Online katalóg POHODA je prázdny.');
+      stocks=freshStocks;
+      rebuildStockIndexes();
+      const state=document.getElementById('catalogState');
+      if(state)state.textContent='Katalóg POHODA: '+stocks.length.toLocaleString('sk-SK')+' zásob';
+    }else if(!stocks.length){
+      stocks=await (SpektraStockDB.getAllLiteOrFull?SpektraStockDB.getAllLiteOrFull():SpektraStockDB.getAll()).catch(()=>[]);
+      rebuildStockIndexes();
+    }
+
+    try{
+      const [dc,br]=await Promise.all([
+        fetch('data/device-catalog.json?t='+Date.now(),{cache:'no-store'}),
+        fetch('data/bundle-recipes.json?t='+Date.now(),{cache:'no-store'})
+      ]);
+      if(dc.ok){
+        const j=await dc.json();
+        if(Array.isArray(j.devices)&&j.devices.length)deviceCatalog=j.devices;
+      }
+      if(br.ok){
+        const j=await br.json();
+        if(Array.isArray(j.bundles)&&j.bundles.length)bundleRecipes=j.bundles;
+      }
+    }catch(e){
+      console.warn('Static catalog refresh failed',e);
+    }
+
+    const currentBrand=current.brand||brand||current.device?.brand||'';
+    const mode=current.ac_mode||acMode||'single';
+    const count=current.multisplit_count||multiCount||2;
+    let candidates=current.category==='air_conditioning'
+      ? (mode==='multi'?acMultiOutdoorCandidates(currentBrand,count):acStockCandidates(currentBrand))
+      : deviceCatalog.filter(x=>catalogCategory(x)===(current.category||category)&&x.brand===currentBrand&&x.active!==false);
+
+    if(current.category==='heat_pump'&&currentBrand==='Midea'){
+      candidates=candidates.filter(x=>String(x.id||'').startsWith('midea-nature-'));
+    }
+
+    let fresh=null;
+    if(current.device?.id)fresh=candidates.find(x=>x.id===current.device.id)||null;
+    if(!fresh&&current.device?.pohoda_plu)fresh=candidates.find(x=>String(x.pohoda_plu||'')===String(current.device.pohoda_plu))||null;
+    if(!fresh&&current.device?.pohoda_code)fresh=candidates.find(x=>String(x.pohoda_code||'')===String(current.device.pohoda_code))||null;
+
+    if(!fresh){
+      const target=Number(current.device?.power_kw||current.target_kw||current.required_kw||0);
+      const sameModel=candidates.filter(x=>{
+        const a=norm(x.model||''),b=norm(current.device?.model||'');
+        return a&&b&&(a.includes(b)||b.includes(a));
+      });
+      const pool=sameModel.length?sameModel:candidates;
+      const powered=pool.filter(x=>x.power_kw!=null).sort((a,b)=>Math.abs(Number(a.power_kw)-target)-Math.abs(Number(b.power_kw)-target));
+      fresh=powered[0]||pool[0]||null;
+    }
+
+    if(!fresh)throw new Error('Pre túto ponuku sa v aktuálnom katalógu nenašlo zariadenie '+currentBrand+'.');
+
     recommendation={...fresh};
     current.device={...fresh};
+    category=current.category||category;
+    brand=currentBrand;
+    acMode=mode;
+    multiCount=count;
     ensurePdfImagesState();
+
+    buildBOM();
+    renderRecommendation();
+    await upsertCurrent();
+
+    const missing=current.items.filter(i=>i.price==null);
+    if(missing.length){
+      alert('Ceny boli obnovené, ale '+missing.length+' položkám stále chýba cena:\n\n'+missing.slice(0,8).map(i=>'• '+customerText(i.name)).join('\n'));
+    }else{
+      alert('Aktuálne ceny z POHODY boli načítané. Ponuka je cenovo kompletná.');
+    }
+  }catch(e){
+    console.error('Price refresh failed',e);
+    alert('Načítanie cien z POHODY zlyhalo: '+(e.message||String(e)));
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=oldText||'↻ Načítať aktuálne ceny z POHODY';}
   }
-  buildBOM();
-  renderRecommendation();
 }
+
 function pickAlternative(id){let d=category==='air_conditioning'?(acMode==='multi'?acMultiOutdoorCandidates(brand,multiCount).find(x=>x.id===id):acStockCandidates(brand).find(x=>x.id===id)):deviceCatalog.find(x=>x.id===id);if(!d)return;recommendation={...d};current.device={...d};ensurePdfImagesState();buildBOM();renderRecommendation()}
 async function upsertCurrent(){
   current.updated=Date.now();current._dirty=true;
