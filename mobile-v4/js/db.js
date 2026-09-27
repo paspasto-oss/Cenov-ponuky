@@ -157,9 +157,38 @@ window.SpektraDB = (() => {
 
   async function upsertStocks(rows, onProgress, options={}) {
     if (!client || !user) throw new Error('Online databáza nie je prihlásená.');
-    const chunkSize = 300;
+
+    // Postgres UPSERT nesmie dostať v jednom INSERT-e rovnaký conflict key dvakrát.
+    // POHODA XML môže obsahovať tú istú kartu viackrát (sklady/dodávatelia/obrázky),
+    // preto urobíme poslednú ochrannú deduplikáciu ešte tesne pred uploadom.
+    const unique = new Map();
+    let duplicateRows = 0;
+    for (const raw of (rows||[])) {
+      const x={...raw};
+      const key=String(x.fingerprint||'').trim();
+      if(!key) continue;
+      if(!unique.has(key)){
+        unique.set(key,x);
+      }else{
+        duplicateRows++;
+        const prev=unique.get(key);
+        const union=(a,b)=>[...new Set([...(Array.isArray(a)?a:[]),...(Array.isArray(b)?b:[])].filter(Boolean))];
+        unique.set(key,{
+          ...prev,...x,
+          suppliers:union(prev.suppliers,x.suppliers),
+          image_urls:union(prev.image_urls,x.image_urls),
+          image_storage_paths:union(prev.image_storage_paths,x.image_storage_paths),
+          image_source_refs:union(prev.image_source_refs,x.image_source_refs),
+          image_url:x.image_url||prev.image_url||null,
+          image_storage_path:x.image_storage_path||prev.image_storage_path||null,
+          image_source_ref:x.image_source_ref||prev.image_source_ref||null
+        });
+      }
+    }
+    const uploadRows=[...unique.values()];
+    const chunkSize = 200;
     let count = 0;
-    const total = rows.length;
+    const total = uploadRows.length;
     const syncToken = 'sync_'+Date.now()+'_'+Math.random().toString(36).slice(2,10);
 
     const toPayload = chunk => chunk.map(x => ({
@@ -200,7 +229,7 @@ window.SpektraDB = (() => {
     }));
 
     for (let start=0; start<total; start+=chunkSize) {
-      const payload = toPayload(rows.slice(start,start+chunkSize));
+      const payload = toPayload(uploadRows.slice(start,start+chunkSize));
       let lastError = null;
       for (let attempt=1; attempt<=3; attempt++) {
         const { error } = await client.from('pohoda_stocks').upsert(payload,{onConflict:'fingerprint'});
@@ -212,7 +241,7 @@ window.SpektraDB = (() => {
         throw new Error('Upload zásob zlyhal pri riadkoch '+(start+1)+'–'+(start+payload.length)+': '+lastError.message);
       }
       count += payload.length;
-      if (onProgress) onProgress({count,total,percent:Math.round(count/total*100)});
+      if (onProgress) onProgress({count,total,percent:total?Math.round(count/total*100):100,duplicates_removed:duplicateRows});
       await new Promise(r=>setTimeout(r,35));
     }
     if (options.fullSync) {
