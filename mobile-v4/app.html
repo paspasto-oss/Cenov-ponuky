@@ -19,7 +19,7 @@
 </style>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="js/db.js?v=20260927-solunar53fix1"></script>
+<script src="js/db.js?v=20260927-solunarprice1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
@@ -452,7 +452,7 @@ async function loadConfig(){
     }
   }
   try{
-    const r=await fetch('data/device-catalog.json?v=20260927-mideaclean2',{cache:'no-store'});
+    const r=await fetch('data/device-catalog.json?v=20260927-solunarprice1',{cache:'no-store'});
     if(!r.ok) throw new Error('device-catalog '+r.status);
     const j=await r.json();deviceCatalog=j.devices||[];
   }catch(e){deviceCatalog=fallbackDevices;configOk=false;console.error('Device catalog load failed:',e)}
@@ -838,7 +838,9 @@ function acStockCandidates(selectedBrand){
 
     if(selected==='midea'){
       // Iba rezidenčné nástenné monosplity.
-      // Skryté sú konzolové, kazetové, kanálové, parapetné a podstropné jednotky.
+      // CMID003422 má v exportoch aj duplicitnú technickú kartu PLU 104930 s nesprávnou cenou.
+      // Pre Solunar 5,3 kW používame obchodnú kartu PLU 400014: 828,46 € bez DPH / 1 019 € s DPH.
+      if(code==='CMID003422' && String(st.plu||'')!=='400014')return false;
       return MIDEA_WALL_SINGLE_CODES.has(code) && Number(st.sell_price_ex_vat)>0;
     }
 
