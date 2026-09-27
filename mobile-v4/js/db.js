@@ -295,6 +295,10 @@ window.SpektraDB = (() => {
       pdf_images_enabled:!!q.pdf_images_enabled,
       pdf_images_user_disabled:!!q.pdf_images_user_disabled,
       pdf_images:safeImages,
+      pdf_template:q.pdf_template||'presentation',
+      pdf_banner_mode:q.pdf_banner_mode||'auto',
+      pdf_banner_url:q.pdf_banner_url||null,
+      pdf_banner_path:q.pdf_banner_path||null,
       server_quote_no:!!q._server_quote_no
     };
   }
