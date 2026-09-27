@@ -79,6 +79,7 @@ window.SpektraDB = (() => {
     const cacheMerge = adminMode ? 'merge' : 'mergeLite';
     const cacheReplace = adminMode ? 'replaceAll' : 'replaceAllLite';
     const versionKey = adminMode ? 'remote_stock_version_admin' : 'remote_stock_version_lite';
+    const countKey = adminMode ? 'remote_stock_count_admin' : 'remote_stock_count_lite';
 
     let local = window.SpektraStockDB && window.SpektraStockDB[cacheGet]
       ? (await window.SpektraStockDB[cacheGet]().catch(()=>[])).filter(x=>x.active!==false)
@@ -86,29 +87,60 @@ window.SpektraDB = (() => {
     const localVersion = window.SpektraStockDB
       ? await window.SpektraStockDB.getMeta(versionKey).catch(()=>null)
       : null;
+    const localRemoteCount = window.SpektraStockDB
+      ? await window.SpektraStockDB.getMeta(countKey).catch(()=>null)
+      : null;
 
     let remoteVersion = null;
+    let remoteCount = null;
     try {
-      const { data, error } = await client.from('pohoda_stocks')
-        .select('synced_at').order('synced_at',{ascending:false}).limit(1).maybeSingle();
+      const [{data,error},{count,error:countError}] = await Promise.all([
+        client.from('pohoda_stocks')
+          .select('synced_at')
+          .eq('active',true)
+          .order('synced_at',{ascending:false})
+          .limit(1)
+          .maybeSingle(),
+        client.from('pohoda_stocks')
+          .select('id',{count:'exact',head:true})
+          .eq('active',true)
+      ]);
       if (error) throw error;
+      if (countError) throw countError;
       remoteVersion = data?.synced_at || null;
+      remoteCount = Number(count||0);
     } catch (e) {
-      console.warn('Stock version check failed', e);
+      console.warn('Stock version/count check failed', e);
       if (local.length) {
         window.SPEKTRA_STOCKS_FROM_CACHE = true;
         return local;
       }
     }
 
-    if (local.length && localVersion && remoteVersion && localVersion >= remoteVersion) {
+    // Cache is trusted only when both version and item count match the server.
+    if (
+      local.length &&
+      localVersion &&
+      remoteVersion &&
+      localVersion >= remoteVersion &&
+      Number(local.length) === Number(remoteCount)
+    ) {
       window.SPEKTRA_STOCKS_FROM_CACHE = true;
       return local;
     }
 
-    const pageSize = 2000;
+    // If the local cache has the expected previous server count, an incremental refresh is safe.
+    // Otherwise do a full reload. This repairs interrupted/partial mobile IndexedDB caches.
+    const canIncrement =
+      local.length &&
+      localVersion &&
+      remoteVersion &&
+      Number(local.length) === Number(localRemoteCount) &&
+      Number(localRemoteCount) > 0;
 
-    if (local.length && localVersion && remoteVersion) {
+    const pageSize = 900; // stay below common PostgREST max-row limits
+
+    if (canIncrement) {
       const changed = [];
       for (let from=0;;from+=pageSize) {
         const { data, error } = await client.from('pohoda_stocks')
@@ -121,35 +153,48 @@ window.SpektraDB = (() => {
         changed.push(...(data||[]));
         if (!data || data.length < pageSize) break;
       }
+
       const merged = new Map(local.map(x=>[x.fingerprint,x]));
       const mergedChanged = changed.map(x=>{
         const old = merged.get(x.fingerprint);
         return old ? {...old,...x} : x;
       });
-      if (mergedChanged.length && window.SpektraStockDB) {
-        await window.SpektraStockDB[cacheMerge](mergedChanged);
-      }
-      if (window.SpektraStockDB && remoteVersion) {
-        await window.SpektraStockDB.setMeta(versionKey,remoteVersion);
-      }
       mergedChanged.forEach(x=>merged.set(x.fingerprint,x));
-      window.SPEKTRA_STOCKS_FROM_CACHE = true;
-      return [...merged.values()].filter(x=>x.active!==false);
+      const finalRows=[...merged.values()].filter(x=>x.active!==false);
+
+      // If incremental result count does not match server, fall through to a full repair.
+      if (finalRows.length === remoteCount) {
+        if (mergedChanged.length && window.SpektraStockDB) await window.SpektraStockDB[cacheMerge](mergedChanged);
+        if (window.SpektraStockDB) {
+          if (remoteVersion) await window.SpektraStockDB.setMeta(versionKey,remoteVersion);
+          await window.SpektraStockDB.setMeta(countKey,remoteCount);
+        }
+        window.SPEKTRA_STOCKS_FROM_CACHE = true;
+        return finalRows;
+      }
     }
 
+    // Full refresh / cache repair.
     const out = [];
     for (let from=0;;from+=pageSize) {
       const { data, error } = await client.from('pohoda_stocks')
-        .select(fields).eq('active',true)
+        .select(fields)
+        .eq('active',true)
         .order('id',{ascending:true})
         .range(from,from+pageSize-1);
       if (error) throw error;
       out.push(...(data||[]));
       if (!data || data.length < pageSize) break;
     }
+
+    if (remoteCount != null && out.length !== remoteCount) {
+      throw new Error('Neúplné načítanie katalógu: server '+remoteCount+', načítané '+out.length+'.');
+    }
+
     if (window.SpektraStockDB) {
       await window.SpektraStockDB[cacheReplace](out);
       if (remoteVersion) await window.SpektraStockDB.setMeta(versionKey,remoteVersion);
+      await window.SpektraStockDB.setMeta(countKey,out.length);
     }
     window.SPEKTRA_STOCKS_FROM_CACHE = true;
     return out;
@@ -245,14 +290,15 @@ window.SpektraDB = (() => {
       await new Promise(r=>setTimeout(r,35));
     }
     if (options.fullSync) {
+      const deactivatedAt=new Date().toISOString();
       const legacy = await client.from('pohoda_stocks')
-        .update({active:false})
+        .update({active:false,synced_at:deactivatedAt})
         .eq('active',true)
         .is('sync_token',null);
       if (legacy.error) throw legacy.error;
 
       const stale = await client.from('pohoda_stocks')
-        .update({active:false})
+        .update({active:false,synced_at:deactivatedAt})
         .eq('active',true)
         .neq('sync_token',syncToken);
       if (stale.error) throw stale.error;
