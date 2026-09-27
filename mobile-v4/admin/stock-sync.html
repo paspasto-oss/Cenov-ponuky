@@ -18,7 +18,7 @@ button,input,select{font:inherit}button{cursor:pointer}input,select{background:#
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../supabase-config.js"></script>
-<script src="../js/db.js?v=20260927-stockupsertfix1"></script>
+<script src="../js/db.js?v=20260927-identityfix1"></script>
 </head>
 <body>
 <div class="wrap">
@@ -90,7 +90,7 @@ button,input,select{font:inherit}button{cursor:pointer}input,select{background:#
       <div class="stat"><small>Spárované obrázky</small><strong id="nImageMatches">0</strong></div>
     </div>
     <div id="firstImport" class="notice hidden" style="margin-top:12px">Toto je prvý import na tomto zariadení. Všetky zásoby budú označené ako nové a po potvrdení sa uložia ako lokálny baseline.</div>
-    <div id="conflictWarning" class="notice warn hidden" style="margin-top:12px">Súbor obsahuje konfliktné duplikáty. Aktualizáciu môžeš prezrieť, ale pred produkčným zápisom do spoločnej databázy sa tieto konflikty musia vyriešiť.</div>
+    <div id="conflictWarning" class="notice warn hidden" style="margin-top:12px">Súbor obsahuje ešte konfliktné záznamy, ktoré nebolo možné bezpečne zlúčiť podľa PLU alebo kódu. Tieto riadky sa pri zápise preskočia; ostatné rovnaké POHODA karty aplikácia automaticky zlúči.</div>
   </div>
 
   <div id="detailCard" class="card hidden">
@@ -123,7 +123,7 @@ button,input,select{font:inherit}button{cursor:pointer}input,select{background:#
 <div class="nav"><button class="btn primary" onclick="location.href='../index.html'">← Späť do Spektra Ponuky</button></div>
 
 <script>
-let normalized=[], changes=[], conflicts=[], activeTab='all', sourceRows=0, filename='', effectiveMode='partial', sourceFormat='xlsx', sourceEncoding='';
+let normalized=[], changes=[], conflicts=[], activeTab='all', sourceRows=0, filename='', effectiveMode='partial', sourceFormat='xlsx', sourceEncoding='', autoResolvedDuplicates=0;
 let baselineRows=[], baselineMeta=null;
 let baselineByFingerprint=new Map(),baselineByCode=new Map(),baselineByPlu=new Map(),baselineCommercialByCode=new Map(),baselineCommercialByPlu=new Map();
 let imageFiles=[], imageFileIndex=new Map();
@@ -310,6 +310,40 @@ function existingStockFor(row){
   if(byPlu?.image_url)return byPlu;
   return exact||byCode||byPlu||null;
 }
+function findBaselineIdentity(row){
+  if(!baselineByFingerprint.size&&baselineRows.length)rebuildBaselineIndexes();
+  const exact=baselineByFingerprint.get(row.fingerprint)||null;
+  if(exact)return exact;
+  if(row.plu){
+    const byPlu=baselineCommercialByPlu.get(norm(row.plu))||baselineByPlu.get(norm(row.plu));
+    if(byPlu)return byPlu;
+  }
+  if(row.code){
+    const byCode=baselineCommercialByCode.get(norm(row.code))||baselineByCode.get(norm(row.code));
+    if(byCode)return byCode;
+  }
+  return null;
+}
+function preserveBaselineIdentity(row){
+  const old=findBaselineIdentity(row);
+  if(!old)return row;
+  // XML exporty nemusia niesť sklad rovnako ako XLSX. Zachováme existujúci
+  // fingerprint a chýbajúcu skladovú identitu, aby sa tá istá POHODA karta
+  // nevytvorila znovu ako "Nová".
+  row.fingerprint=old.fingerprint||row.fingerprint;
+  if(!row.storage_ref)row.storage_ref=old.storage_ref||null;
+  if(!row.storage_name)row.storage_name=old.storage_name||null;
+  if(!row.stock_group_ref)row.stock_group_ref=old.stock_group_ref||null;
+  if(!row.stock_group)row.stock_group=old.stock_group||null;
+  if(!row.manufacturer)row.manufacturer=old.manufacturer||null;
+  return row;
+}
+function rowCommercialScore(x){
+  return (Number(x?.purchase_price_ex_vat)>0?1000000000:0)
+    +(Number(x?.sell_price_ex_vat)>0?100000000:0)
+    +(s(x?.storage_name)||s(x?.storage_ref)?10000000:0)
+    +Math.max(0,Number(x?.quantity_available)||0);
+}
 function inheritExistingImages(row){
   const old=existingStockFor(row);
   if(!old)return row;
@@ -327,13 +361,39 @@ function inheritExistingImages(row){
 }
 function mergeRows(rows){
   const merged=new Map(),localConf=[];
-  rows.filter(Boolean).forEach((x,idx)=>{
-    if(!x.name)return;
+  autoResolvedDuplicates=0;
+  rows.filter(Boolean).forEach((raw,idx)=>{
+    if(!raw.name)return;
+    let x={...raw};
     x.source_row=x.source_row||idx+1;
     x.fingerprint=x.fingerprint||fingerprint(x);
+    x=preserveBaselineIdentity(x);
     x.suppliers=x.suppliers|| (x.supplier_name?[x.supplier_name]:[]);
     if(!merged.has(x.fingerprint)){merged.set(x.fingerprint,x);return}
+
     const prev=merged.get(x.fingerprint);
+    const sameBusinessKey=
+      (x.plu&&prev.plu&&norm(x.plu)===norm(prev.plu)) ||
+      (x.code&&prev.code&&norm(x.code)===norm(prev.code));
+
+    if(sameBusinessKey){
+      autoResolvedDuplicates++;
+      const preferred=rowCommercialScore(x)>rowCommercialScore(prev)?x:prev;
+      const other=preferred===x?prev:x;
+      const combined={
+        ...other,...preferred,
+        fingerprint:prev.fingerprint,
+        suppliers:uniqueStrings([...(prev.suppliers||[]),...(x.suppliers||[]),prev.supplier_name,x.supplier_name]),
+        image_urls:uniqueStrings([...(prev.image_urls||[]),...(x.image_urls||[]),prev.image_url,x.image_url]),
+        image_source_refs:uniqueStrings([...(prev.image_source_refs||[]),...(x.image_source_refs||[]),prev.image_source_ref,x.image_source_ref]),
+        _embedded_images:uniqueStrings([...(prev._embedded_images||[]),...(x._embedded_images||[])])
+      };
+      if(!combined.image_url&&combined.image_urls.length)combined.image_url=combined.image_urls[0];
+      if(!combined.image_source_ref&&combined.image_source_refs.length)combined.image_source_ref=combined.image_source_refs[0];
+      merged.set(x.fingerprint,combined);
+      return;
+    }
+
     if(x.supplier_name&&!prev.suppliers.includes(x.supplier_name))prev.suppliers.push(x.supplier_name);
     prev.image_source_refs=uniqueStrings([...(prev.image_source_refs||[]),...(x.image_source_refs||[])]);
     prev._embedded_images=uniqueStrings([...(prev._embedded_images||[]),...(x._embedded_images||[])]);
@@ -464,7 +524,7 @@ function renderSummary(){
   document.getElementById('nImageMatches').textContent=countImageMatches().toLocaleString('sk-SK');
   document.getElementById('firstImport').classList.toggle('hidden',hasBase);document.getElementById('conflictWarning').classList.toggle('hidden',!conflicts.length);
   const meta=baselineMeta;document.getElementById('baselineInfo').textContent=meta?'Posledný baseline: '+new Date(meta.applied_at).toLocaleString('sk-SK')+' · '+meta.count.toLocaleString('sk-SK')+' zásob':'Na tomto zariadení ešte nie je baseline.';
-  document.getElementById('syncWarning').textContent=(effectiveMode==='partial'?'ČIASTOČNÝ import · ':'ÚPLNÝ import · ')+(conflicts.length?'skontrolovať konflikty':'pripravené');
+  document.getElementById('syncWarning').textContent=(effectiveMode==='partial'?'ČIASTOČNÝ import · ':'ÚPLNÝ import · ')+(conflicts.length?'skontrolovať konflikty':'pripravené')+(autoResolvedDuplicates?' · zlúčené duplicity '+autoResolvedDuplicates.toLocaleString('sk-SK'):'');
 }
 function typeLabel(t){return {new:'Nový',price:'Cena',stock:'Sklad',meta:'Údaje',removed:'Deaktivovať',conflict:'Konflikt'}[t]||t}
 function renderTable(){
