@@ -297,7 +297,7 @@ window.SpektraDB = (() => {
       pdf_images:safeImages,
       pdf_template:q.pdf_template||'presentation',
       pdf_banner_mode:q.pdf_banner_mode||'auto',
-      pdf_banner_url:q.pdf_banner_url||null,
+      pdf_banner_url:q.pdf_banner_url&&!String(q.pdf_banner_url).startsWith('data:')?q.pdf_banner_url:null,
       pdf_banner_path:q.pdf_banner_path||null,
       server_quote_no:!!q._server_quote_no
     };
