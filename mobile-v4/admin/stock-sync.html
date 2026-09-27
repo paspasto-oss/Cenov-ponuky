@@ -18,7 +18,7 @@ button,input,select{font:inherit}button{cursor:pointer}input,select{background:#
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../supabase-config.js"></script>
-<script src="../js/db.js?v=20260926-scale100k2"></script>
+<script src="../js/db.js?v=20260927-stockupsertfix1"></script>
 </head>
 <body>
 <div class="wrap">
@@ -639,7 +639,7 @@ async function applySync(){
     if(window.SpektraDB?.isAuthenticated()){
       const uploaded=await SpektraDB.upsertStocks(clean,p=>{
         btn.textContent='ONLINE '+p.count.toLocaleString('sk-SK')+' / '+p.total.toLocaleString('sk-SK')+' ('+p.percent+' %)';
-        document.getElementById('applyResult').textContent='Nahrávam do Supabase: '+p.count.toLocaleString('sk-SK')+' z '+p.total.toLocaleString('sk-SK')+' zásob.';
+        document.getElementById('applyResult').textContent='Nahrávam do Supabase: '+p.count.toLocaleString('sk-SK')+' z '+p.total.toLocaleString('sk-SK')+' zásob.'+(p.duplicates_removed?' Deduplikovaných pred uploadom: '+p.duplicates_removed.toLocaleString('sk-SK')+'.':'');
       },{fullSync:effectiveMode==='full'});
       document.getElementById('applyResult').textContent='Supabase: '+uploaded.toLocaleString('sk-SK')+' zásob · '+imageUploads.toLocaleString('sk-SK')+' obrázkov. Ukladám lokálnu cache…';
     }
