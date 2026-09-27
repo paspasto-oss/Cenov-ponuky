@@ -19,7 +19,7 @@
 </style>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="js/db.js?v=20260927-acmountfix1"></script>
+<script src="js/db.js?v=20260927-customernameclean1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
@@ -402,6 +402,15 @@ const eur=n=>n==null?'—':new Intl.NumberFormat('sk-SK',{style:'currency',curre
 const s=x=>String(x==null?'':x).trim();
 const norm=x=>s(x).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const esc=x=>s(x).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+function customerText(x){
+  return s(x)
+    .replace(/\bPOHODA\b/gi,'')
+    .replace(/\s*[·|]\s*(?=[·|]|$)/g,' ')
+    .replace(/\s{2,}/g,' ')
+    .replace(/\s+([,;:])/g,'$1')
+    .replace(/^[\s·|\-]+|[\s·|\-]+$/g,'')
+    .trim();
+}
 function go(id){
   if(id==='step3'){
     // Krok 3 je dynamický. Po návrate zo zariadenia alebo po otvorení starej ponuky
@@ -669,7 +678,7 @@ function acMultiOutdoorCandidates(selectedBrand,count){
     category:'klimatizacia',
     brand:selectedBrand,
     model:st.name,
-    variant:(multisplitCountFromName(st.name)||count)+'+1 · POHODA',
+    variant:(multisplitCountFromName(st.name)||count)+'+1',
     power_kw:extractPowerKw(st.name),
     ac_mode:'multi',
     multisplit_count:multisplitCountFromName(st.name)||count,
@@ -767,7 +776,7 @@ function acStockCandidates(selectedBrand){
       category:'klimatizacia',
       brand:selectedBrand,
       model:norm(selectedBrand)==='mdv'?'EVO '+(power?String(power).replace('.',',')+' kW':st.name):st.name,
-      variant:norm(selectedBrand)==='mdv'?'MDV EVO · POHODA':'POHODA',
+      variant:norm(selectedBrand)==='mdv'?'MDV EVO':'',
       power_kw:power,
       phase:/400\s*v|3f/i.test(st.name)?'3f':'1f',
       pohoda_code:st.code||null,
@@ -1461,7 +1470,7 @@ function renderRecommendation(){
    if(i.pohoda) link=' · POHODA: '+esc(i.pohoda.code||i.pohoda.plu||'namapované');
    else if(i.pohoda_code) link=' · POHODA kód: '+esc(i.pohoda_code)+' · čaká na synchronizáciu ceny';
    else link=' · bez POHODA kódu';
-   return '<div class="item"><div><b>'+esc(i.name)+'</b><small>'+i.qty+' '+esc(i.unit)+link+'</small></div><div>'+eur(i.price)+'</div></div>'
+   return '<div class="item"><div><b>'+esc(customerText(i.name))+'</b><small>'+i.qty+' '+esc(i.unit)+link+'</small></div><div>'+eur(i.price)+'</div></div>'
  }).join('');
  let net=0,missing=false;current.items.forEach(i=>{if(i.price==null)missing=true;else net+=(+i.price||0)*(+i.qty||0)});current.net=net;current.vat_pct=23;current.vat=net*.23;current.total=net*1.23;
  let dev=current.items[0]?.price,install=current.items.slice(1).reduce((a,i)=>a+(i.price==null?0:(+i.price||0)*(+i.qty||0)),0);document.getElementById('devicePrice').textContent=eur(dev);document.getElementById('installPrice').textContent=missing?eur(install)+' (známe položky)':eur(install);document.getElementById('netPrice').textContent=missing?'Neúplná cena':eur(net);document.getElementById('vatPrice').textContent=missing?'—':eur(current.vat);document.getElementById('grossPrice').textContent=missing?'—':eur(current.total);document.getElementById('priceWarning').classList.toggle('hidden',!missing);current.price_complete=!missing;
@@ -1628,7 +1637,7 @@ function renderFinal(){
    : subsidy.program==='obnov'
      ? '<div class="srow" style="margin-top:10px"><span>Obnov dom mini+</span><b>až 11 000 €</b></div><div class="sub">Ďalšie kolo plánované na január 2027; konkrétna výška závisí od podmienok výzvy.</div>'
      : '';
- document.getElementById('finalSummary').innerHTML='<h2 style="margin-top:0">'+esc(current.customer.name)+'</h2><div class="sub">'+esc(current.customer.address)+'</div><div style="margin-top:14px"><b>'+esc(current.device.brand+' '+current.device.model+' '+(current.device.variant||''))+'</b></div><div class="srow"><span>Montáž</span><b>'+(
+ document.getElementById('finalSummary').innerHTML='<h2 style="margin-top:0">'+esc(current.customer.name)+'</h2><div class="sub">'+esc(current.customer.address)+'</div><div style="margin-top:14px"><b>'+esc(customerText(current.device.brand+' '+current.device.model+' '+(current.device.variant||'')))+'</b></div><div class="srow"><span>Montáž</span><b>'+(
    current.category==='heat_pump'
      ? (current.installation_tier==='economy'?'EKONOM – '+installationPrice('economy')+' €':'ŠTANDARD – '+installationPrice('standard')+' €')
      : (install?.price!=null?eur(install.price):'podľa cenníka')
@@ -1703,7 +1712,7 @@ function offerHtmlTechnical(){
     }
     let desc='';
     if(i===deviceItem){
-      const bits=[current.device?.variant||'',i.pohoda?.code?('Kód: '+i.pohoda.code):''].filter(Boolean);
+      const bits=[customerText(current.device?.variant||''),i.pohoda?.code?('Kód: '+i.pohoda.code):''].filter(Boolean);
       desc=bits.join(' · ');
     }else if(i.role==='customer_material_bundle'){
       desc='Kompletný inštalačný materiál podľa rozsahu uvedeného nižšie v ponuke.';
@@ -1720,7 +1729,7 @@ function offerHtmlTechnical(){
       '<td style="padding:7px 5px;border-bottom:1px solid #d7dce3;vertical-align:top">'+
         '<div style="display:flex;align-items:flex-start">'+productImage+
           '<div style="width:'+textWidth+'">'+
-            '<div style="font-weight:700;font-size:10px;line-height:1.25;margin-bottom:3px">'+esc(i.name)+'</div>'+
+            '<div style="font-weight:700;font-size:10px;line-height:1.25;margin-bottom:3px">'+esc(customerText(i.name))+'</div>'+
             (desc?'<div style="font-size:8.2px;color:#5c6670;line-height:1.35">'+esc(desc)+'</div>':'')+
           '</div>'+
         '</div>'+
@@ -1763,7 +1772,7 @@ function offerHtmlTechnical(){
   }else if(current.category==='air_conditioning'&&current.ac_mode==='multi'){
     materialScopeParts.push('multisplit vonkajšia jednotka + '+(current.multisplit_count||2)+' vnútorné jednotky');
     materialScopeParts.push('chladivové potrubie, komunikačný kábel, kondenzát a PVC lišta do 5 m ku každej vnútornej jednotke');
-    materialScopeParts.push('montáž multisplit podľa POHODA položky MM3');
+    materialScopeParts.push('montáž multisplit podľa zvoleného rozsahu');
   }else{
     materialScopeParts.push('štandardný montážny a pripojovací materiál podľa zvoleného zariadenia');
   }
@@ -1940,7 +1949,7 @@ function offerHtmlPresentation(){
             ?'<div style="width:29mm;height:24mm;display:flex;align-items:center;justify-content:center;flex:0 0 auto;background:#fff;border-radius:5px"><img crossorigin="anonymous" src="'+esc(imageUrl)+'" style="max-width:100%;max-height:100%;object-fit:contain"></div>'
             :'<div style="width:8mm;height:8mm;flex:0 0 auto;border-radius:50%;background:#eaf4f9;display:flex;align-items:center;justify-content:center;color:#00539B;font-weight:900">✓</div>')+
           '<div>'+
-            '<div style="font-weight:800;font-size:9.8px;line-height:1.25;color:#173247">'+esc(i.name)+'</div>'+
+            '<div style="font-weight:800;font-size:9.8px;line-height:1.25;color:#173247">'+esc(customerText(i.name))+'</div>'+
             (desc?'<div style="font-size:7.9px;color:#617383;margin-top:3px;line-height:1.35">'+esc(desc)+'</div>':'')+
           '</div>'+
         '</div>'+
