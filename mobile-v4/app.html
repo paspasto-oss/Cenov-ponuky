@@ -19,7 +19,7 @@
 </style>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="js/db.js?v=20260927-solunarprice1"></script>
+<script src="js/db.js?v=20260927-openquotefix1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
@@ -584,7 +584,21 @@ async function syncQuotes(pushLocal=true,silent=false){
 function renderHome(){
  document.getElementById('stAll').textContent=quotes.length;document.getElementById('stDraft').textContent=quotes.filter(q=>q.status==='draft'||q.status==='ready').length;document.getElementById('stSent').textContent=quotes.filter(q=>q.status==='sent').length;document.getElementById('stApproved').textContent=quotes.filter(q=>q.status==='approved').length;
  const box=document.getElementById('quoteList');if(!quotes.length){box.innerHTML='<div class="sub" style="padding:18px;text-align:center">Zatiaľ bez uložených ponúk.</div>';return}
- box.innerHTML=quotes.slice().sort((a,b)=>(b.updated||0)-(a.updated||0)).slice(0,20).map(q=>'<div class="row" onclick="openQuote(\''+q.id+'\')"><div><b>'+esc(q.customer?.name||'Bez mena')+'</b><small>'+esc(q.quote_no||'')+' · '+esc(labelCat(q.category))+' · '+esc(q.brand||'')+(q._sync_error?' · ⚠ sync':'')+'</small></div><span class="badge '+q.status+'">'+labelStatus(q.status)+'</span></div>').join('')
+ box.innerHTML=quotes.slice().sort((a,b)=>(b.updated||0)-(a.updated||0)).slice(0,20).map(q=>{
+   const id=esc(q.id||'');
+   return '<div class="row" data-quote-id="'+id+'" style="cursor:pointer">'+
+     '<div style="flex:1;min-width:0"><b>'+esc(q.customer?.name||'Bez mena')+'</b><small>'+esc(q.quote_no||'')+' · '+esc(labelCat(q.category))+' · '+esc(q.brand||'')+(q._sync_error?' · ⚠ sync':'')+'</small></div>'+
+     '<div style="display:flex;align-items:center;gap:7px"><span class="badge '+q.status+'">'+labelStatus(q.status)+'</span><button class="btn small quoteEditBtn" type="button" data-quote-id="'+id+'">Upraviť</button></div>'+
+   '</div>';
+ }).join('');
+ box.querySelectorAll('.row[data-quote-id]').forEach(row=>row.addEventListener('click',e=>{
+   if(e.target.closest('.quoteEditBtn'))return;
+   openQuote(row.dataset.quoteId);
+ }));
+ box.querySelectorAll('.quoteEditBtn').forEach(btn=>btn.addEventListener('click',e=>{
+   e.stopPropagation();
+   openQuote(btn.dataset.quoteId);
+ }));
 }
 function labelStatus(x){return x==='ready'?'Na schválenie':x==='sent'?'Odoslaná':x==='approved'?'Schválená':'Rozpracovaná'}
 function labelCat(x){return x==='heat_pump'?'Tepelné čerpadlo':x==='air_conditioning'?'Klimatizácia':x==='boiler'?'Kotol':'Iné'}
@@ -1772,7 +1786,78 @@ function renderFinal(){
      : (install?.price!=null?eur(install.price):'podľa cenníka')
  )+'</b></div>'+optional+annual+subsidyHtml+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+ (current.price_complete?eur(current.total):'Cena ešte nie je kompletná') +'</span></div>'
 }
-function openQuote(id){let q=quotes.find(x=>x.id===id);if(!q)return;current=JSON.parse(JSON.stringify(q));if(!current.pdf_template)current.pdf_template='presentation';if(!current.pdf_banner_mode)current.pdf_banner_mode='auto';ensurePdfImagesState();ensureSubsidyState();if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false};if(current.optional_services.annual_service===undefined)current.optional_services.annual_service=true;if(current.optional_services.condensate_pump===undefined)current.optional_services.condensate_pump=false;if(current.optional_services.dhw_tank_fe120===undefined)current.optional_services.dhw_tank_fe120=false;if(!current.installation_tier)current.installation_tier='standard';category=current.category||'heat_pump';brand=current.brand||'';boilerType=current.boiler_type||'gas';acMode=current.ac_mode||'single';multiCount=current.multisplit_count||2;recommendation=current.device||null;document.getElementById('cName').value=current.customer.name||'';document.getElementById('cPhone').value=current.customer.phone||'';document.getElementById('cEmail').value=current.customer.email||'';document.getElementById('cAddress').value=current.customer.address||'';document.getElementById('cNote').value=current.customer.note||'';refreshQuoteFromCatalog();renderFinal();go('step4')}
+function hydrateQuoteForm(){
+  if(!current)return;
+  current.customer=current.customer||{};
+  current.building=current.building||{};
+  const setVal=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val??''};
+  setVal('cName',current.customer.name||'');
+  setVal('cPhone',current.customer.phone||'');
+  setVal('cEmail',current.customer.email||'');
+  setVal('cAddress',current.customer.address||'');
+  setVal('cNote',current.customer.note||'');
+
+  const known=!!current.building.known_loss;
+  setVal('hasLoss',known?'yes':'no');
+  setVal('heatLoss',current.building.heat_loss_kw??'');
+  setVal('area',current.building.area_m2??'');
+  setVal('buildingClass',String(current.building.w_per_m2||60));
+  setVal('heating',current.building.heating||'underfloor');
+  setVal('dhwMode',current.building.with_external_dhw_tank===false?'none':'external');
+  toggleLoss();
+}
+
+function openQuote(id){
+  try{
+    const q=quotes.find(x=>String(x.id)===String(id));
+    if(!q){
+      alert('Ponuku sa nepodarilo nájsť. Skús synchronizovať ponuky.');
+      return;
+    }
+
+    current=JSON.parse(JSON.stringify(q));
+    current.customer=current.customer||{};
+    current.building=current.building||{};
+    current.items=Array.isArray(current.items)?current.items:[];
+    if(!current.pdf_template)current.pdf_template='presentation';
+    if(!current.pdf_banner_mode)current.pdf_banner_mode='auto';
+    ensurePdfImagesState();
+    ensureSubsidyState();
+
+    if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false};
+    if(current.optional_services.annual_service===undefined)current.optional_services.annual_service=true;
+    if(current.optional_services.condensate_pump===undefined)current.optional_services.condensate_pump=false;
+    if(current.optional_services.dhw_tank_fe120===undefined)current.optional_services.dhw_tank_fe120=false;
+    if(!current.installation_tier)current.installation_tier='standard';
+
+    category=current.category||'heat_pump';
+    brand=current.brand||current.device?.brand||'';
+    boilerType=current.boiler_type||current.device?.boiler_type||'gas';
+    acMode=current.ac_mode||current.device?.ac_mode||'single';
+    multiCount=current.multisplit_count||current.device?.multisplit_count||2;
+    recommendation=current.device&&Object.keys(current.device).length?{...current.device}:null;
+
+    hydrateQuoteForm();
+    renderChoices();
+
+    // Pri otvorení starej ponuky ju automaticky neprepočítavame.
+    // Zobrazíme uložený snapshot; aktuálne ceny si používateľ obnoví vedome tlačidlom.
+    if(recommendation){
+      try{
+        if(!current.items.length)buildBOM();
+        renderRecommendation();
+      }catch(e){
+        console.warn('Stored quote recommendation render failed',e);
+      }
+    }
+
+    try{renderFinal()}catch(e){console.warn('Stored quote final render failed',e)}
+    go('step4');
+  }catch(e){
+    console.error('openQuote failed',e);
+    alert('Ponuku sa nepodarilo otvoriť na úpravu: '+(e.message||String(e)));
+  }
+}
 async function approveQuote(){
   if(!current)return;
   current.status='approved';await upsertCurrent();renderFinal();
