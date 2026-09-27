@@ -19,7 +19,7 @@
 </style>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="js/db.js?v=20260927-pdfexact1"></script>
+<script src="js/db.js?v=20260927-pdffooter1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
@@ -2037,7 +2037,7 @@ function offerHtmlPresentation(){
   return '<div style="width:210mm;min-height:297mm;font-family:Arial,sans-serif;color:#173247;background:#fff;font-size:9px;position:relative;overflow:hidden">'+
     bannerHtml+
     benefits+
-    '<div style="padding:5mm 7mm 4mm">'+
+    '<div style="padding:5mm 7mm 64mm">'+
       '<div style="display:grid;grid-template-columns:1fr 1.45fr .88fr;gap:7mm;align-items:center;margin-bottom:5mm">'+
         '<div>'+
           '<div style="font-size:7.2px;font-weight:900;color:#596d7c">PRE:</div>'+
@@ -2077,7 +2077,13 @@ function offerHtmlPresentation(){
         '</div>'+
       '</div>'+
 
-      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4mm;margin-top:4mm;padding-top:4mm;border-top:1px solid #dbe3e9">'+
+      (current.customer?.note
+        ?'<div style="margin-top:4mm;padding:3mm;background:#f8fafb;border-left:2px solid #c20000;font-size:8px">'+esc(current.customer.note)+'</div>'
+        :'')+
+    '</div>'+
+
+    '<div style="position:absolute;left:7mm;right:7mm;bottom:4mm;background:#fff">'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4mm;padding-top:4mm;border-top:1px solid #dbe3e9">'+
         '<div style="padding-right:2mm">'+
           '<div style="display:flex;align-items:center;gap:5px;font-size:11.3px;color:#00539B;font-weight:900;margin-bottom:5px"><span style="color:#c20000;font-size:14px">◇</span>Rozsah materiálu</div>'+
           '<div style="font-size:7.8px;line-height:1.5">'+materialParts.slice(0,6).map(x=>'✓ '+esc(x)).join('<br>')+'</div>'+
@@ -2091,12 +2097,7 @@ function offerHtmlPresentation(){
           '<div style="font-size:7.8px;line-height:1.5">✓ '+esc(annual)+'<br>✓ Záruka podľa podmienok výrobcu<br>✓ Profesionálny servis Spektra Install</div>'+
         '</div>'+
       '</div>'+
-
-      (current.customer?.note
-        ?'<div style="margin-top:4mm;padding:3mm;background:#f8fafb;border-left:2px solid #c20000;font-size:8px">'+esc(current.customer.note)+'</div>'
-        :'')+
-
-      '<div style="margin-top:6mm;padding:3mm 0 1mm;border-top:1px solid #cfdbe3;display:grid;grid-template-columns:1fr 1fr 1fr;align-items:end;color:#516474;font-size:7.3px">'+
+      '<div style="margin-top:6mm;padding:3mm 0 0;border-top:1px solid #cfdbe3;display:grid;grid-template-columns:1fr 1fr 1fr;align-items:end;color:#516474;font-size:7.3px">'+
         '<div><b style="color:#173247">Spektra Install s.r.o.</b><br>Hollého 210, 015 01 Rajec</div>'+
         '<div style="text-align:center">spektrainstall.sk<br>spektrashop.sk</div>'+
         '<div style="text-align:right;color:#00539B;font-style:italic;font-size:9px">Spoľahlivé riešenia<br>pre váš domov</div>'+
