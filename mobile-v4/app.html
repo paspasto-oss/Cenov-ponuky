@@ -19,7 +19,7 @@
 </style>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="js/db.js?v=20260927-pdffooter1"></script>
+<script src="js/db.js?v=20260927-acmountfix1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
@@ -447,7 +447,7 @@ async function loadConfig(){
     const j=await r.json();deviceCatalog=j.devices||[];
   }catch(e){deviceCatalog=fallbackDevices;configOk=false;console.error('Device catalog load failed:',e)}
   try{
-    const r=await fetch('data/bundle-recipes.json?v=20260925-multisplit1',{cache:'no-store'});
+    const r=await fetch('data/bundle-recipes.json?v=20260927-acmountfix1',{cache:'no-store'});
     if(!r.ok) throw new Error('bundle-recipes '+r.status);
     const j=await r.json();bundleRecipes=j.bundles||[];
   }catch(e){bundleRecipes=[];configOk=false;console.error('Bundle recipes load failed:',e)}
@@ -922,7 +922,7 @@ function buildBOM(){
        let st=stockByRecipe(recipeRow),qty=recipeQty(r);
        let defaultPrice=r.default_sell_price_ex_vat!=null?+r.default_sell_price_ex_vat:null;
        if(r.role==='installation_service'){
-         defaultPrice=st?.sell_price_ex_vat??installationPrice(current.installation_tier||'standard');
+         defaultPrice=st?.sell_price_ex_vat??defaultPrice??installationPrice(current.installation_tier||'standard');
        }
        items.push({
          role:r.role,
@@ -1053,6 +1053,11 @@ function buildBOM(){
  current.items=items;current.system_type=systemType(d);current.bundle_key=key;current.device=recommendation;current.route_m=5;current.updated=Date.now()
 }
 function installationPrice(tier){
+  const activeCategory=current?.category||category;
+  if(activeCategory==='air_conditioning'){
+    const mode=current?.ac_mode||acMode||'single';
+    return mode==='multi'?750:350;
+  }
   const isSplit=current?.system_type==='split'||systemType(recommendation||{})==='split';
   if(isSplit) return tier==='economy'?750:1050;
   return tier==='economy'?600:900;
