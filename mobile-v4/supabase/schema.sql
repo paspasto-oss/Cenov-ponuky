@@ -228,3 +228,27 @@ $$;
 
 revoke all on function public.next_quote_no() from public;
 grant execute on function public.next_quote_no() to authenticated;
+
+
+-- Dynamic PDF presentation banners
+create table if not exists public.pdf_banners (
+  banner_key text primary key,
+  label text not null,
+  asset_url text not null,
+  active boolean not null default true,
+  sort_order integer not null default 0,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.pdf_banners enable row level security;
+
+drop policy if exists "authenticated read pdf banners" on public.pdf_banners;
+create policy "authenticated read pdf banners"
+on public.pdf_banners for select to authenticated
+using (active = true);
+
+drop policy if exists "admins write pdf banners" on public.pdf_banners;
+create policy "admins write pdf banners"
+on public.pdf_banners for all to authenticated
+using (exists(select 1 from public.app_users u where u.user_id=auth.uid() and u.active and u.role='admin'))
+with check (exists(select 1 from public.app_users u where u.user_id=auth.uid() and u.active and u.role='admin'));
