@@ -19,14 +19,14 @@
 </style>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="js/db.js?v=20260926-scale100k2"></script>
+<script src="js/db.js?v=20260927-quotesync1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 <div class="wrap">
   <div class="head">
     <div class="brand"><div class="logo"></div><div><b>Spektra Ponuky</b><div class="sub">terén / predajňa</div></div></div>
-    <div style="display:flex;gap:6px;align-items:center"><div id="onlineState" class="pill">DB…</div><div id="catalogState" class="pill">Katalóg…</div></div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><div id="onlineState" class="pill">DB…</div><div id="quoteSyncState" class="pill">Ponuky…</div><div id="catalogState" class="pill">Katalóg…</div></div>
   </div>
 
   <section id="home" class="screen on">
@@ -36,6 +36,7 @@
       <div class="actions">
         <button class="big primary" onclick="startWizard()"><span>＋</span><b>Nová cenová ponuka</b><small>Zákazník → dom → zariadenie → cena → PDF</small></button>
         <button class="big" onclick="location.href='admin/stock-sync.html?v=20260926-scale100k2'"><span>↻</span><b>Aktualizovať zásoby</b><small>Nahrať nový export Zásoby.xlsx z POHODY</small></button>
+        <button class="big" onclick="syncQuotes(true,false)"><span>⟳</span><b>Synchronizovať ponuky</b><small>PC práca ↔ mobil ↔ PC doma</small></button>
       </div>
     </div>
     <div id="mainAuthCard" class="card hidden">
@@ -272,6 +273,7 @@
       <button class="btn green" onclick="sharePdf()">Zdieľať PDF</button>
       <button class="btn" onclick="shareWA()">WhatsApp</button>
       <button class="btn" onclick="shareEmail()">E-mail s PDF</button>
+      <button class="btn green" onclick="approveQuote()">✓ Schváliť ponuku</button>
     </div>
     <div class="notice" style="margin-top:10px">Ponuka je uložená a dá sa znovu otvoriť z úvodnej obrazovky. Po pripojení spoločnej databázy bude rovnaká ponuka dostupná Martine aj technikom na všetkých zariadeniach.</div>
   </section>
@@ -426,6 +428,7 @@ async function mainLogin(){
       const online=await SpektraDB.listStocks();
       if(online.length){stocks=online;rebuildStockIndexes();if(!window.SPEKTRA_STOCKS_FROM_CACHE)await SpektraStockDB.replaceAll(online.map(x=>({...x,suppliers:x.supplier_name?[x.supplier_name]:[]})));document.getElementById('catalogState').textContent='Katalóg POHODA: '+stocks.length.toLocaleString('sk-SK')+' zásob';}
     }catch(e){console.error(e)}
+    await syncQuotes(true,true);
   }catch(e){msg.textContent='Chyba: '+e.message}
 }
 async function mainRegister(){
@@ -436,14 +439,100 @@ async function mainRegister(){
     if(r.session){await mainLogin();}
   }catch(e){msg.textContent='Chyba: '+e.message}
 }
-function renderHome(){
- document.getElementById('stAll').textContent=quotes.length;document.getElementById('stDraft').textContent=quotes.filter(q=>q.status==='draft').length;document.getElementById('stSent').textContent=quotes.filter(q=>q.status==='sent').length;document.getElementById('stApproved').textContent=quotes.filter(q=>q.status==='approved').length;
- const box=document.getElementById('quoteList');if(!quotes.length){box.innerHTML='<div class="sub" style="padding:18px;text-align:center">Zatiaľ bez uložených ponúk.</div>';return}
- box.innerHTML=quotes.slice().sort((a,b)=>b.updated-a.updated).slice(0,20).map(q=>'<div class="row" onclick="openQuote(\''+q.id+'\')"><div><b>'+esc(q.customer.name)+'</b><small>'+esc(q.quote_no)+' · '+esc(labelCat(q.category))+' · '+esc(q.brand||'')+'</small></div><span class="badge '+q.status+'">'+labelStatus(q.status)+'</span></div>').join('')
+let quoteSyncBusy=false;
+
+function remoteQuoteToLocal(r){
+  const w=r.workflow||{};
+  const cust=Array.isArray(r.customers)?(r.customers[0]||{}):(r.customers||{});
+  const vatPct=Number(r.vat_pct||23), net=Number(r.subtotal_ex_vat||0);
+  const items=(r.quote_items||[]).slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).map(i=>{
+    const st=i.pohoda_code?(stockByCodeMap.get(norm(i.pohoda_code))||null):null;
+    return {
+      role:i.role||null,name:i.name,qty:Number(i.qty||1),unit:i.unit||'ks',
+      pohoda:st,pohoda_code:i.pohoda_code||null,
+      price:i.sell_price_ex_vat==null?null:Number(i.sell_price_ex_vat),
+      cost:i.purchase_price_ex_vat==null?null:Number(i.purchase_price_ex_vat),
+      mapping_status:i.mapping_status||null,visible:!!i.visible_to_customer,
+      customer_group:i.customer_group||null,note:i.metadata?.note||'',
+      work_scope:Array.isArray(i.metadata?.work_scope)?i.metadata.work_scope:[]
+    };
+  });
+  return {
+    ...w,
+    id:r.local_id||('remote_'+r.id),remote_id:r.id,remote_customer_id:r.customer_id||null,
+    quote_no:r.quote_no,status:r.status||'draft',
+    created:Date.parse(r.created_at)||Date.now(),updated:Date.parse(r.updated_at)||Date.now(),
+    customer:{name:cust.name||'Bez mena',phone:cust.phone||'',email:cust.email||'',address:cust.address||'',note:cust.notes||''},
+    category:r.category||null,brand:r.brand||null,system_type:r.system_type||null,
+    installation_tier:r.installation_tier||'standard',building:r.building||{},device:r.device||{},
+    optional_services:r.optional_services||{},subsidy:r.subsidy||{},
+    boiler_type:w.boiler_type||r.device?.boiler_type||null,
+    ac_mode:w.ac_mode||r.device?.ac_mode||null,
+    multisplit_count:w.multisplit_count||r.device?.multisplit_count||null,
+    required_kw:w.required_kw??null,target_kw:w.target_kw??null,economy_ready:!!w.economy_ready,
+    pdf_images_enabled:!!w.pdf_images_enabled,pdf_images_user_disabled:!!w.pdf_images_user_disabled,
+    pdf_images:Array.isArray(w.pdf_images)?w.pdf_images:[],
+    items,net,vat_pct:vatPct,vat:net*vatPct/100,total:Number(r.total_inc_vat||0),
+    price_complete:!!r.price_complete,_server_quote_no:true,_dirty:false
+  };
 }
-function labelStatus(x){return x==='sent'?'Odoslaná':x==='approved'?'Schválená':'Rozpracovaná'}
+
+function mergeCloudQuotes(remoteRows){
+  const byId=new Map(quotes.map(q=>[q.id,q]));
+  remoteRows.map(remoteQuoteToLocal).forEach(rq=>{
+    const local=byId.get(rq.id);
+    if(!local || !local._dirty || (rq.updated||0)>=(local.updated||0))byId.set(rq.id,rq);
+  });
+  quotes=[...byId.values()];
+  localStorage.setItem(QUOTES_KEY,JSON.stringify(quotes));
+}
+
+async function syncQuotes(pushLocal=true,silent=false){
+  if(quoteSyncBusy)return;
+  const el=document.getElementById('quoteSyncState');
+  if(!window.SpektraDB?.isAuthenticated()){
+    if(el)el.textContent='Ponuky: lokálne';
+    if(!silent)renderHome();
+    return;
+  }
+  quoteSyncBusy=true;
+  try{
+    if(el)el.textContent='Ponuky: sync…';
+    if(pushLocal){
+      const pending=quotes.filter(q=>!q.remote_id||q._dirty);
+      for(let i=0;i<pending.length;i++){
+        const q=pending[i];
+        if(el)el.textContent='Ponuky ↑ '+(i+1)+'/'+pending.length;
+        try{
+          const ids=await SpektraDB.saveQuote(q);
+          q.remote_id=ids.remote_id;q.remote_customer_id=ids.remote_customer_id;
+          q.quote_no=ids.quote_no||q.quote_no;q._server_quote_no=true;q._dirty=false;delete q._sync_error;
+        }catch(e){
+          console.error('Quote upload failed',q.quote_no,e);
+          q._sync_error=e.message||String(e);
+        }
+      }
+      localStorage.setItem(QUOTES_KEY,JSON.stringify(quotes));
+    }
+    const remote=await SpektraDB.listQuotes();
+    mergeCloudQuotes(remote);
+    if(el)el.textContent='Ponuky: '+remote.length+' online';
+    renderHome();
+  }catch(e){
+    console.error('Quote sync failed',e);
+    if(el)el.textContent='Ponuky: chyba';
+    if(!silent)alert('Synchronizácia ponúk zlyhala: '+e.message);
+  }finally{quoteSyncBusy=false}
+}
+
+function renderHome(){
+ document.getElementById('stAll').textContent=quotes.length;document.getElementById('stDraft').textContent=quotes.filter(q=>q.status==='draft'||q.status==='ready').length;document.getElementById('stSent').textContent=quotes.filter(q=>q.status==='sent').length;document.getElementById('stApproved').textContent=quotes.filter(q=>q.status==='approved').length;
+ const box=document.getElementById('quoteList');if(!quotes.length){box.innerHTML='<div class="sub" style="padding:18px;text-align:center">Zatiaľ bez uložených ponúk.</div>';return}
+ box.innerHTML=quotes.slice().sort((a,b)=>(b.updated||0)-(a.updated||0)).slice(0,20).map(q=>'<div class="row" onclick="openQuote(\''+q.id+'\')"><div><b>'+esc(q.customer?.name||'Bez mena')+'</b><small>'+esc(q.quote_no||'')+' · '+esc(labelCat(q.category))+' · '+esc(q.brand||'')+(q._sync_error?' · ⚠ sync':'')+'</small></div><span class="badge '+q.status+'">'+labelStatus(q.status)+'</span></div>').join('')
+}
+function labelStatus(x){return x==='ready'?'Na schválenie':x==='sent'?'Odoslaná':x==='approved'?'Schválená':'Rozpracovaná'}
 function labelCat(x){return x==='heat_pump'?'Tepelné čerpadlo':x==='air_conditioning'?'Klimatizácia':x==='boiler'?'Kotol':'Iné'}
-function startWizard(){current={id:'q_'+Date.now(),quote_no:'26NA'+String(quotes.length+1).padStart(4,'0'),status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_images_enabled:false,pdf_images_user_disabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;boilerType='gas';acMode='single';multiCount=2;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
+function startWizard(){current={id:'q_'+Date.now(),quote_no:'NÁVRH-'+String(Date.now()).slice(-6),_server_quote_no:false,_dirty:true,status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_images_enabled:false,pdf_images_user_disabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;boilerType='gas';acMode='single';multiCount=2;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
 function nextBuilding(){let name=s(document.getElementById('cName').value),phone=s(document.getElementById('cPhone').value),addr=s(document.getElementById('cAddress').value);if(!name||!phone||!addr){alert('Vyplň meno, telefón a adresu realizácie.');return}current.customer={name,phone,email:s(document.getElementById('cEmail').value),address:addr,note:s(document.getElementById('cNote').value)};go('step2')}
 function toggleLoss(){let known=document.getElementById('hasLoss').value==='yes';document.getElementById('lossKnown').classList.toggle('hidden',!known);document.getElementById('lossEstimate').classList.toggle('hidden',known)}
 function nextCategory(){let known=document.getElementById('hasLoss').value==='yes',loss=+document.getElementById('heatLoss').value||0,area=+document.getElementById('area').value||0;if(known&&loss<=0){alert('Zadaj tepelnú stratu.');return}if(!known&&area<=0){alert('Zadaj vykurovanú plochu.');return}current.building={known_loss:known,heat_loss_kw:known?loss:null,area_m2:known?null:area,w_per_m2:+document.getElementById('buildingClass').value,heating:document.getElementById('heating').value,with_external_dhw_tank:document.getElementById('dhwMode').value==='external'};renderChoices();go('step3')}
@@ -1346,14 +1435,31 @@ function refreshQuoteFromCatalog(){
   renderRecommendation();
 }
 function pickAlternative(id){let d=category==='air_conditioning'?(acMode==='multi'?acMultiOutdoorCandidates(brand,multiCount).find(x=>x.id===id):acStockCandidates(brand).find(x=>x.id===id)):deviceCatalog.find(x=>x.id===id);if(!d)return;recommendation={...d};current.device={...d};ensurePdfImagesState();buildBOM();renderRecommendation()}
-async function upsertCurrent(){let i=quotes.findIndex(q=>q.id===current.id);if(i>=0)quotes[i]=JSON.parse(JSON.stringify(current));else quotes.push(JSON.parse(JSON.stringify(current)));persist();if(window.SpektraDB?.isAuthenticated()){try{const ids=await SpektraDB.saveQuote(current);current.remote_id=ids.remote_id;current.remote_customer_id=ids.remote_customer_id}catch(e){console.error('Online quote save failed',e)}}}
-function saveDraft(){current.status='draft';upsertCurrent();alert('Ponuka bola uložená ako rozpracovaná.')}
-function finishQuote(){
- if(current.installation_tier==='economy'&&!current.economy_ready){
-   alert('Montáž EKONOM je možné použiť iba po potvrdení všetkých prípravných podmienok zákazníka.');
-   return;
- }
- current.status='draft';upsertCurrent();renderFinal();go('step5')
+async function upsertCurrent(){
+  current.updated=Date.now();current._dirty=true;
+  let i=quotes.findIndex(q=>q.id===current.id);
+  if(i>=0)quotes[i]=JSON.parse(JSON.stringify(current));else quotes.push(JSON.parse(JSON.stringify(current)));
+  persist();
+  if(window.SpektraDB?.isAuthenticated()){
+    try{
+      const ids=await SpektraDB.saveQuote(current);
+      current.remote_id=ids.remote_id;current.remote_customer_id=ids.remote_customer_id;
+      current.quote_no=ids.quote_no||current.quote_no;current._server_quote_no=true;current._dirty=false;delete current._sync_error;
+      i=quotes.findIndex(q=>q.id===current.id);if(i>=0)quotes[i]=JSON.parse(JSON.stringify(current));
+      localStorage.setItem(QUOTES_KEY,JSON.stringify(quotes));renderHome();
+      const el=document.getElementById('quoteSyncState');if(el)el.textContent='Ponuky: synchronizované';
+    }catch(e){
+      current._sync_error=e.message||String(e);
+      i=quotes.findIndex(q=>q.id===current.id);if(i>=0)quotes[i]=JSON.parse(JSON.stringify(current));
+      localStorage.setItem(QUOTES_KEY,JSON.stringify(quotes));console.error('Online quote save failed',e);
+      const el=document.getElementById('quoteSyncState');if(el)el.textContent='Ponuky: chyba sync';
+    }
+  }
+}
+async function saveDraft(){current.status='draft';await upsertCurrent();alert(window.SpektraDB?.isAuthenticated()?'Ponuka bola uložená a synchronizovaná.':'Ponuka bola uložená lokálne. Po pripojení sa synchronizuje.')}
+async function finishQuote(){
+ if(current.installation_tier==='economy'&&!current.economy_ready){alert('Montáž EKONOM je možné použiť iba po potvrdení všetkých prípravných podmienok zákazníka.');return}
+ current.status='ready';await upsertCurrent();renderFinal();go('step5')
 }
 function renderFinal(){
  const install=current.items.find(i=>i.role==='installation_service'||i.role==='installation');
@@ -1383,6 +1489,11 @@ function renderFinal(){
  )+'</b></div>'+optional+annual+subsidyHtml+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+ (current.price_complete?eur(current.total):'Cena ešte nie je kompletná') +'</span></div>'
 }
 function openQuote(id){let q=quotes.find(x=>x.id===id);if(!q)return;current=JSON.parse(JSON.stringify(q));ensurePdfImagesState();ensureSubsidyState();if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false};if(current.optional_services.annual_service===undefined)current.optional_services.annual_service=true;if(current.optional_services.condensate_pump===undefined)current.optional_services.condensate_pump=false;if(current.optional_services.dhw_tank_fe120===undefined)current.optional_services.dhw_tank_fe120=false;if(!current.installation_tier)current.installation_tier='standard';category=current.category||'heat_pump';brand=current.brand||'';boilerType=current.boiler_type||'gas';acMode=current.ac_mode||'single';multiCount=current.multisplit_count||2;recommendation=current.device||null;document.getElementById('cName').value=current.customer.name||'';document.getElementById('cPhone').value=current.customer.phone||'';document.getElementById('cEmail').value=current.customer.email||'';document.getElementById('cAddress').value=current.customer.address||'';document.getElementById('cNote').value=current.customer.note||'';refreshQuoteFromCatalog();renderFinal();go('step4')}
+async function approveQuote(){
+  if(!current)return;
+  current.status='approved';await upsertCurrent();renderFinal();
+  alert(window.SpektraDB?.isAuthenticated()?'Ponuka bola schválená a synchronizovaná na všetkých zariadeniach.':'Ponuka bola schválená lokálne; po pripojení sa synchronizuje.');
+}
 function message(){
   const sub=calculateSubsidy();
   let subsidyText='';
@@ -1703,7 +1814,7 @@ async function shareEmail(){
 
 async function shareNative(){return sharePdf()}
 
-function markSent(){current.status='sent';current.updated=Date.now();upsertCurrent()}
+function markSent(){current.status='sent';upsertCurrent()}
 
 function printPDF(){
   const w=window.open('','_blank');
@@ -1716,7 +1827,13 @@ function printPDF(){
   w.document.close();
 }
 function exportQuotes(){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(quotes,null,2)],{type:'application/json'}));a.download='spektra-ponuky-v4.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),300)}
-loadConfig().then(()=>{renderHome()});
+loadConfig().then(async()=>{
+  await syncQuotes(true,true);
+  renderHome();
+  setInterval(()=>{if(!document.hidden)syncQuotes(false,true)},30000);
+});
+window.addEventListener('focus',()=>syncQuotes(false,true));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncQuotes(false,true)});
 </script>
 </body>
 </html>
