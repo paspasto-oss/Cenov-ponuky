@@ -19,7 +19,7 @@
 </style>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="js/db.js?v=20260927-pohodaoffer1"></script>
+<script src="js/db.js?v=20260927-vaillantac1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
@@ -452,7 +452,7 @@ async function loadConfig(){
     }
   }
   try{
-    const r=await fetch('data/device-catalog.json?v=20260926-mdvevo1',{cache:'no-store'});
+    const r=await fetch('data/device-catalog.json?v=20260927-vaillantac1',{cache:'no-store'});
     if(!r.ok) throw new Error('device-catalog '+r.status);
     const j=await r.json();deviceCatalog=j.devices||[];
   }catch(e){deviceCatalog=fallbackDevices;configOk=false;console.error('Device catalog load failed:',e)}
@@ -661,7 +661,7 @@ function multisplitBrandFromStock(st){
 }
 function acMultiOutdoorCandidates(selectedBrand,count){
   const aliases=acBrandAliases(selectedBrand);
-  return acStockPool.filter(st=>{
+  const fromStock=acStockPool.filter(st=>{
     const n=norm(st.name),code=String(st.code||'').toUpperCase(),selected=norm(selectedBrand);
     if(selected==='mdv'){
       if(!['CMDV000071','CMDV000072','CMDV000073'].includes(code))return false;
@@ -688,15 +688,23 @@ function acMultiOutdoorCandidates(selectedBrand,count){
     pohoda_plu:st.plu||null,
     purchase_price_ex_vat:st.purchase_price_ex_vat==null?null:Number(st.purchase_price_ex_vat),
     sell_price_ex_vat:Number(st.sell_price_ex_vat),
-    source:'pohoda_stock'
-  })).sort((a,b)=>(a.power_kw||99)-(b.power_kw||99)||(a.sell_price_ex_vat||0)-(b.sell_price_ex_vat||0));
+    source:'pohoda_stock'  }));
+  return mergeAcCandidates(fromStock,acCatalogCandidates(selectedBrand,'multi',count));
 }
 function multisplitBrandsForCount(count){
-  return [...new Set(acStockPool.filter(st=>{
+  const stockBrands=acStockPool.filter(st=>{
     const n=norm(st.name);
     if(!(n.includes('multisplit')||n.includes('multi'))||n.includes('vnutorna'))return false;
     return multisplitCountFromName(st.name)===count&&Number(st.sell_price_ex_vat)>0;
-  }).map(multisplitBrandFromStock).filter(Boolean))];
+  }).map(multisplitBrandFromStock).filter(Boolean);
+  const catalogBrands=deviceCatalog.filter(d=>
+    catalogCategory(d)==='air_conditioning' &&
+    d.active!==false &&
+    d.ac_mode==='multi' &&
+    d.ac_role==='outdoor' &&
+    Number(d.multisplit_count||0)===Number(count)
+  ).map(d=>d.brand).filter(Boolean);
+  return [...new Set([...stockBrands,...catalogBrands])];
 }
 function acMultiIndoorStock(selectedBrand){
   const aliases=acBrandAliases(selectedBrand);
@@ -725,7 +733,27 @@ function acMultiIndoorStock(selectedBrand){
   if(selectedBrand==='Samsung'){
     return pool.find(st=>norm(st.name).includes('windfree avant'))||pool.find(st=>norm(st.name).includes('windfree comfort'))||pool[0]||null;
   }
-  return pool[0]||null;
+  if(pool[0])return pool[0];
+  const catalog=deviceCatalog.filter(d=>
+    catalogCategory(d)==='air_conditioning' &&
+    d.brand===selectedBrand &&
+    d.active!==false &&
+    d.ac_mode==='multi' &&
+    d.ac_role==='indoor'
+  ).sort((a,b)=>(a.power_kw||99)-(b.power_kw||99));
+  const preferredCatalog=catalog.find(d=>Number(d.power_kw)>=2.4&&Number(d.power_kw)<=2.6)||catalog[0]||null;
+  if(!preferredCatalog)return null;
+  return {
+    name:preferredCatalog.model,
+    code:null,
+    plu:null,
+    unit:'ks',
+    sell_price_ex_vat:Number(preferredCatalog.sell_price_ex_vat),
+    purchase_price_ex_vat:preferredCatalog.purchase_price_ex_vat==null?null:Number(preferredCatalog.purchase_price_ex_vat),
+    manufacturer:selectedBrand,
+    _catalog_only:true,
+    _catalog_device:preferredCatalog
+  };
 }
 function renderBrands(){
   let brands=[];
@@ -753,9 +781,31 @@ function extractPowerKw(text){
   if(!matches.length)return null;
   return matches.find(v=>v>=1.5&&v<=20)||matches[0]||null;
 }
+function acCatalogCandidates(selectedBrand,mode='single',count=null){
+  return deviceCatalog.filter(d=>
+    catalogCategory(d)==='air_conditioning' &&
+    d.brand===selectedBrand &&
+    d.active!==false &&
+    (d.ac_mode||'single')===mode &&
+    (mode!=='multi'||d.ac_role==='outdoor') &&
+    (!count||Number(d.multisplit_count||0)===Number(count))
+  ).map(d=>({...d,source:d.source||'device_catalog'}));
+}
+function mergeAcCandidates(primary,fallback){
+  const out=[],seen=new Set();
+  const add=d=>{
+    const key=norm(d.pohoda_code||d.manufacturer_code||d.model||d.id);
+    if(key&&seen.has(key))return;
+    if(key)seen.add(key);
+    out.push(d);
+  };
+  (primary||[]).forEach(add);
+  (fallback||[]).forEach(add);
+  return out.sort((a,b)=>(a.power_kw||99)-(b.power_kw||99)||(a.sell_price_ex_vat||0)-(b.sell_price_ex_vat||0));
+}
 function acStockCandidates(selectedBrand){
   const aliases=acBrandAliases(selectedBrand);
-  return acStockPool.filter(st=>{
+  const fromStock=acStockPool.filter(st=>{
     const n=norm(st.name),code=String(st.code||'').toUpperCase();
     const selected=norm(selectedBrand);
     if(selected==='mdv'){
@@ -786,8 +836,8 @@ function acStockCandidates(selectedBrand){
       sell_price_ex_vat:Number(st.sell_price_ex_vat),
       active:true,
       source:'pohoda_stock'
-    };
-  }).sort((a,b)=>(a.power_kw||99)-(b.power_kw||99)||(a.sell_price_ex_vat||0)-(b.sell_price_ex_vat||0));
+    };  });
+  return mergeAcCandidates(fromStock,acCatalogCandidates(selectedBrand,'single'));
 }
 function acPipeRecipeForPower(power){
   const p=Number(power||3.5);
@@ -966,9 +1016,9 @@ function buildBOM(){
          name:indoor.name,
          qty:count,
          unit:indoor.unit||'ks',
-         pohoda:indoor,
-         pohoda_code:indoor.code||null,
-         mapping_status:'mapped',
+         pohoda:indoor._catalog_only?null:indoor,
+         pohoda_code:indoor._catalog_only?null:(indoor.code||null),
+         mapping_status:indoor._catalog_only?'catalog_only':'mapped',
          price:Number(indoor.sell_price_ex_vat),
          cost:indoor.purchase_price_ex_vat==null?null:Number(indoor.purchase_price_ex_vat),
          visible:true,
@@ -1451,8 +1501,8 @@ function renderRecommendation(){
      ? (current.building.known_loss?'Zadaná tepelná strata: '+required+' kW. Vybraný najbližší výkon kotla.':'Orientačný potrebný výkon: '+required+' kW. Vybraný najbližší výkon kotla.')
      : category==='air_conditioning'
        ? (current?.ac_mode==='multi'
-          ? 'Multisplit '+(current.multisplit_count||2)+'+1: vonkajšia jednotka, vnútorné jednotky a montáž sa načítavajú z POHODY. Materiál sa počíta orientačne do 5 m ku každej vnútornej jednotke.'
-          : 'Z POHODY sa načítali konkrétne klimatizácie s cenami. Predvolene je zvolená trieda okolo 3,5 kW; nižšie môžeš vybrať inú výkonovú alternatívu.')
+          ? 'Multisplit '+(current.multisplit_count||2)+'+1: zariadenie sa vyberá z aktuálnej POHODY alebo oficiálneho katalógu výrobcu. Materiál sa počíta orientačne do 5 m ku každej vnútornej jednotke.'
+          : 'Klimatizácie sa načítajú z POHODY; ak karta ešte nie je v POHODE, použije sa aktuálny katalóg výrobcu. Predvolene je zvolená trieda okolo 3,5 kW; nižšie môžeš vybrať inú výkonovú alternatívu.')
        : 'Pre túto kategóriu sa výkon vyberie podľa konkrétneho modelu a priestoru.';
  const recImage=d.image_url?'<div style="width:116px;min-width:116px;height:92px;background:#fff;border:1px solid #d6e4ec;border-radius:10px;padding:5px;display:flex;align-items:center;justify-content:center"><img src="'+esc(d.image_url)+'" alt="" style="max-width:100%;max-height:100%;object-fit:contain"></div>':'';
  document.getElementById('recommendation').innerHTML='<div style="display:flex;gap:12px;align-items:center">'+recImage+'<div class="title" style="flex:1"><div><h3>'+esc(d.brand+' '+d.model)+'</h3><div class="sub">'+esc(d.variant||'')+(current.system_type?' · '+esc(current.system_type):'')+'</div></div><div class="kw">'+(d.power_kw||target||'—')+' kW</div></div></div>';
