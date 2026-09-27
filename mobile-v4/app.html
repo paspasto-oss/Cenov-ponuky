@@ -19,7 +19,7 @@
 </style>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="js/db.js?v=20260927-openquotefix1"></script>
+<script src="js/db.js?v=20260927-quote0009fix1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
@@ -585,19 +585,19 @@ function renderHome(){
  document.getElementById('stAll').textContent=quotes.length;document.getElementById('stDraft').textContent=quotes.filter(q=>q.status==='draft'||q.status==='ready').length;document.getElementById('stSent').textContent=quotes.filter(q=>q.status==='sent').length;document.getElementById('stApproved').textContent=quotes.filter(q=>q.status==='approved').length;
  const box=document.getElementById('quoteList');if(!quotes.length){box.innerHTML='<div class="sub" style="padding:18px;text-align:center">Zatiaľ bez uložených ponúk.</div>';return}
  box.innerHTML=quotes.slice().sort((a,b)=>(b.updated||0)-(a.updated||0)).slice(0,20).map(q=>{
-   const id=esc(q.id||'');
-   return '<div class="row" data-quote-id="'+id+'" style="cursor:pointer">'+
+   const ref=esc(q.quote_no||q.id||'');
+   return '<div class="row" data-quote-ref="'+ref+'" style="cursor:pointer">'+
      '<div style="flex:1;min-width:0"><b>'+esc(q.customer?.name||'Bez mena')+'</b><small>'+esc(q.quote_no||'')+' · '+esc(labelCat(q.category))+' · '+esc(q.brand||'')+(q._sync_error?' · ⚠ sync':'')+'</small></div>'+
-     '<div style="display:flex;align-items:center;gap:7px"><span class="badge '+q.status+'">'+labelStatus(q.status)+'</span><button class="btn small quoteEditBtn" type="button" data-quote-id="'+id+'">Upraviť</button></div>'+
+     '<div style="display:flex;align-items:center;gap:7px"><span class="badge '+q.status+'">'+labelStatus(q.status)+'</span><button class="btn small quoteEditBtn" type="button" data-quote-ref="'+ref+'">Upraviť</button></div>'+
    '</div>';
  }).join('');
- box.querySelectorAll('.row[data-quote-id]').forEach(row=>row.addEventListener('click',e=>{
+ box.querySelectorAll('.row[data-quote-ref]').forEach(row=>row.addEventListener('click',e=>{
    if(e.target.closest('.quoteEditBtn'))return;
-   openQuote(row.dataset.quoteId);
+   openQuote(row.dataset.quoteRef);
  }));
  box.querySelectorAll('.quoteEditBtn').forEach(btn=>btn.addEventListener('click',e=>{
    e.stopPropagation();
-   openQuote(btn.dataset.quoteId);
+   openQuote(btn.dataset.quoteRef);
  }));
 }
 function labelStatus(x){return x==='ready'?'Na schválenie':x==='sent'?'Odoslaná':x==='approved'?'Schválená':'Rozpracovaná'}
@@ -1809,9 +1809,11 @@ function hydrateQuoteForm(){
 
 function openQuote(id){
   try{
-    const q=quotes.find(x=>String(x.id)===String(id));
+    const ref=String(id||'');
+    const matches=quotes.filter(x=>String(x.id||'')===ref || String(x.quote_no||'')===ref);
+    const q=matches.sort((a,b)=>(b.updated||0)-(a.updated||0))[0]||null;
     if(!q){
-      alert('Ponuku sa nepodarilo nájsť. Skús synchronizovať ponuky.');
+      alert('Ponuku '+ref+' sa nepodarilo nájsť. Skús synchronizovať ponuky.');
       return;
     }
 
@@ -1851,10 +1853,26 @@ function openQuote(id){
       }
     }
 
-    try{renderFinal()}catch(e){console.warn('Stored quote final render failed',e)}
-    go('step4');
+    let detailedOk=true;
+    try{renderFinal()}catch(e){detailedOk=false;console.warn('Stored quote final render failed',e)}
+    if(detailedOk && recommendation){
+      go('step4');
+    }else{
+      // Aj poškodená/staršia ponuka musí zostať opraviteľná.
+      hydrateQuoteForm();
+      go('step1');
+      setTimeout(()=>alert('Ponuka '+(current.quote_no||'')+' bola otvorená v opravnom režime. Údaje môžeš upraviť a pokračovať cez jednotlivé kroky.'),50);
+    }
   }catch(e){
     console.error('openQuote failed',e);
+    try{
+      if(current){
+        hydrateQuoteForm();
+        go('step1');
+        setTimeout(()=>alert('Ponuka '+(current.quote_no||'')+' bola otvorená v opravnom režime.'),50);
+        return;
+      }
+    }catch(_){}
     alert('Ponuku sa nepodarilo otvoriť na úpravu: '+(e.message||String(e)));
   }
 }
