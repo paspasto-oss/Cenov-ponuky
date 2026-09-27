@@ -19,7 +19,9 @@
 </style>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="js/db.js?v=20260927-pdfbannerinline1"></script>
+<script src="js/db.js?v=20260927-pdfexact1"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 </head>
 <body>
@@ -2143,35 +2145,88 @@ async function inlineImagesForPdf(root){
 }
 
 async function createPdfFile(){
-  if(!window.html2pdf) throw new Error('PDF knižnica sa nenačítala.');
+  if(!window.html2canvas)throw new Error('Renderovanie PDF sa nenačítalo.');
+  if(!window.jspdf?.jsPDF)throw new Error('PDF knižnica sa nenačítala.');
+
+  // PDF 1/2 sa najprv vyrenderuje presne rovnako ako náhľad a až potom sa
+  // hotová stránka vloží do PDF ako obraz. Tým odstránime rozdiely medzi
+  // Chrome tlačou, html2pdf a mobilnými prehliadačmi.
   const holder=document.createElement('div');
+  holder.setAttribute('data-pdf-render','1');
   holder.style.position='fixed';
-  holder.style.left='-10000px';
+  holder.style.left='0';
   holder.style.top='0';
+  holder.style.width='210mm';
+  holder.style.zIndex='-2147483000';
+  holder.style.pointerEvents='none';
+  holder.style.background='#fff';
+  holder.style.overflow='visible';
   holder.innerHTML=offerHtml();
   document.body.appendChild(holder);
+
   try{
-    const imgs=[...holder.querySelectorAll('img')];
+    const root=holder.firstElementChild;
+    if(!root)throw new Error('Chýba obsah ponuky.');
+
+    // Všetky externé bannery a produktové obrázky vložíme do DOM ako data URL.
+    // Canvas potom už nekreslí nič zo siete.
+    await inlineImagesForPdf(root);
+
+    const imgs=[...root.querySelectorAll('img')];
     await Promise.all(imgs.map(img=>new Promise(resolve=>{
       if(img.complete&&img.naturalWidth>0){resolve();return}
       const done=()=>resolve();
       img.addEventListener('load',done,{once:true});
       img.addEventListener('error',done,{once:true});
-      setTimeout(done,5000);
+      setTimeout(done,3000);
     })));
-    await inlineImagesForPdf(holder.firstElementChild);
     await new Promise(r=>setTimeout(r,180));
-    const blob=await html2pdf()
-      .set({
-        margin:0,
-        filename:(current.quote_no||'cenova-ponuka')+'.pdf',
-        image:{type:'jpeg',quality:0.98},
-        html2canvas:{scale:2,useCORS:true,allowTaint:false,backgroundColor:'#ffffff',imageTimeout:8000,logging:false},
-        jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
-      })
-      .from(holder.firstElementChild)
-      .toPdf()
-      .outputPdf('blob');
+
+    const canvas=await window.html2canvas(root,{
+      scale:2.4,
+      useCORS:false,
+      allowTaint:true,
+      backgroundColor:'#ffffff',
+      logging:false,
+      imageTimeout:0,
+      scrollX:0,
+      scrollY:0,
+      width:root.scrollWidth,
+      height:root.scrollHeight,
+      windowWidth:root.scrollWidth,
+      windowHeight:root.scrollHeight
+    });
+
+    if(!canvas.width||!canvas.height)throw new Error('Nepodarilo sa vyrenderovať stránku.');
+
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+    const pageWidthMm=210;
+    const pageHeightMm=297;
+    const pageHeightPx=Math.floor(canvas.width*(pageHeightMm/pageWidthMm));
+
+    let y=0;
+    let page=0;
+    while(y<canvas.height){
+      const sliceHeight=Math.min(pageHeightPx,canvas.height-y);
+      const slice=document.createElement('canvas');
+      slice.width=canvas.width;
+      slice.height=sliceHeight;
+      const ctx=slice.getContext('2d',{alpha:false});
+      ctx.fillStyle='#ffffff';
+      ctx.fillRect(0,0,slice.width,slice.height);
+      ctx.drawImage(canvas,0,y,canvas.width,sliceHeight,0,0,canvas.width,sliceHeight);
+
+      const imgData=slice.toDataURL('image/jpeg',0.96);
+      const heightMm=sliceHeight*pageWidthMm/canvas.width;
+      if(page>0)pdf.addPage('a4','portrait');
+      pdf.addImage(imgData,'JPEG',0,0,pageWidthMm,heightMm,undefined,'FAST');
+
+      y+=sliceHeight;
+      page++;
+    }
+
+    const blob=pdf.output('blob');
     return new File([blob],(current.quote_no||'cenova-ponuka')+'.pdf',{type:'application/pdf'});
   }finally{
     holder.remove();
@@ -2230,16 +2285,34 @@ async function shareNative(){return sharePdf()}
 
 function markSent(){current.status='sent';upsertCurrent()}
 
-function printPDF(){
-  const w=window.open('','_blank');
-  const waitScript='<script>(async()=>{'+
-    'const imgs=[...document.images];'+
-    'await Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(r=>{img.onload=r;img.onerror=r;setTimeout(r,4000)})));'+
-    'setTimeout(()=>window.print(),250);'+
-  '})()<\/script>';
-  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+esc(current.quote_no)+'</title><style>@page{size:A4;margin:0}body{margin:0;background:#fff}</style></head><body>'+offerHtml()+waitScript+'</body></html>');
-  w.document.close();
+async function printPDF(){
+  // Otvoríme kartu synchronne, aby mobilný prehliadač nezablokoval popup.
+  const previewWindow=window.open('about:blank','_blank');
+  if(previewWindow){
+    previewWindow.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Pripravujem PDF…</title></head><body style="font-family:Arial;padding:30px">Pripravujem cenovú ponuku PDF…</body></html>');
+    previewWindow.document.close();
+  }
+  try{
+    const file=await createPdfFile();
+    const url=URL.createObjectURL(file);
+    if(previewWindow){
+      previewWindow.location.replace(url);
+      // URL necháme žiť dlhšie, aby PDF viewer stihol načítať celý súbor.
+      setTimeout(()=>URL.revokeObjectURL(url),120000);
+    }else{
+      const a=document.createElement('a');
+      a.href=url;
+      a.download=file.name;
+      a.click();
+      setTimeout(()=>URL.revokeObjectURL(url),5000);
+    }
+  }catch(e){
+    console.error(e);
+    if(previewWindow)previewWindow.close();
+    alert('PDF sa nepodarilo vytvoriť: '+e.message);
+  }
 }
+
 function exportQuotes(){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(quotes,null,2)],{type:'application/json'}));a.download='spektra-ponuky-v4.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),300)}
 loadConfig().then(async()=>{
   await syncQuotes(true,true);
