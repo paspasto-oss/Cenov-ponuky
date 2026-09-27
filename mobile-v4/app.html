@@ -19,7 +19,7 @@
 </style>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="js/db.js?v=20260927-stockupsertfix1"></script>
+<script src="js/db.js?v=20260927-identityfix1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 </head>
 <body>
@@ -35,7 +35,7 @@
       <p>Martina zadá len údaje zákazníka a domu. Technický návrh spraví aplikácia na pozadí.</p>
       <div class="actions">
         <button class="big primary" onclick="startWizard()"><span>＋</span><b>Nová cenová ponuka</b><small>Zákazník → dom → zariadenie → cena → PDF</small></button>
-        <button class="big" onclick="location.href='admin/stock-sync.html?v=20260927-stockupsertfix1'"><span>↻</span><b>Aktualizovať zásoby</b><small>Nahrať nový export Zásoby.xlsx z POHODY</small></button>
+        <button class="big" onclick="location.href='admin/stock-sync.html?v=20260927-identityfix1'"><span>↻</span><b>Aktualizovať zásoby</b><small>Nahrať nový export Zásoby.xlsx z POHODY</small></button>
         <button class="big" onclick="syncQuotes(true,false)"><span>⟳</span><b>Synchronizovať ponuky</b><small>PC práca ↔ mobil ↔ PC doma</small></button>
       </div>
     </div>
@@ -312,7 +312,7 @@
 <nav class="nav">
   <button onclick="go('home')"><span>⌂</span>Prehľad</button>
   <button onclick="startWizard()"><span>＋</span>Nová ponuka</button>
-  <button onclick="location.href='admin/stock-sync.html?v=20260927-stockupsertfix1'"><span>↻</span>Zásoby</button>
+  <button onclick="location.href='admin/stock-sync.html?v=20260927-identityfix1'"><span>↻</span>Zásoby</button>
   <button onclick="exportQuotes()"><span>⇩</span>Export</button>
 </nav>
 
