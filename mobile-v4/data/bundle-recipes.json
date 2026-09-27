@@ -1,8 +1,8 @@
 {
-  "version": 28,
-  "updated_at": "2026-09-25",
+  "version": 29,
+  "updated_at": "2026-09-27",
   "source": "POHODA export Zásoby1.xlsx",
-  "note": "Doplnený multisplit AC balík s montážou MM3 z POHODY.",
+  "note": "Opravené fallback ceny montáže klimatizácií: single split 350 €, multisplit 750 € bez DPH.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -949,14 +949,15 @@
           "required": true,
           "mapping_status": "mapped_service",
           "customer_group": "Montáž",
-          "note": "Základná montáž s materiálom do 3 m podľa POHODY.",
+          "note": "Základná montáž klimatizácie s materiálom do 3 m. Ak služba nie je v aktuálnom XML sklade POHODY, použije sa 350 € bez DPH.",
           "work_scope": [
             "osadenie vnútornej a vonkajšej jednotky",
             "prepojenie chladivového potrubia a komunikácie",
             "odvod kondenzátu",
             "vákuovanie a skúška tesnosti",
             "uvedenie klimatizácie do prevádzky"
-          ]
+          ],
+          "default_sell_price_ex_vat": 350
         },
         {
           "role": "refrigerant_pipe_pair",
@@ -1488,7 +1489,9 @@
             "komunikačné a napájacie prepojenie",
             "odvod kondenzátu",
             "vákuovanie, skúška tesnosti a uvedenie do prevádzky"
-          ]
+          ],
+          "default_sell_price_ex_vat": 750,
+          "note": "Montáž multisplit klimatizácie. Ak služba nie je v aktuálnom XML sklade POHODY, použije sa 750 € bez DPH."
         }
       ]
     }
