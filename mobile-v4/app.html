@@ -19,7 +19,7 @@
 </style>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="js/db.js?v=20260927-midea57kw1"></script>
+<script src="js/db.js?v=20260927-solunar53fix1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
@@ -810,7 +810,7 @@ const MIDEA_WALL_SINGLE_CODES=new Set([
   'CMID003232','CMID003235','CMID003238',
   'CMID003460','CMID003461','CMID003462','CMID003463',
   'CMID003464','CMID003465','CMID003466','CMID003467',
-  'CMID003416','CMID003419','CMID003425',
+  'CMID003416','CMID003419','CMID003422','CMID003425',
   'CMID001966','CMID001967','CMID002184','CMID001969',
   'CMID003047','CMID003048','CMID003049','CMID003050',
   'CMID002154','CMID002155'
@@ -857,7 +857,9 @@ function acStockCandidates(selectedBrand){
       brand:selectedBrand,
       model:selected==='mdv'
         ? 'EVO '+(power?String(power).replace('.',',')+' kW':cleanAcModelName(st.name,selectedBrand))
-        : cleanAcModelName(st.name,selectedBrand),
+        : (selected==='midea'&&code==='CMID003422'
+            ? 'Solunar 5,3 kW'
+            : cleanAcModelName(st.name,selectedBrand)),
       variant:selected==='mdv'?'MDV EVO':'',
       power_kw:power,
       phase:/400\s*v|3f/i.test(st.name)?'3f':'1f',
