@@ -36,6 +36,7 @@ create table if not exists public.quotes (
   device jsonb not null default '{}'::jsonb,
   optional_services jsonb not null default '{}'::jsonb,
   subsidy jsonb not null default '{}'::jsonb,
+  workflow jsonb not null default '{}'::jsonb,
   subtotal_ex_vat numeric(12,2) not null default 0,
   vat_pct numeric(6,2) not null default 23,
   total_inc_vat numeric(12,2) not null default 0,
@@ -176,3 +177,54 @@ with check (bucket_id='product-images' and exists(select 1 from public.app_users
 drop policy if exists "admins delete product images" on storage.objects;
 create policy "admins delete product images" on storage.objects for delete to authenticated
 using (bucket_id='product-images' and exists(select 1 from public.app_users u where u.user_id=auth.uid() and u.active and u.role='admin'));
+
+
+-- Shared quote numbering and cross-device workflow state
+create table if not exists public.quote_number_counters (
+  year_no integer primary key,
+  last_no integer not null default 0
+);
+
+insert into public.quote_number_counters(year_no,last_no)
+select
+  extract(year from now())::int,
+  coalesce(max(
+    case
+      when quote_no ~ ('^' || to_char(now(),'YY') || 'NA[0-9]+$')
+      then substring(quote_no from '[0-9]+$')::int
+      else null
+    end
+  ),0)
+from public.quotes
+on conflict (year_no) do update
+set last_no=greatest(public.quote_number_counters.last_no, excluded.last_no);
+
+create or replace function public.next_quote_no()
+returns text
+language plpgsql
+security definer
+set search_path=public
+as $$
+declare
+  y integer := extract(year from now())::int;
+  n integer;
+begin
+  if not exists(
+    select 1 from public.app_users u
+    where u.user_id=auth.uid() and u.active
+  ) then
+    raise exception 'Not authorized';
+  end if;
+
+  insert into public.quote_number_counters(year_no,last_no)
+  values (y,1)
+  on conflict (year_no)
+  do update set last_no=public.quote_number_counters.last_no+1
+  returning last_no into n;
+
+  return to_char(now(),'YY') || 'NA' || lpad(n::text,4,'0');
+end;
+$$;
+
+revoke all on function public.next_quote_no() from public;
+grant execute on function public.next_quote_no() to authenticated;
