@@ -19,7 +19,7 @@
 </style>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="js/db.js?v=20260927-vaillantac1"></script>
+<script src="js/db.js?v=20260927-mideaclean2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
@@ -452,7 +452,7 @@ async function loadConfig(){
     }
   }
   try{
-    const r=await fetch('data/device-catalog.json?v=20260927-vaillantac1',{cache:'no-store'});
+    const r=await fetch('data/device-catalog.json?v=20260927-mideaclean2',{cache:'no-store'});
     if(!r.ok) throw new Error('device-catalog '+r.status);
     const j=await r.json();deviceCatalog=j.devices||[];
   }catch(e){deviceCatalog=fallbackDevices;configOk=false;console.error('Device catalog load failed:',e)}
@@ -803,21 +803,50 @@ function mergeAcCandidates(primary,fallback){
   (fallback||[]).forEach(add);
   return out.sort((a,b)=>(a.power_kw||99)-(b.power_kw||99)||(a.sell_price_ex_vat||0)-(b.sell_price_ex_vat||0));
 }
+const MIDEA_WALL_SINGLE_CODES=new Set([
+  'CMID002087','CMID002088','CMID002089','CMID002090',
+  'CMID003448','CMID003449','CMID003450','CMID003451',
+  'CMID002594','CMID002595',
+  'CMID003232','CMID003235','CMID003238',
+  'CMID003460','CMID003461','CMID003462','CMID003463',
+  'CMID003464','CMID003465','CMID003466','CMID003467',
+  'CMID003416','CMID003419','CMID003425',
+  'CMID001966','CMID001967','CMID002184','CMID001969',
+  'CMID003047','CMID003048','CMID003049','CMID003050',
+  'CMID002154','CMID002155'
+]);
+function cleanAcModelName(name,selectedBrand){
+  let out=String(name||'').trim();
+  const b=String(selectedBrand||'').trim();
+  if(b && out.toLowerCase().startsWith(b.toLowerCase()+' ')){
+    out=out.slice(b.length).trim();
+  }
+  return out.replace(/\s+/g,' ').trim();
+}
 function acStockCandidates(selectedBrand){
   const aliases=acBrandAliases(selectedBrand);
-  const fromStock=acStockPool.filter(st=>{
+  const selected=norm(selectedBrand);
+  const sourcePool=selected==='midea'?stocks:acStockPool;
+
+  const fromStock=sourcePool.filter(st=>{
     const n=norm(st.name),code=String(st.code||'').toUpperCase();
-    const selected=norm(selectedBrand);
+
     if(selected==='mdv'){
       const evoSet=['CMDV000122','CMDV000125','CMDV000128','CMDV000131'].includes(code) || (n.includes('mdv')&&n.includes('evo'));
-      if(!evoSet)return false;
-      return Number(st.sell_price_ex_vat)>0;
+      return evoSet && Number(st.sell_price_ex_vat)>0;
     }
+
+    if(selected==='midea'){
+      // Iba rezidenčné nástenné monosplity.
+      // Skryté sú konzolové, kazetové, kanálové, parapetné a podstropné jednotky.
+      return MIDEA_WALL_SINGLE_CODES.has(code) && Number(st.sell_price_ex_vat)>0;
+    }
+
     if(!aliases.some(a=>n.includes(a)))return false;
     if(!(n.includes('klimatiz')||n.includes('split')))return false;
     if(n.includes('tepelne cerpad')||n.includes('m-thermal'))return false;
     if(n.includes('multisplit')||n.includes('vnutorna')||n.includes('vonkajsia'))return false;
-    if(n.includes('kazet')||n.includes('kanalov')||n.includes('potrubn')||n.includes('parapet')||n.includes('podstrop'))return false;
+    if(n.includes('kazet')||n.includes('kanalov')||n.includes('potrubn')||n.includes('parapet')||n.includes('podstrop')||n.includes('konzol'))return false;
     if(!n.includes('split')&&!n.includes('set'))return false;
     return Number(st.sell_price_ex_vat)>0;
   }).map(st=>{
@@ -826,17 +855,21 @@ function acStockCandidates(selectedBrand){
       id:'ac-stock-'+String(st.plu||st.code||st.id).replace(/[^a-zA-Z0-9_-]/g,'-'),
       category:'klimatizacia',
       brand:selectedBrand,
-      model:norm(selectedBrand)==='mdv'?'EVO '+(power?String(power).replace('.',',')+' kW':st.name):st.name,
-      variant:norm(selectedBrand)==='mdv'?'MDV EVO':'',
+      model:selected==='mdv'
+        ? 'EVO '+(power?String(power).replace('.',',')+' kW':cleanAcModelName(st.name,selectedBrand))
+        : cleanAcModelName(st.name,selectedBrand),
+      variant:selected==='mdv'?'MDV EVO':'',
       power_kw:power,
       phase:/400\s*v|3f/i.test(st.name)?'3f':'1f',
       pohoda_code:st.code||null,
       pohoda_plu:st.plu||null,
-      purchase_price_ex_vat:Number(st.purchase_price_ex_vat),
+      purchase_price_ex_vat:st.purchase_price_ex_vat==null?null:Number(st.purchase_price_ex_vat),
       sell_price_ex_vat:Number(st.sell_price_ex_vat),
       active:true,
       source:'pohoda_stock'
-    };  });
+    };
+  });
+
   return mergeAcCandidates(fromStock,acCatalogCandidates(selectedBrand,'single'));
 }
 function acPipeRecipeForPower(power){
@@ -883,6 +916,7 @@ function makeRecommendation(){
  let required=calcRequiredKw();
  let target=category==='heat_pump'?(required?nextStepKw(required):null):required;
  let devices=category==='air_conditioning'?(acMode==='multi'?acMultiOutdoorCandidates(brand,multiCount):acStockCandidates(brand)):deviceCatalog.filter(d=>catalogCategory(d)===category&&d.brand===brand);
+ if(category==='heat_pump'&&brand==='Midea')devices=devices.filter(d=>String(d.id||'').startsWith('midea-nature-'));
  if(category==='boiler')devices=devices.filter(d=>(d.boiler_type||'gas')===boilerType);
  if(category==='air_conditioning'){
    current.ac_mode=acMode;
@@ -1502,11 +1536,15 @@ function renderRecommendation(){
      : category==='air_conditioning'
        ? (current?.ac_mode==='multi'
           ? 'Multisplit '+(current.multisplit_count||2)+'+1: zariadenie sa vyberá z aktuálnej POHODY alebo oficiálneho katalógu výrobcu. Materiál sa počíta orientačne do 5 m ku každej vnútornej jednotke.'
-          : 'Klimatizácie sa načítajú z POHODY; ak karta ešte nie je v POHODE, použije sa aktuálny katalóg výrobcu. Predvolene je zvolená trieda okolo 3,5 kW; nižšie môžeš vybrať inú výkonovú alternatívu.')
+          : (brand==='Midea'
+              ? 'Midea: zobrazujú sa iba nástenné rezidenčné monosplity z POHODY. Kazetové, kanálové, konzolové a podstropno-parapetné jednotky sú skryté.'
+              : 'Klimatizácie sa načítajú z POHODY; ak karta ešte nie je v POHODE, použije sa aktuálny katalóg výrobcu. Predvolene je zvolená trieda okolo 3,5 kW; nižšie môžeš vybrať inú výkonovú alternatívu.'))
        : 'Pre túto kategóriu sa výkon vyberie podľa konkrétneho modelu a priestoru.';
  const recImage=d.image_url?'<div style="width:116px;min-width:116px;height:92px;background:#fff;border:1px solid #d6e4ec;border-radius:10px;padding:5px;display:flex;align-items:center;justify-content:center"><img src="'+esc(d.image_url)+'" alt="" style="max-width:100%;max-height:100%;object-fit:contain"></div>':'';
  document.getElementById('recommendation').innerHTML='<div style="display:flex;gap:12px;align-items:center">'+recImage+'<div class="title" style="flex:1"><div><h3>'+esc(d.brand+' '+d.model)+'</h3><div class="sub">'+esc(d.variant||'')+(current.system_type?' · '+esc(current.system_type):'')+'</div></div><div class="kw">'+(d.power_kw||target||'—')+' kW</div></div></div>';
- let alt=(category==='air_conditioning'?(acMode==='multi'?acMultiOutdoorCandidates(brand,multiCount):acStockCandidates(brand)):deviceCatalog.filter(x=>catalogCategory(x)===category&&x.brand===brand)).filter(x=>x.id!==d.id&& (category!=='boiler'||(x.boiler_type||'gas')===boilerType)).sort((a,b)=>(a.power_kw||999)-(b.power_kw||999)).slice(0,12);
+ let alt=(category==='air_conditioning'?(acMode==='multi'?acMultiOutdoorCandidates(brand,multiCount):acStockCandidates(brand)):deviceCatalog.filter(x=>catalogCategory(x)===category&&x.brand===brand));
+ if(category==='heat_pump'&&brand==='Midea')alt=alt.filter(x=>String(x.id||'').startsWith('midea-nature-'));
+ alt=alt.filter(x=>x.id!==d.id&& (category!=='boiler'||(x.boiler_type||'gas')===boilerType)).sort((a,b)=>(a.power_kw||999)-(b.power_kw||999)).slice(0,12);
  const altDetails=document.getElementById('alternativesDetails');
  const altCount=document.getElementById('alternativesCount');
  const altList=document.getElementById('alternatives');
