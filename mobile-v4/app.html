@@ -19,7 +19,7 @@
 </style>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="js/db.js?v=20260927-mobilecachefix1"></script>
+<script src="js/db.js?v=20260927-pdfbannerinline1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 </head>
 <body>
@@ -2012,7 +2012,7 @@ function offerHtmlPresentation(){
   const bannerHtml=current.pdf_banner_mode==='none'
     ? '<div style="height:22mm;background:linear-gradient(90deg,#eaf4f9,#fff);border-bottom:1px solid #d7e6ef"></div>'
     : '<div style="height:58mm;position:relative;overflow:hidden;background:#eaf4f9">'+
-        (bannerUrl?'<img crossorigin="anonymous" src="'+esc(bannerUrl)+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;filter:saturate(.64) contrast(.96) brightness(1.03)">':'')+
+        (bannerUrl?'<img crossorigin="anonymous" src="'+esc(bannerUrl)+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center">':'')+
         '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,.97) 0%,rgba(255,255,255,.90) 22%,rgba(255,255,255,.42) 50%,rgba(255,255,255,.08) 78%,rgba(255,255,255,.02) 100%)"></div>'+
         '<div style="position:absolute;left:9mm;top:7mm;width:80mm">'+
           '<div style="display:flex;align-items:center;gap:8px">'+
@@ -2108,6 +2108,40 @@ function offerHtml(){
   return current.pdf_template==='technical'?offerHtmlTechnical():offerHtmlPresentation();
 }
 
+async function blobToDataUrl(blob){
+  return await new Promise((resolve,reject)=>{
+    const fr=new FileReader();
+    fr.onload=()=>resolve(fr.result);
+    fr.onerror=()=>reject(fr.error||new Error('FileReader zlyhal'));
+    fr.readAsDataURL(blob);
+  });
+}
+
+async function inlineImagesForPdf(root){
+  const imgs=[...root.querySelectorAll('img')];
+  for(const img of imgs){
+    const src=img.currentSrc||img.src||'';
+    if(!src||src.startsWith('data:')||src.startsWith('blob:'))continue;
+    try{
+      const res=await fetch(src,{cache:'no-store',credentials:'omit'});
+      if(!res.ok)throw new Error('HTTP '+res.status);
+      const blob=await res.blob();
+      const dataUrl=await blobToDataUrl(blob);
+      img.removeAttribute('crossorigin');
+      img.src=dataUrl;
+      await new Promise(resolve=>{
+        if(img.complete&&img.naturalWidth>0){resolve();return}
+        const done=()=>resolve();
+        img.addEventListener('load',done,{once:true});
+        img.addEventListener('error',done,{once:true});
+        setTimeout(done,2500);
+      });
+    }catch(e){
+      console.warn('PDF image inline failed',src,e);
+    }
+  }
+}
+
 async function createPdfFile(){
   if(!window.html2pdf) throw new Error('PDF knižnica sa nenačítala.');
   const holder=document.createElement('div');
@@ -2125,13 +2159,14 @@ async function createPdfFile(){
       img.addEventListener('error',done,{once:true});
       setTimeout(done,5000);
     })));
-    await new Promise(r=>setTimeout(r,120));
+    await inlineImagesForPdf(holder.firstElementChild);
+    await new Promise(r=>setTimeout(r,180));
     const blob=await html2pdf()
       .set({
         margin:0,
         filename:(current.quote_no||'cenova-ponuka')+'.pdf',
         image:{type:'jpeg',quality:0.98},
-        html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
+        html2canvas:{scale:2,useCORS:true,allowTaint:false,backgroundColor:'#ffffff',imageTimeout:8000,logging:false},
         jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
       })
       .from(holder.firstElementChild)
