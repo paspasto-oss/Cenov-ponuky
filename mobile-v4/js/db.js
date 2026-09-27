@@ -274,9 +274,56 @@ window.SpektraDB = (() => {
     return data || [];
   }
 
+  async function nextQuoteNo() {
+    if (!client || !user) throw new Error('Online databáza nie je prihlásená.');
+    const { data, error } = await client.rpc('next_quote_no');
+    if (error) throw error;
+    return data;
+  }
+
+  function workflowState(q) {
+    const safeImages=(q.pdf_images||[]).filter(x=>x?.url && !String(x.url).startsWith('data:')).map(x=>({
+      url:x.url,path:x.path||null,name:x.name||'',source:x.source||''
+    }));
+    return {
+      boiler_type:q.boiler_type||null,
+      ac_mode:q.ac_mode||null,
+      multisplit_count:q.multisplit_count||null,
+      required_kw:q.required_kw??null,
+      target_kw:q.target_kw??null,
+      economy_ready:!!q.economy_ready,
+      pdf_images_enabled:!!q.pdf_images_enabled,
+      pdf_images_user_disabled:!!q.pdf_images_user_disabled,
+      pdf_images:safeImages,
+      server_quote_no:!!q._server_quote_no
+    };
+  }
+
   async function saveQuote(q) {
     if (!client || !user) throw new Error('Online databáza nie je prihlásená.');
-    let customerId = q.remote_customer_id || null;
+
+    let remoteId=q.remote_id||null;
+    let customerId=q.remote_customer_id||null;
+
+    if(!remoteId && q.id){
+      const {data:existing,error:existingError}=await client.from('quotes')
+        .select('id,customer_id,quote_no')
+        .eq('local_id',q.id)
+        .maybeSingle();
+      if(existingError) throw existingError;
+      if(existing){
+        remoteId=existing.id;
+        customerId=existing.customer_id||customerId;
+        q.quote_no=existing.quote_no||q.quote_no;
+        q._server_quote_no=true;
+      }
+    }
+
+    if(!remoteId && !q._server_quote_no){
+      q.quote_no=await nextQuoteNo();
+      q._server_quote_no=true;
+    }
+
     if (!customerId) {
       const { data, error } = await client.from('customers').insert({
         name:q.customer?.name || 'Bez mena',
@@ -288,7 +335,18 @@ window.SpektraDB = (() => {
       }).select('id').single();
       if (error) throw error;
       customerId = data.id;
+    } else {
+      const { error } = await client.from('customers').update({
+        name:q.customer?.name || 'Bez mena',
+        phone:q.customer?.phone || null,
+        email:q.customer?.email || null,
+        address:q.customer?.address || null,
+        notes:q.customer?.note || null,
+        updated_at:new Date().toISOString()
+      }).eq('id',customerId);
+      if(error) throw error;
     }
+
     const quotePayload = {
       local_id:q.id,
       quote_no:q.quote_no,
@@ -302,6 +360,7 @@ window.SpektraDB = (() => {
       device:q.device||{},
       optional_services:q.optional_services||{},
       subsidy:q.subsidy||{},
+      workflow:workflowState(q),
       subtotal_ex_vat:q.net||0,
       vat_pct:q.vat_pct||23,
       total_inc_vat:q.total||0,
@@ -309,16 +368,24 @@ window.SpektraDB = (() => {
       updated_by:user.id,
       updated_at:new Date().toISOString()
     };
-    let remoteId=q.remote_id||null;
+
     if(remoteId){
       const {error}=await client.from('quotes').update(quotePayload).eq('id',remoteId);
       if(error) throw error;
     }else{
       quotePayload.created_by=user.id;
-      const {data,error}=await client.from('quotes').insert(quotePayload).select('id').single();
-      if(error) throw error;
-      remoteId=data.id;
+      let ins=await client.from('quotes').insert(quotePayload).select('id,quote_no,updated_at').single();
+      if(ins.error && (ins.error.code==='23505'||String(ins.error.message||'').toLowerCase().includes('duplicate'))){
+        q.quote_no=await nextQuoteNo();
+        quotePayload.quote_no=q.quote_no;
+        ins=await client.from('quotes').insert(quotePayload).select('id,quote_no,updated_at').single();
+      }
+      if(ins.error) throw ins.error;
+      remoteId=ins.data.id;
+      q.quote_no=ins.data.quote_no||q.quote_no;
+      q._server_quote_no=true;
     }
+
     await client.from('quote_items').delete().eq('quote_id',remoteId);
     if((q.items||[]).length){
       const payload=q.items.map((i,n)=>({
@@ -331,8 +398,13 @@ window.SpektraDB = (() => {
       const {error}=await client.from('quote_items').insert(payload);
       if(error) throw error;
     }
-    return { remote_id:remoteId, remote_customer_id:customerId };
+    return {
+      remote_id:remoteId,
+      remote_customer_id:customerId,
+      quote_no:q.quote_no,
+      server_quote_no:true
+    };
   }
 
-  return { configured, init, signIn, signUp, signOut, isAuthenticated, getUser, getProfile, listStocks, upsertStocks, uploadProductImage, uploadQuoteImage, listQuotes, saveQuote };
+  return { configured, init, signIn, signUp, signOut, isAuthenticated, getUser, getProfile, listStocks, upsertStocks, uploadProductImage, uploadQuoteImage, listQuotes, nextQuoteNo, saveQuote };
 })();
