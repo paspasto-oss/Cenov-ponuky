@@ -295,6 +295,16 @@ window.SpektraDB = (() => {
     return { path, url:data.publicUrl };
   }
 
+  async function listPdfBanners() {
+    if (!client || !user) return [];
+    const { data, error } = await client.from('pdf_banners')
+      .select('banner_key,label,asset_url,sort_order,updated_at')
+      .eq('active',true)
+      .order('sort_order',{ascending:true});
+    if (error) throw error;
+    return data || [];
+  }
+
   async function listQuotes() {
     if (!client || !user) return [];
     const { data, error } = await client.from('quotes')
@@ -439,5 +449,5 @@ window.SpektraDB = (() => {
     };
   }
 
-  return { configured, init, signIn, signUp, signOut, isAuthenticated, getUser, getProfile, listStocks, upsertStocks, uploadProductImage, uploadQuoteImage, listQuotes, nextQuoteNo, saveQuote };
+  return { configured, init, signIn, signUp, signOut, isAuthenticated, getUser, getProfile, listStocks, upsertStocks, uploadProductImage, uploadQuoteImage, listPdfBanners, listQuotes, nextQuoteNo, saveQuote };
 })();
