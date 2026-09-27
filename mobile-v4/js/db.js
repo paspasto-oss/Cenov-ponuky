@@ -384,6 +384,8 @@ window.SpektraDB = (() => {
       pdf_banner_mode:q.pdf_banner_mode||'auto',
       pdf_banner_url:q.pdf_banner_url&&!String(q.pdf_banner_url).startsWith('data:')?q.pdf_banner_url:null,
       pdf_banner_path:q.pdf_banner_path||null,
+      pohoda_offer_exported_at:q.pohoda_offer_exported_at||null,
+      pohoda_offer_export_file:q.pohoda_offer_export_file||null,
       server_quote_no:!!q._server_quote_no
     };
   }
