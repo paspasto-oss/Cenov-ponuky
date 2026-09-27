@@ -19,7 +19,7 @@
 </style>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="js/db.js?v=20260927-quotesync1"></script>
+<script src="js/db.js?v=20260927-pdftemplates1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 </head>
 <body>
@@ -267,6 +267,36 @@
   <section id="step5" class="screen">
     <div class="topline"><button class="btn ghost small" onclick="go('step4')">← Upraviť</button><h1>5. Ponuka zákazníkovi</h1></div>
     <div class="steps"><div class="step on"></div><div class="step on"></div><div class="step on"></div><div class="step on"></div><div class="step on"></div></div>
+    <div class="card">
+      <h2>Vzhľad PDF</h2>
+      <div class="choiceGrid" style="grid-template-columns:1fr 1fr">
+        <button id="pdfTemplatePresentation" class="choice on" onclick="setPdfTemplate('presentation')">
+          <span>▦</span><b>PDF 1 – PREZENTAČNÁ</b>
+          <small style="display:block;margin-top:5px">Banner, fotografie produktov, grafické bloky</small>
+        </button>
+        <button id="pdfTemplateTechnical" class="choice" onclick="setPdfTemplate('technical')">
+          <span>≡</span><b>PDF 2 – TECHNICKÁ</b>
+          <small style="display:block;margin-top:5px">Jednoduchšia cenová ponuka</small>
+        </button>
+      </div>
+      <div id="presentationBannerSettings" style="margin-top:12px">
+        <div class="sub" style="font-weight:800;margin-bottom:6px">Banner PDF 1</div>
+        <div class="choiceGrid" style="grid-template-columns:repeat(3,1fr)">
+          <button id="bannerAutoBtn" class="choice on" onclick="setPdfBannerMode('auto')"><b>AUTOMATICKÝ</b><small style="display:block;margin-top:4px">podľa typu zariadenia</small></button>
+          <button id="bannerCustomBtn" class="choice" onclick="setPdfBannerMode('custom')"><b>VLASTNÝ</b><small style="display:block;margin-top:4px">obrázok zákazky</small></button>
+          <button id="bannerNoneBtn" class="choice" onclick="setPdfBannerMode('none')"><b>BEZ BANNERA</b><small style="display:block;margin-top:4px">čistá hlavička</small></button>
+        </div>
+        <div id="customBannerBox" class="hidden" style="margin-top:10px">
+          <div id="customBannerPreview" class="hidden" style="background:#fff;border:1px solid #9fc6da;border-radius:12px;padding:6px;margin-bottom:8px">
+            <img id="customBannerImg" alt="Vlastný banner" style="width:100%;height:150px;object-fit:cover;border-radius:8px">
+          </div>
+          <label class="btn ghost full" style="display:block;text-align:center">
+            Vybrať vlastný banner
+            <input id="customBannerInput" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="handleCustomBanner(this.files[0])">
+          </label>
+        </div>
+      </div>
+    </div>
     <div id="finalSummary" class="card"></div>
     <div class="sendgrid">
       <button class="btn primary" onclick="printPDF()">PDF / Tlač</button>
@@ -532,7 +562,7 @@ function renderHome(){
 }
 function labelStatus(x){return x==='ready'?'Na schválenie':x==='sent'?'Odoslaná':x==='approved'?'Schválená':'Rozpracovaná'}
 function labelCat(x){return x==='heat_pump'?'Tepelné čerpadlo':x==='air_conditioning'?'Klimatizácia':x==='boiler'?'Kotol':'Iné'}
-function startWizard(){current={id:'q_'+Date.now(),quote_no:'NÁVRH-'+String(Date.now()).slice(-6),_server_quote_no:false,_dirty:true,status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_images_enabled:false,pdf_images_user_disabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;boilerType='gas';acMode='single';multiCount=2;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
+function startWizard(){current={id:'q_'+Date.now(),quote_no:'NÁVRH-'+String(Date.now()).slice(-6),_server_quote_no:false,_dirty:true,status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_template:'presentation',pdf_banner_mode:'auto',pdf_banner_url:null,pdf_banner_path:null,pdf_images_enabled:false,pdf_images_user_disabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;boilerType='gas';acMode='single';multiCount=2;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
 function nextBuilding(){let name=s(document.getElementById('cName').value),phone=s(document.getElementById('cPhone').value),addr=s(document.getElementById('cAddress').value);if(!name||!phone||!addr){alert('Vyplň meno, telefón a adresu realizácie.');return}current.customer={name,phone,email:s(document.getElementById('cEmail').value),address:addr,note:s(document.getElementById('cNote').value)};go('step2')}
 function toggleLoss(){let known=document.getElementById('hasLoss').value==='yes';document.getElementById('lossKnown').classList.toggle('hidden',!known);document.getElementById('lossEstimate').classList.toggle('hidden',known)}
 function nextCategory(){let known=document.getElementById('hasLoss').value==='yes',loss=+document.getElementById('heatLoss').value||0,area=+document.getElementById('area').value||0;if(known&&loss<=0){alert('Zadaj tepelnú stratu.');return}if(!known&&area<=0){alert('Zadaj vykurovanú plochu.');return}current.building={known_loss:known,heat_loss_kw:known?loss:null,area_m2:known?null:area,w_per_m2:+document.getElementById('buildingClass').value,heating:document.getElementById('heating').value,with_external_dhw_tank:document.getElementById('dhwMode').value==='external'};renderChoices();go('step3')}
@@ -1461,7 +1491,91 @@ async function finishQuote(){
  if(current.installation_tier==='economy'&&!current.economy_ready){alert('Montáž EKONOM je možné použiť iba po potvrdení všetkých prípravných podmienok zákazníka.');return}
  current.status='ready';await upsertCurrent();renderFinal();go('step5')
 }
+function ensurePdfTemplateState(){
+  if(!current)return;
+  if(!current.pdf_template)current.pdf_template='presentation';
+  if(!current.pdf_banner_mode)current.pdf_banner_mode='auto';
+  if(current.pdf_banner_url===undefined)current.pdf_banner_url=null;
+  if(current.pdf_banner_path===undefined)current.pdf_banner_path=null;
+}
+function setPdfTemplate(v){
+  ensurePdfTemplateState();
+  current.pdf_template=v==='technical'?'technical':'presentation';
+  syncPdfTemplateUI();
+  upsertCurrent();
+}
+function setPdfBannerMode(v){
+  ensurePdfTemplateState();
+  current.pdf_banner_mode=['auto','custom','none'].includes(v)?v:'auto';
+  syncPdfTemplateUI();
+  upsertCurrent();
+}
+function syncPdfTemplateUI(){
+  if(!current)return;
+  ensurePdfTemplateState();
+  const presentation=current.pdf_template!=='technical';
+  const p=document.getElementById('pdfTemplatePresentation'),t=document.getElementById('pdfTemplateTechnical');
+  if(p)p.classList.toggle('on',presentation);
+  if(t)t.classList.toggle('on',!presentation);
+  const settings=document.getElementById('presentationBannerSettings');
+  if(settings)settings.classList.toggle('hidden',!presentation);
+  [['auto','bannerAutoBtn'],['custom','bannerCustomBtn'],['none','bannerNoneBtn']].forEach(([v,id])=>{
+    const el=document.getElementById(id);if(el)el.classList.toggle('on',current.pdf_banner_mode===v);
+  });
+  const custom=document.getElementById('customBannerBox');
+  if(custom)custom.classList.toggle('hidden',current.pdf_banner_mode!=='custom');
+  const prev=document.getElementById('customBannerPreview'),img=document.getElementById('customBannerImg');
+  if(prev)prev.classList.toggle('hidden',!current.pdf_banner_url);
+  if(img&&current.pdf_banner_url)img.src=current.pdf_banner_url;
+}
+async function handleCustomBanner(file){
+  if(!file||!current)return;
+  ensurePdfTemplateState();
+  try{
+    const compressed=await compressQuoteImage(file);
+    let url='',path='';
+    if(window.SpektraDB?.isAuthenticated()){
+      const uploaded=await SpektraDB.uploadQuoteImage(compressed,'banner_'+(current.quote_no||current.id));
+      url=uploaded.url;path=uploaded.path;
+    }else{
+      url=await fileToDataUrl(compressed);
+    }
+    current.pdf_banner_mode='custom';
+    current.pdf_banner_url=url;
+    current.pdf_banner_path=path||null;
+    syncPdfTemplateUI();
+    await upsertCurrent();
+  }catch(e){
+    console.error(e);
+    alert('Banner sa nepodarilo uložiť: '+e.message);
+  }finally{
+    const input=document.getElementById('customBannerInput');if(input)input.value='';
+  }
+}
+function getPdfBannerType(){
+  if(current.category==='heat_pump')return 'heatpump';
+  if(current.category==='air_conditioning')return 'airconditioning';
+  if(current.category==='boiler'&&current.boiler_type==='gas')return 'gas_boiler';
+  if(current.category==='boiler'&&['pellet','biomass'].includes(current.boiler_type))return 'biomass';
+  return 'generic';
+}
+function getPdfBannerUrl(){
+  ensurePdfTemplateState();
+  if(current.pdf_banner_mode==='none')return null;
+  if(current.pdf_banner_mode==='custom'&&current.pdf_banner_url)return current.pdf_banner_url;
+  // Heat-pump photo is already approved. Other category photos will be added to assets/pdf-banners later.
+  if(getPdfBannerType()==='heatpump')return 'assets/pdf-images/tepelne-cerpadla-banner.jpg';
+  return current.device?.image_url||null;
+}
+function pdfPresentationSubtitle(){
+  const type=getPdfBannerType();
+  return type==='heatpump'?'Kompletné riešenie vykurovania pre váš domov':
+    type==='airconditioning'?'Komfortné chladenie a vykurovanie pre váš domov':
+    type==='gas_boiler'?'Moderné a spoľahlivé vykurovanie domácnosti':
+    type==='biomass'?'Efektívne vykurovanie biomasou':'Riešenie navrhnuté pre váš domov';
+}
 function renderFinal(){
+ syncPdfTemplateUI();
  const install=current.items.find(i=>i.role==='installation_service'||i.role==='installation');
  const flush=current.items.find(i=>i.role==='heating_system_flush_cleaner_inhibitor');
  const scope=install?.work_scope?.length?'<div style="margin-top:12px"><b>Montáž zahŕňa:</b><ul style="margin:7px 0 0 18px;padding:0">'+install.work_scope.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>':'';
@@ -1488,7 +1602,7 @@ function renderFinal(){
      : (install?.price!=null?eur(install.price):'podľa cenníka')
  )+'</b></div>'+optional+annual+subsidyHtml+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+ (current.price_complete?eur(current.total):'Cena ešte nie je kompletná') +'</span></div>'
 }
-function openQuote(id){let q=quotes.find(x=>x.id===id);if(!q)return;current=JSON.parse(JSON.stringify(q));ensurePdfImagesState();ensureSubsidyState();if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false};if(current.optional_services.annual_service===undefined)current.optional_services.annual_service=true;if(current.optional_services.condensate_pump===undefined)current.optional_services.condensate_pump=false;if(current.optional_services.dhw_tank_fe120===undefined)current.optional_services.dhw_tank_fe120=false;if(!current.installation_tier)current.installation_tier='standard';category=current.category||'heat_pump';brand=current.brand||'';boilerType=current.boiler_type||'gas';acMode=current.ac_mode||'single';multiCount=current.multisplit_count||2;recommendation=current.device||null;document.getElementById('cName').value=current.customer.name||'';document.getElementById('cPhone').value=current.customer.phone||'';document.getElementById('cEmail').value=current.customer.email||'';document.getElementById('cAddress').value=current.customer.address||'';document.getElementById('cNote').value=current.customer.note||'';refreshQuoteFromCatalog();renderFinal();go('step4')}
+function openQuote(id){let q=quotes.find(x=>x.id===id);if(!q)return;current=JSON.parse(JSON.stringify(q));if(!current.pdf_template)current.pdf_template='presentation';if(!current.pdf_banner_mode)current.pdf_banner_mode='auto';ensurePdfImagesState();ensureSubsidyState();if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false};if(current.optional_services.annual_service===undefined)current.optional_services.annual_service=true;if(current.optional_services.condensate_pump===undefined)current.optional_services.condensate_pump=false;if(current.optional_services.dhw_tank_fe120===undefined)current.optional_services.dhw_tank_fe120=false;if(!current.installation_tier)current.installation_tier='standard';category=current.category||'heat_pump';brand=current.brand||'';boilerType=current.boiler_type||'gas';acMode=current.ac_mode||'single';multiCount=current.multisplit_count||2;recommendation=current.device||null;document.getElementById('cName').value=current.customer.name||'';document.getElementById('cPhone').value=current.customer.phone||'';document.getElementById('cEmail').value=current.customer.email||'';document.getElementById('cAddress').value=current.customer.address||'';document.getElementById('cNote').value=current.customer.note||'';refreshQuoteFromCatalog();renderFinal();go('step4')}
 async function approveQuote(){
   if(!current)return;
   current.status='approved';await upsertCurrent();renderFinal();
@@ -1508,7 +1622,7 @@ function shareWA(){
   markSent()
 }
 
-function offerHtml(){
+function offerHtmlTechnical(){
   const issueDate=new Date();
   const validDate=new Date(issueDate.getTime()+14*24*60*60*1000);
   const issue=issueDate.toLocaleDateString('sk-SK');
@@ -1727,6 +1841,152 @@ function offerHtml(){
       '<div style="text-align:right">spektrainstall.sk · spektrashop.sk</div>'+
     '</div>'+
   '</div>';
+}
+
+
+function offerHtmlPresentation(){
+  ensurePdfTemplateState();
+  const issueDate=new Date();
+  const validDate=new Date(issueDate.getTime()+14*24*60*60*1000);
+  const issue=issueDate.toLocaleDateString('sk-SK');
+  const valid=validDate.toLocaleDateString('sk-SK');
+  const net=Number(current.net||0),vat=Number(current.vat||0),total=Number(current.total||0),vatPct=Number(current.vat_pct||23);
+
+  const deviceItem=current.items.find(i=>i.role==='device');
+  const installationItem=current.items.find(i=>i.role==='installation_service'||i.role==='installation');
+  const otherVisible=current.items.filter(i=>i.visible&&i!==deviceItem&&i!==installationItem);
+  const materialItems=current.items.filter(i=>i!==deviceItem&&i!==installationItem&&!i.visible&&i.role!=='heating_system_flush_cleaner_inhibitor');
+  const materialTotal=materialItems.reduce((sum,i)=>sum+(Number(i.price||0)*Number(i.qty||0)),0);
+  const rows=[];
+  if(deviceItem)rows.push(deviceItem);
+  if(materialItems.length)rows.push({
+    role:'customer_material_bundle',
+    name:current.category==='air_conditioning'&&current.ac_mode==='multi'?'Inštalačný materiál multisplit – do 5 m / vnútornú jednotku':'Inštalačný materiál a príslušenstvo do 5 m',
+    qty:1,unit:'súb.',price:materialTotal
+  });
+  if(installationItem)rows.push(installationItem);
+  rows.push(...otherVisible);
+
+  const rowHtml=rows.map(i=>{
+    const unit=Number(i.price||0),amount=unit*Number(i.qty||0),gross=amount*(1+vatPct/100);
+    let imageUrl='';
+    if(current.pdf_images_enabled){
+      const urls=stockImageUrls(i.pohoda);
+      if(urls.length)imageUrl=urls[0];
+      else if(i===deviceItem)imageUrl=current.device?.image_url||'';
+    }
+    let desc='';
+    if(i===deviceItem)desc=[current.device?.variant||'',i.pohoda?.code?('Kód: '+i.pohoda.code):''].filter(Boolean).join(' · ');
+    else if(i.role==='customer_material_bundle')desc='Kompletný inštalačný materiál podľa rozsahu uvedeného v ponuke.';
+    else if(i===installationItem)desc='Montáž, pripojenie a uvedenie zariadenia do prevádzky.';
+    else desc=i.note||i.customer_group||'';
+    return '<tr style="page-break-inside:avoid">'+
+      '<td style="padding:7px;border-bottom:1px solid #dbe6ee;vertical-align:middle">'+
+        '<div style="display:flex;gap:8px;align-items:center">'+
+          (imageUrl?'<div style="width:25mm;height:21mm;display:flex;align-items:center;justify-content:center;flex:0 0 auto"><img crossorigin="anonymous" src="'+esc(imageUrl)+'" style="max-width:100%;max-height:100%;object-fit:contain"></div>':'')+
+          '<div><div style="font-weight:800;font-size:9.2px;line-height:1.2">'+esc(i.name)+'</div>'+
+          (desc?'<div style="font-size:7.7px;color:#637282;margin-top:3px;line-height:1.3">'+esc(desc)+'</div>':'')+'</div>'+
+        '</div>'+
+      '</td>'+
+      '<td style="padding:7px 4px;border-bottom:1px solid #dbe6ee;text-align:center;font-weight:700">'+i.qty+' '+esc(i.unit)+'</td>'+
+      '<td style="padding:7px 4px;border-bottom:1px solid #dbe6ee;text-align:right">'+eur(amount)+'</td>'+
+      '<td style="padding:7px 6px;border-bottom:1px solid #dbe6ee;text-align:right;font-weight:800">'+eur(gross)+'</td>'+
+    '</tr>';
+  }).join('');
+
+  const materialParts=[];
+  if(current.system_type==='monoblock'){
+    materialParts.push('hydraulické armatúry, filtre a odlučovače','obehové čerpadlo, expanzná nádoba a poistné prvky','Cu potrubie 28 mm + izolácia do 5 m','elektro materiál, istenie a rozvodnica');
+  }else if(current.system_type==='split'){
+    materialParts.push('hydraulické armatúry, filtre a odlučovače','chladivové potrubie + izolácia do 5 m','odvod kondenzátu','elektro materiál a istenie');
+  }else if(current.category==='boiler'&&current.boiler_type==='gas'){
+    materialParts.push('odvod spalín a komínové príslušenstvo','magnetický filter a uzatváracie armatúry','MERABELL pripojenie','Wi-Fi termostat E20i-W');
+  }else if(current.category==='boiler'){
+    materialParts.push('kotlová ochranná zostava','čerpadlová skupina','Wi-Fi termostat E20i-W','uhlíková oceľ SANHA THERM 28 mm');
+  }else if(current.category==='air_conditioning'){
+    materialParts.push('chladivové potrubie','komunikačný a napájací kábel','odvod kondenzátu','PVC lišta a montážne príslušenstvo');
+  }
+  if(current.building?.with_external_dhw_tank)materialParts.push('TÚV armatúry a príslušenstvo');
+
+  const work=(installationItem?.work_scope||[]).slice(0,7);
+  const annual=current.category==='heat_pump'
+    ? 'Ročná servisná prehliadka tepelného čerpadla: 150 € s DPH / rok.'
+    : current.category==='boiler'&&current.boiler_type==='gas'
+      ? 'Ročný servis plynového kotla: 90 € bez DPH / 110,70 € s DPH.'
+      : current.category==='boiler'
+        ? 'Ročný servis kotla na biomasu podľa rozsahu.'
+        : 'Pravidelný servis podľa typu zariadenia a podmienok výrobcu.';
+
+  const sub=calculateSubsidy();
+  const subsidyBox=sub.program==='green'
+    ? '<div style="font-weight:800;color:#00539B;font-size:12px">Zelená domácnostiam</div><div style="font-size:8.5px;margin-top:4px">Orientačná hodnota podpory: <b>'+eur(sub.estimated_amount)+'</b>. Konkrétna výška závisí od podmienok programu.</div>'
+    : sub.program==='obnov'
+      ? '<div style="font-weight:800;color:#00539B;font-size:12px">Obnov dom mini+</div><div style="font-size:8.5px;margin-top:4px">Možnosť príspevku na obnovu rodinného domu až <b>11 000 €</b>. Konkrétna výška závisí od podmienok výzvy.</div>'
+      : '<div style="font-weight:800;color:#00539B;font-size:12px">Individuálne riešenie</div><div style="font-size:8.5px;margin-top:4px">Ponuka je pripravená podľa zvoleného zariadenia a rozsahu montáže.</div>';
+
+  const bannerUrl=getPdfBannerUrl();
+  const bannerType=getPdfBannerType();
+  const categoryLabel=bannerType==='heatpump'?'Tepelné čerpadlá':bannerType==='airconditioning'?'Klimatizácie':bannerType==='gas_boiler'?'Plynové kotly':bannerType==='biomass'?'Kotly na biomasu':'Spektra Install';
+  const bannerHtml=current.pdf_banner_mode==='none'
+    ? '<div style="height:18mm;background:linear-gradient(90deg,#eff8fc,#fff);border-bottom:1px solid #d7e6ef"></div>'
+    : '<div style="height:52mm;position:relative;overflow:hidden;background:linear-gradient(110deg,#e8f4fa 0%,#f7fbfd 50%,#dfeef6 100%)">'+
+        (bannerUrl?'<img crossorigin="anonymous" src="'+esc(bannerUrl)+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:saturate(.72) contrast(.95) brightness(1.03)">':'')+
+        '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,.96) 0%,rgba(255,255,255,.72) 36%,rgba(255,255,255,.12) 72%,rgba(255,255,255,.05) 100%)"></div>'+
+        '<div style="position:absolute;left:10mm;top:9mm;width:82mm">'+
+          '<div style="display:flex;align-items:center;gap:8px"><div style="width:24px;height:24px;border:4px solid #c20000;border-right-color:transparent;border-radius:50%"></div><div style="font-size:17px;font-weight:900;line-height:.9">SPEKTRA<br><span style="font-weight:500">INSTALL</span></div></div>'+
+          '<div style="font-size:19px;line-height:1.05;color:#173247;margin-top:12px">Riešenie na mieru<br><b>pre váš komfort</b></div>'+
+          '<div style="font-size:9px;color:#516a7b;margin-top:5px">'+esc(categoryLabel)+' · úsporné · spoľahlivé · overené</div>'+
+          '<div style="width:30mm;height:2px;background:#c20000;margin-top:7px"></div>'+
+        '</div>'+
+      '</div>';
+
+  return '<div style="width:210mm;min-height:297mm;font-family:Arial,sans-serif;color:#173247;background:#fff;font-size:9px;position:relative">'+
+    bannerHtml+
+    '<div style="padding:6mm 8mm 8mm">'+
+      '<div style="display:grid;grid-template-columns:1fr 1.6fr .9fr;gap:10mm;align-items:start;margin-bottom:6mm">'+
+        '<div><div style="font-size:7.5px;font-weight:800;color:#596d7c">PRE:</div><div style="font-size:11px;font-weight:800;margin-top:2px">'+esc(current.customer?.name||'')+'</div><div style="font-size:8.5px;margin-top:2px">'+esc(current.customer?.address||'')+'<br>'+esc(current.customer?.phone||'')+'<br>'+esc(current.customer?.email||'')+'</div></div>'+
+        '<div style="text-align:center;border-left:1px solid #d8e3eb;border-right:1px solid #d8e3eb;padding:0 8px"><div style="font-size:27px;color:#00539B;font-weight:900;line-height:1">Cenová ponuka</div><div style="font-size:11px;margin-top:5px">'+esc(pdfPresentationSubtitle())+'</div></div>'+
+        '<div style="font-size:8.5px;line-height:1.7"><div style="display:flex;justify-content:space-between"><span>Číslo ponuky:</span><b>'+esc(current.quote_no||'')+'</b></div><div style="display:flex;justify-content:space-between"><span>Dátum:</span><b>'+issue+'</b></div><div style="display:flex;justify-content:space-between"><span>Platnosť:</span><b>'+valid+'</b></div></div>'+
+      '</div>'+
+
+      '<table style="width:100%;border-collapse:separate;border-spacing:0;border:1px solid #d5e2ea;border-radius:7px;overflow:hidden">'+
+        '<thead><tr style="background:#00539B;color:#fff">'+
+          '<th style="text-align:left;padding:7px;width:auto">Názov položky</th>'+
+          '<th style="text-align:center;padding:7px;width:22mm">Množstvo</th>'+
+          '<th style="text-align:right;padding:7px;width:28mm">Cena bez DPH</th>'+
+          '<th style="text-align:right;padding:7px;width:29mm">Celkom s DPH</th>'+
+        '</tr></thead><tbody>'+rowHtml+'</tbody>'+
+      '</table>'+
+
+      '<div style="display:grid;grid-template-columns:1.15fr .85fr;gap:4mm;margin-top:4mm">'+
+        '<div style="background:#f7fafc;border:1px solid #dbe6ee;border-radius:7px;padding:4mm">'+subsidyBox+'</div>'+
+        '<div style="background:#eaf4f9;border:1px solid #b9d9eb;border-radius:7px;padding:4mm">'+
+          '<div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>Základ dane:</span><b>'+eur(net)+'</b></div>'+
+          '<div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>DPH '+vatPct+' %:</span><b>'+eur(vat)+'</b></div>'+
+          '<div style="border-top:1px solid #78a6c4;padding-top:5px;display:flex;justify-content:space-between;align-items:end;color:#00539B"><span style="font-size:14px;font-weight:900">SPOLU:</span><b style="font-size:18px">'+(current.price_complete?eur(total):'—')+'</b></div>'+
+        '</div>'+
+      '</div>'+
+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5mm;margin-top:5mm;padding-top:4mm;border-top:1px solid #dbe3e9">'+
+        '<div><div style="font-size:11px;color:#00539B;font-weight:900;margin-bottom:5px">◆ Rozsah materiálu</div><div style="font-size:8px;line-height:1.5">'+materialParts.slice(0,6).map(x=>'✓ '+esc(x)).join('<br>')+'</div></div>'+
+        '<div style="border-left:1px solid #dbe3e9;padding-left:5mm"><div style="font-size:11px;color:#00539B;font-weight:900;margin-bottom:5px">⚙ Rozsah montáže</div><div style="font-size:8px;line-height:1.5">'+(work.length?work.map(x=>'✓ '+esc(x)).join('<br>'):'✓ Montáž a uvedenie zariadenia do prevádzky')+'</div></div>'+
+        '<div style="border-left:1px solid #dbe3e9;padding-left:5mm"><div style="font-size:11px;color:#00539B;font-weight:900;margin-bottom:5px">◆ Servis a záruka</div><div style="font-size:8px;line-height:1.5">✓ '+esc(annual)+'<br>✓ Záruka podľa podmienok výrobcu<br>✓ Profesionálny servis Spektra Install</div></div>'+
+      '</div>'+
+
+      (current.customer?.note?'<div style="margin-top:4mm;padding:3mm;background:#f8fafb;border-left:2px solid #c20000;font-size:8px">'+esc(current.customer.note)+'</div>':'')+
+
+      '<div style="margin-top:6mm;padding-top:3mm;border-top:1px solid #cfdbe3;display:flex;justify-content:space-between;align-items:flex-end;color:#516474;font-size:7.5px">'+
+        '<div><b style="color:#173247">Spektra Install s.r.o.</b><br>Hollého 210, 015 01 Rajec</div>'+
+        '<div style="text-align:center">spektrainstall.sk · spektrashop.sk</div>'+
+        '<div style="text-align:right;color:#00539B;font-style:italic;font-size:9px">Spoľahlivé riešenia<br>pre váš domov</div>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
+function offerHtml(){
+  ensurePdfTemplateState();
+  return current.pdf_template==='technical'?offerHtmlTechnical():offerHtmlPresentation();
 }
 
 async function createPdfFile(){
