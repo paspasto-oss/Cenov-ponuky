@@ -19,7 +19,7 @@
 </style>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="js/db.js?v=20260927-pdfnogreen1"></script>
+<script src="js/db.js?v=20260927-pdfbanners2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 </head>
 <body>
@@ -323,6 +323,7 @@ let stocks=[];
 let deviceCatalog=[];
 let bundleRecipes=[];
 let current=null, category='heat_pump', brand='', recommendation=null, boilerType='gas', acMode='single', multiCount=2;
+let pdfBannerCatalog={};
 let stockByCodeMap=new Map(),stockByPluMap=new Map(),stockByNameMap=new Map(),acStockPool=[];
 function stockChoiceScore(st){
   return (Number(st?.purchase_price_ex_vat)>0?1000000000:0)
@@ -429,6 +430,15 @@ async function loadConfig(){
     console.error('DB load failed',e);
   }
   rebuildStockIndexes();
+  if(window.SpektraDB?.isAuthenticated()){
+    try{
+      const banners=await SpektraDB.listPdfBanners();
+      pdfBannerCatalog=Object.fromEntries((banners||[]).map(x=>[x.banner_key,x.asset_url]));
+    }catch(e){
+      console.warn('PDF banner catalog load failed',e);
+      pdfBannerCatalog={};
+    }
+  }
   try{
     const r=await fetch('data/device-catalog.json?v=20260926-mdvevo1',{cache:'no-store'});
     if(!r.ok) throw new Error('device-catalog '+r.status);
@@ -458,6 +468,10 @@ async function mainLogin(){
       const online=await SpektraDB.listStocks();
       if(online.length){stocks=online;rebuildStockIndexes();if(!window.SPEKTRA_STOCKS_FROM_CACHE)await SpektraStockDB.replaceAll(online.map(x=>({...x,suppliers:x.supplier_name?[x.supplier_name]:[]})));document.getElementById('catalogState').textContent='Katalóg POHODA: '+stocks.length.toLocaleString('sk-SK')+' zásob';}
     }catch(e){console.error(e)}
+    try{
+      const banners=await SpektraDB.listPdfBanners();
+      pdfBannerCatalog=Object.fromEntries((banners||[]).map(x=>[x.banner_key,x.asset_url]));
+    }catch(e){console.warn('PDF banner catalog load failed',e)}
     await syncQuotes(true,true);
   }catch(e){msg.textContent='Chyba: '+e.message}
 }
@@ -1569,9 +1583,14 @@ function getPdfBannerUrl(){
   ensurePdfTemplateState();
   if(current.pdf_banner_mode==='none')return null;
   if(current.pdf_banner_mode==='custom'&&current.pdf_banner_url)return absolutePdfUrl(current.pdf_banner_url);
-  // Heat-pump photo is already approved. Other category photos will be added after visual approval.
-  if(getPdfBannerType()==='heatpump')return absolutePdfUrl('assets/pdf-images/tepelne-cerpadla-banner.jpg');
-  return absolutePdfUrl(current.device?.image_url||null);
+  const type=getPdfBannerType();
+  const fallback={
+    heatpump:'assets/pdf-banners/heatpump.jpg',
+    airconditioning:'assets/pdf-banners/airconditioning.jpg',
+    gas_boiler:'assets/pdf-banners/gas-boiler.jpg',
+    biomass:'assets/pdf-banners/biomass.jpg'
+  };
+  return absolutePdfUrl(pdfBannerCatalog[type]||fallback[type]||current.device?.image_url||null);
 }
 function pdfPresentationSubtitle(){
   const type=getPdfBannerType();
@@ -1992,8 +2011,8 @@ function offerHtmlPresentation(){
 
   const bannerHtml=current.pdf_banner_mode==='none'
     ? '<div style="height:22mm;background:linear-gradient(90deg,#eaf4f9,#fff);border-bottom:1px solid #d7e6ef"></div>'
-    : '<div style="height:55mm;position:relative;overflow:hidden;background:#eaf4f9">'+
-        (bannerUrl?'<img crossorigin="anonymous" src="'+esc(bannerUrl)+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;filter:saturate(.58) contrast(.94) brightness(1.04)">':'')+
+    : '<div style="height:58mm;position:relative;overflow:hidden;background:#eaf4f9">'+
+        (bannerUrl?'<img crossorigin="anonymous" src="'+esc(bannerUrl)+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;filter:saturate(.64) contrast(.96) brightness(1.03)">':'')+
         '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,.97) 0%,rgba(255,255,255,.90) 22%,rgba(255,255,255,.42) 50%,rgba(255,255,255,.08) 78%,rgba(255,255,255,.02) 100%)"></div>'+
         '<div style="position:absolute;left:9mm;top:7mm;width:80mm">'+
           '<div style="display:flex;align-items:center;gap:8px">'+
@@ -2006,7 +2025,7 @@ function offerHtmlPresentation(){
         '</div>'+
       '</div>';
 
-  const benefits='<div style="height:12mm;display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border-bottom:1px solid #dbe6ee">'+
+  const benefits='<div style="height:13mm;display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border-bottom:1px solid #dbe6ee">'+
     '<div style="display:flex;align-items:center;justify-content:center;gap:5px;border-right:1px solid #e2e9ee"><span style="color:#c20000;font-weight:900;font-size:14px">↓</span><span style="font-size:7.8px;font-weight:700">Nižšie náklady<br>na energie</span></div>'+
     '<div style="display:flex;align-items:center;justify-content:center;gap:5px;border-right:1px solid #e2e9ee"><span style="color:#c20000;font-weight:900;font-size:14px">✓</span><span style="font-size:7.8px;font-weight:700">Spoľahlivé<br>riešenie</span></div>'+
     '<div style="display:flex;align-items:center;justify-content:center;gap:5px;border-right:1px solid #e2e9ee"><span style="color:#c20000;font-weight:900;font-size:14px">⚙</span><span style="font-size:7.8px;font-weight:700">Profesionálna<br>montáž</span></div>'+
@@ -2016,7 +2035,7 @@ function offerHtmlPresentation(){
   return '<div style="width:210mm;min-height:297mm;font-family:Arial,sans-serif;color:#173247;background:#fff;font-size:9px;position:relative;overflow:hidden">'+
     bannerHtml+
     benefits+
-    '<div style="padding:5mm 7mm 5mm">'+
+    '<div style="padding:5mm 7mm 4mm">'+
       '<div style="display:grid;grid-template-columns:1fr 1.45fr .88fr;gap:7mm;align-items:center;margin-bottom:5mm">'+
         '<div>'+
           '<div style="font-size:7.2px;font-weight:900;color:#596d7c">PRE:</div>'+
@@ -2024,8 +2043,8 @@ function offerHtmlPresentation(){
           '<div style="font-size:8.1px;margin-top:2px;line-height:1.35">'+esc(current.customer?.address||'')+'<br>'+esc(current.customer?.phone||'')+(current.customer?.email?'<br>'+esc(current.customer.email):'')+'</div>'+
         '</div>'+
         '<div style="text-align:center;border-left:1px solid #d8e3eb;border-right:1px solid #d8e3eb;padding:1mm 6px">'+
-          '<div style="font-size:27px;color:#00539B;font-weight:900;line-height:1">Cenová ponuka</div>'+
-          '<div style="font-size:10.5px;margin-top:4px;color:#173247">'+esc(pdfPresentationSubtitle())+'</div>'+
+          '<div style="font-size:29px;color:#00539B;font-weight:900;line-height:1">Cenová ponuka</div>'+
+          '<div style="font-size:11px;margin-top:4px;color:#173247">'+esc(pdfPresentationSubtitle())+'</div>'+
         '</div>'+
         '<div style="font-size:8px;line-height:1.75">'+
           '<div style="display:flex;justify-content:space-between;gap:8px"><span>Číslo:</span><b>'+esc(current.quote_no||'')+'</b></div>'+
@@ -2058,7 +2077,7 @@ function offerHtmlPresentation(){
 
       '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4mm;margin-top:4mm;padding-top:4mm;border-top:1px solid #dbe3e9">'+
         '<div style="padding-right:2mm">'+
-          '<div style="display:flex;align-items:center;gap:5px;font-size:10.7px;color:#00539B;font-weight:900;margin-bottom:5px"><span style="color:#c20000;font-size:14px">◇</span>Rozsah materiálu</div>'+
+          '<div style="display:flex;align-items:center;gap:5px;font-size:11.3px;color:#00539B;font-weight:900;margin-bottom:5px"><span style="color:#c20000;font-size:14px">◇</span>Rozsah materiálu</div>'+
           '<div style="font-size:7.8px;line-height:1.5">'+materialParts.slice(0,6).map(x=>'✓ '+esc(x)).join('<br>')+'</div>'+
         '</div>'+
         '<div style="border-left:1px solid #dbe3e9;padding-left:4mm;padding-right:2mm">'+
