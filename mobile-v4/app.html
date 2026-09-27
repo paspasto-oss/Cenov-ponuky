@@ -19,7 +19,7 @@
 </style>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="js/db.js?v=20260927-pdflinks1"></script>
+<script src="js/db.js?v=20260927-pohodaoffer1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
@@ -305,6 +305,7 @@
       <button class="btn green" onclick="sharePdf()">Zdieľať PDF</button>
       <button class="btn" onclick="shareWA()">WhatsApp</button>
       <button class="btn" onclick="shareEmail()">E-mail s PDF</button>
+      <button class="btn" onclick="downloadPohodaIssuedOfferXml()">POHODA XML – Vydaná ponuka</button>
       <button class="btn green" onclick="approveQuote()">✓ Schváliť ponuku</button>
     </div>
     <div class="notice" style="margin-top:10px">Ponuka je uložená a dá sa znovu otvoriť z úvodnej obrazovky. Po pripojení spoločnej databázy bude rovnaká ponuka dostupná Martine aj technikom na všetkých zariadeniach.</div>
@@ -2353,6 +2354,154 @@ async function printPDF(){
     console.error(e);
     if(previewWindow)previewWindow.close();
     alert('PDF sa nepodarilo vytvoriť: '+e.message);
+  }
+}
+
+const POHODA_COMPANY_ICO='53690036';
+
+function xmlEsc(v){
+  return String(v==null?'':v)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&apos;');
+}
+
+function pohodaXmlDate(ts){
+  const d=ts?new Date(ts):new Date();
+  if(Number.isNaN(d.getTime()))return new Date().toISOString().slice(0,10);
+  return [
+    d.getFullYear(),
+    String(d.getMonth()+1).padStart(2,'0'),
+    String(d.getDate()).padStart(2,'0')
+  ].join('-');
+}
+
+function isPohodaTextServiceItem(i){
+  return [
+    'installation_service',
+    'installation',
+    'heating_system_flush_cleaner_inhibitor'
+  ].includes(i?.role);
+}
+
+function validatePohodaOfferItems(){
+  const problems=[];
+  const rows=(current?.items||[]).filter(i=>Number(i.qty||0)>0 && i.price!=null);
+  if(!rows.length)problems.push('Ponuka nemá žiadne exportovateľné položky.');
+
+  rows.forEach((i,index)=>{
+    const code=i.pohoda?.code||i.pohoda_code||null;
+    if(!i.name)problems.push('Riadok '+(index+1)+': chýba názov.');
+    if(!(Number(i.qty)>0))problems.push('Riadok '+(index+1)+': neplatné množstvo.');
+    if(i.price==null||!Number.isFinite(Number(i.price)))problems.push('Riadok '+(index+1)+': chýba cena.');
+
+    // Službu bez skladovej karty je možné vložiť ako textový riadok.
+    // Zariadenie a materiál však musia smerovať na existujúci POHODA kód.
+    if(!code && !isPohodaTextServiceItem(i)){
+      problems.push('Riadok '+(index+1)+' „'+customerText(i.name)+'“ nemá POHODA kód.');
+    }
+  });
+  return {rows,problems};
+}
+
+function createPohodaIssuedOfferXml(){
+  if(!current)throw new Error('Nie je otvorená cenová ponuka.');
+  const {rows,problems}=validatePohodaOfferItems();
+  if(problems.length){
+    throw new Error(
+      'Export do POHODY je zablokovaný:\n\n'+
+      problems.slice(0,15).map(x=>'• '+x).join('\n')+
+      (problems.length>15?'\n• … ďalšie chyby: '+(problems.length-15):'')
+    );
+  }
+
+  const customer=current.customer||{};
+  const quoteNo=String(current.quote_no||current.id||'PONUKA');
+  const itemXml=rows.map((i,index)=>{
+    const code=i.pohoda?.code||i.pohoda_code||null;
+    const text=customerText(i.name||('Položka '+(index+1)));
+    const qty=Number(i.qty||1);
+    const price=Number(i.price||0);
+
+    return [
+      '      <ofr:offerItem>',
+      '        <ofr:text>'+xmlEsc(text)+'</ofr:text>',
+      '        <ofr:quantity>'+qty.toFixed(3).replace(/\.000$/,'')+'</ofr:quantity>',
+      '        <ofr:rateVAT>high</ofr:rateVAT>',
+      '        <ofr:homeCurrency>',
+      '          <typ:unitPrice>'+price.toFixed(4).replace(/0+$/,'').replace(/\.$/,'')+'</typ:unitPrice>',
+      '        </ofr:homeCurrency>',
+      code ? [
+        '        <ofr:stockItem>',
+        '          <typ:stockItem>',
+        '            <typ:ids>'+xmlEsc(code)+'</typ:ids>',
+        '          </typ:stockItem>',
+        '        </ofr:stockItem>'
+      ].join('\n') : '',
+      '      </ofr:offerItem>'
+    ].filter(Boolean).join('\n');
+  }).join('\n');
+
+  const addressXml=[
+    '      <ofr:partnerIdentity>',
+    '        <typ:address>',
+    customer.name?'          <typ:name>'+xmlEsc(customer.name)+'</typ:name>':'',
+    customer.address?'          <typ:street>'+xmlEsc(customer.address)+'</typ:street>':'',
+    customer.phone?'          <typ:phone>'+xmlEsc(customer.phone)+'</typ:phone>':'',
+    customer.email?'          <typ:email>'+xmlEsc(customer.email)+'</typ:email>':'',
+    '        </typ:address>',
+    '      </ofr:partnerIdentity>'
+  ].filter(Boolean).join('\n');
+
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<dat:dataPack version="2.0" id="'+xmlEsc('SPEKTRA_'+quoteNo)+'" ico="'+POHODA_COMPANY_ICO+'" application="SpektraPonuky" note="'+xmlEsc('Vydaná ponuka '+quoteNo)+'"',
+    ' xmlns:dat="http://www.stormware.cz/schema/version_2/data.xsd"',
+    ' xmlns:ofr="http://www.stormware.cz/schema/version_2/offer.xsd"',
+    ' xmlns:typ="http://www.stormware.cz/schema/version_2/type.xsd">',
+    '  <dat:dataPackItem id="'+xmlEsc(quoteNo)+'" version="2.0">',
+    '    <ofr:offer version="2.0">',
+    '      <ofr:offerHeader>',
+    '        <ofr:offerType>issuedOffer</ofr:offerType>',
+    '        <ofr:date>'+pohodaXmlDate(Date.now())+'</ofr:date>',
+    '        <ofr:text>'+xmlEsc('Cenová ponuka '+quoteNo)+'</ofr:text>',
+    addressXml,
+    '      </ofr:offerHeader>',
+    '      <ofr:offerDetail>',
+    itemXml,
+    '      </ofr:offerDetail>',
+    '      <ofr:offerSummary>',
+    '        <ofr:roundingDocument>math2one</ofr:roundingDocument>',
+    '      </ofr:offerSummary>',
+    '    </ofr:offer>',
+    '  </dat:dataPackItem>',
+    '</dat:dataPack>',
+    ''
+  ].join('\n');
+}
+
+async function downloadPohodaIssuedOfferXml(){
+  try{
+    const xml=createPohodaIssuedOfferXml();
+    const fileName=(current.quote_no||'ponuka')+'_POHODA_vydana_ponuka.xml';
+    const blob=new Blob([xml],{type:'application/xml;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+
+    current.pohoda_offer_exported_at=new Date().toISOString();
+    current.pohoda_offer_export_file=fileName;
+    await upsertCurrent();
+  }catch(e){
+    console.error(e);
+    alert(e.message||String(e));
   }
 }
 
