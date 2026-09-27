@@ -61,6 +61,7 @@ window.SpektraDB = (() => {
     if (!client || !user) return [];
 
     const adminMode = !!options.admin;
+    const forceRefresh = !!options.force;
     const fieldList = [
       'id','pohoda_stock_id','fingerprint','plu','code','ean','name','unit',
       'storage_ref','storage_name','stock_group_ref','stock_group',
@@ -119,6 +120,7 @@ window.SpektraDB = (() => {
 
     // Cache is trusted only when both version and item count match the server.
     if (
+      !forceRefresh &&
       local.length &&
       localVersion &&
       remoteVersion &&
@@ -132,6 +134,7 @@ window.SpektraDB = (() => {
     // If the local cache has the expected previous server count, an incremental refresh is safe.
     // Otherwise do a full reload. This repairs interrupted/partial mobile IndexedDB caches.
     const canIncrement =
+      !forceRefresh &&
       local.length &&
       localVersion &&
       remoteVersion &&
