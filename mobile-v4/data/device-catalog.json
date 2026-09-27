@@ -1146,6 +1146,23 @@
       "active": true,
       "source": "Vaillant SK produktový/akciový cenník 2026",
       "source_url": "https://www.vaillant.sk/neuer-ordner-5/pricelist/2026-produktovy-cennik-vaillant.pdf"
+    },
+    {
+      "id": "ac-midea-solunar-53",
+      "category": "klimatizacia",
+      "brand": "Midea",
+      "model": "Solunar 5,3 kW",
+      "variant": "single split",
+      "power_kw": 5.3,
+      "refrigerant": "R32",
+      "phase": "1f",
+      "ac_mode": "single",
+      "pohoda_code": "CMID003422",
+      "pohoda_plu": "400014",
+      "purchase_price_ex_vat": 594,
+      "sell_price_ex_vat": 828.46,
+      "active": true,
+      "notes": "Presná POHODA karta: cena 1 019 € s DPH / 828,46 € bez DPH."
     }
   ]
 }
