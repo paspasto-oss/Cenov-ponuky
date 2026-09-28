@@ -476,7 +476,7 @@
       return '<div class="inspMaterial">'+
         '<div class="inspMaterialMain"><input value="'+esc(m.name||'')+'" '+(linked?'readonly':'')+' onchange="SpektraInspections.material('+i+',\'name\',this.value)"><div class="inspMaterialMeta '+(linked?'linked':'')+'">'+esc(details)+'</div></div>'+
         '<input type="number" step="0.5" min="0" value="'+esc(m.qty??0)+'" onchange="SpektraInspections.material('+i+',\'qty\',Number(this.value))">'+
-        '<select onchange="SpektraInspections.material('+i+',\'unit\',this.value)">'+['ks','m','súb.','l','bal'].map(u=>'<option '+(m.unit===u?'selected':'')+'>'+u+'</option>').join('')+'</select>'+
+        '<select onchange="SpektraInspections.material('+i+',\'unit\',this.value)">'+[...new Set(['ks','m','súb.','l','bal',m.unit].filter(Boolean))].map(u=>'<option '+(m.unit===u?'selected':'')+'>'+u+'</option>').join('')+'</select>'+
         '<button type="button" onclick="SpektraInspections.removeMaterial('+i+')">×</button></div>';
     }).join('');
   }
@@ -553,7 +553,7 @@
     }else{
       active.materials.push({
         pohoda_stock_id:st.id,
-        role:'inspection_material',
+        role:null,
         code:st.code||null,
         name:st.name||'POHODA položka',
         qty:1,
