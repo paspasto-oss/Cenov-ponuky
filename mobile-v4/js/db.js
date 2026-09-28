@@ -598,8 +598,12 @@ window.SpektraDB = (() => {
       }
     }
 
-    if(!customerId)customerId=await ensureInspectionCustomer(i);
-    else i.customer_id=customerId;
+    // Always persist current customer/contact edits as well. When customerId
+    // already exists, ensureInspectionCustomer performs an UPDATE instead of
+    // silently leaving stale customer data behind.
+    i.customer_id=customerId;
+    customerId=await ensureInspectionCustomer(i);
+    i.customer_id=customerId;
 
     const now=new Date().toISOString();
     const payload={
