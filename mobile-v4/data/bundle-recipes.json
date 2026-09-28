@@ -1,8 +1,8 @@
 {
-  "version": 29,
-  "updated_at": "2026-09-27",
+  "version": 30,
+  "updated_at": "2026-09-28",
   "source": "POHODA export Zásoby1.xlsx",
-  "note": "Opravené fallback ceny montáže klimatizácií: single split 350 €, multisplit 750 € bez DPH.",
+  "note": "Jadrový prestup Ø80 mm do 50 cm je pri štandardnej montáži TČ zahrnutý v cene montáže; chýbajúca POHODA karta JV-80 už neblokuje kompletnosť ceny.",
   "bundles": [
     {
       "key": "hp_monoblock_5m",
@@ -464,9 +464,10 @@
           "qty": 1,
           "unit": "súb.",
           "required": true,
-          "mapping_status": "mapped",
+          "mapping_status": "included_in_installation",
           "customer_group": "Montážne práce",
-          "note": "Štandardne 1 prestup cez stenu; vytvoriť službu v POHODE."
+          "note": "Štandardne 1 prestup cez stenu. Pri štandardnej montáži TČ je jadrový prestup do hrúbky 50 cm zahrnutý v cene montáže; samostatná cena 0 €.",
+          "default_sell_price_ex_vat": 0
         },
         {
           "role": "dhw_changeover_valve",
@@ -874,9 +875,10 @@
           "qty": 1,
           "unit": "súb.",
           "required": true,
-          "mapping_status": "mapped",
+          "mapping_status": "included_in_installation",
           "customer_group": "Montážne práce",
-          "note": "Štandardne 1 prestup cez stenu; vytvoriť službu v POHODE."
+          "note": "Štandardne 1 prestup cez stenu. Pri štandardnej montáži TČ je jadrový prestup do hrúbky 50 cm zahrnutý v cene montáže; samostatná cena 0 €.",
+          "default_sell_price_ex_vat": 0
         },
         {
           "role": "dhw_changeover_valve",

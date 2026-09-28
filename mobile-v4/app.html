@@ -489,7 +489,7 @@ async function loadConfig(){
     const j=await r.json();deviceCatalog=j.devices||[];
   }catch(e){deviceCatalog=fallbackDevices;configOk=false;console.error('Device catalog load failed:',e)}
   try{
-    const r=await fetch('data/bundle-recipes.json?v=20260927-functionalcheck2',{cache:'no-store'});
+    const r=await fetch('data/bundle-recipes.json?v=20260928-pricefix1',{cache:'no-store'});
     if(!r.ok) throw new Error('bundle-recipes '+r.status);
     const j=await r.json();bundleRecipes=j.bundles||[];
   }catch(e){bundleRecipes=[];configOk=false;console.error('Bundle recipes load failed:',e)}
@@ -1747,7 +1747,10 @@ function renderRecommendation(){
  document.getElementById('bomItems').innerHTML=current.items.map(i=>{
    let link='';
    if(i.pohoda) link=' · POHODA: '+esc(i.pohoda.code||i.pohoda.plu||'namapované');
-   else if(i.pohoda_code) link=' · POHODA kód: '+esc(i.pohoda_code)+' · čaká na synchronizáciu ceny';
+   else if(i.mapping_status==='included_in_installation') link=' · zahrnuté v cene montáže';
+   else if(i.pohoda_code && i.price!=null) link=' · interná cena · POHODA kód: '+esc(i.pohoda_code);
+   else if(i.pohoda_code) link=' · POHODA kód: '+esc(i.pohoda_code)+' · karta/cena chýba';
+   else if(i.price!=null) link=' · interná cena';
    else link=' · bez POHODA kódu';
    return '<div class="item"><div><b>'+esc(customerText(i.name))+'</b><small>'+i.qty+' '+esc(i.unit)+link+'</small></div><div>'+eur(i.price)+'</div></div>'
  }).join('');
