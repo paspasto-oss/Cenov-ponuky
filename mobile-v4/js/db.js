@@ -503,5 +503,249 @@ window.SpektraDB = (() => {
     };
   }
 
-  return { configured, init, signIn, signUp, signOut, isAuthenticated, getUser, getProfile, listStocks, upsertStocks, uploadProductImage, uploadQuoteImage, listPdfBanners, listQuotes, nextQuoteNo, saveQuote };
+
+  // ------------------------------------------------------------
+  // Field inspections / site surveys
+  // Additive module: existing quote behaviour remains unchanged.
+  // ------------------------------------------------------------
+
+  async function listInspections(limit=100) {
+    if (!client || !user) return [];
+    const { data, error } = await client.from('inspections')
+      .select('*, customers(id,name,phone,email,address,notes), inspection_materials(*), inspection_photos(*), inspection_quotes(quote_id,relation_type,created_at)')
+      .order('updated_at',{ascending:false})
+      .limit(limit);
+    if (error) throw error;
+
+    const rows=data||[];
+    const paths=[];
+    rows.forEach(r=>(r.inspection_photos||[]).forEach(p=>{ if(p.storage_path) paths.push(p.storage_path); }));
+    const signedMap=new Map();
+    if(paths.length){
+      const unique=[...new Set(paths)];
+      const {data:signed,error:signedError}=await client.storage.from('inspection-media').createSignedUrls(unique,3600);
+      if(!signedError){
+        (signed||[]).forEach(x=>{
+          const path=x.path||x.fullPath||null;
+          if(path&&x.signedUrl)signedMap.set(path,x.signedUrl);
+        });
+      }
+    }
+    rows.forEach(r=>{
+      r.inspection_photos=(r.inspection_photos||[]).map(p=>({...p,signed_url:signedMap.get(p.storage_path)||null}));
+    });
+    return rows;
+  }
+
+  async function findInspectionByLocalId(localId) {
+    if (!client || !user || !localId) return null;
+    const {data,error}=await client.from('inspections')
+      .select('id,customer_id,status,updated_at,sync_version')
+      .eq('local_id',localId)
+      .maybeSingle();
+    if(error)throw error;
+    return data||null;
+  }
+
+  async function ensureInspectionCustomer(i) {
+    let customerId=i.customer_id||i.remote_customer_id||null;
+    const c=i.customer||{};
+    if(!customerId && c.phone){
+      const {data}=await client.from('customers').select('id').eq('phone',c.phone).limit(1).maybeSingle();
+      if(data?.id)customerId=data.id;
+    }
+    if(!customerId && c.email){
+      const {data}=await client.from('customers').select('id').eq('email',c.email).limit(1).maybeSingle();
+      if(data?.id)customerId=data.id;
+    }
+    if(!customerId){
+      const {data,error}=await client.from('customers').insert({
+        name:c.name||'Bez mena',
+        phone:c.phone||null,
+        email:c.email||null,
+        address:c.address||i.site_address||null,
+        notes:c.notes||null,
+        created_by:user.id
+      }).select('id').single();
+      if(error)throw error;
+      customerId=data.id;
+    }else{
+      const {error}=await client.from('customers').update({
+        name:c.name||'Bez mena',
+        phone:c.phone||null,
+        email:c.email||null,
+        address:c.address||i.site_address||null,
+        notes:c.notes||null,
+        updated_at:new Date().toISOString()
+      }).eq('id',customerId);
+      if(error)throw error;
+    }
+    return customerId;
+  }
+
+  async function saveInspection(i, eventType=null) {
+    if (!client || !user) throw new Error('Online databáza nie je prihlásená.');
+    if(!i)throw new Error('Chýba obhliadka.');
+
+    let remoteId=i.remote_id||i.id_remote||null;
+    let customerId=i.customer_id||i.remote_customer_id||null;
+
+    if(!remoteId && i.local_id){
+      const existing=await findInspectionByLocalId(i.local_id);
+      if(existing){
+        remoteId=existing.id;
+        customerId=existing.customer_id||customerId;
+      }
+    }
+
+    if(!customerId)customerId=await ensureInspectionCustomer(i);
+    else i.customer_id=customerId;
+
+    const now=new Date().toISOString();
+    const payload={
+      local_id:i.local_id||null,
+      sync_version:Math.max(1,Number(i.sync_version||1)),
+      customer_id:customerId,
+      technician_id:i.technician_id||user.id,
+      status:i.status||'draft',
+      inspection_types:Array.isArray(i.inspection_types)?i.inspection_types:[],
+      site_address:i.site_address||i.customer?.address||null,
+      site_contact_name:i.site_contact_name||i.customer?.name||null,
+      site_phone:i.site_phone||i.customer?.phone||null,
+      site_email:i.site_email||i.customer?.email||null,
+      building:i.building||{},
+      existing_system:i.existing_system||{},
+      heat_loss:i.heat_loss||{},
+      proposed_device_stock_id:i.proposed_device_stock_id||null,
+      proposed_device:i.proposed_device||{},
+      outdoor_unit:i.outdoor_unit||{},
+      plant_room:i.plant_room||{},
+      electrical:i.electrical||{},
+      routes:i.routes||{},
+      extra_work:Array.isArray(i.extra_work)?i.extra_work:[],
+      installation:i.installation||{},
+      checklist:i.checklist||{},
+      notes:i.notes||null,
+      inspected_at:i.inspected_at||null,
+      updated_by:user.id,
+      updated_at:now
+    };
+
+    let row=null;
+    if(remoteId){
+      payload.sync_version=Math.max(1,Number(i.sync_version||1)+1);
+      const {data,error}=await client.from('inspections').update(payload).eq('id',remoteId)
+        .select('id,customer_id,status,updated_at,sync_version').single();
+      if(error)throw error;
+      row=data;
+    }else{
+      const {data,error}=await client.from('inspections').insert(payload)
+        .select('id,customer_id,status,updated_at,sync_version').single();
+      if(error)throw error;
+      row=data;
+      remoteId=row.id;
+    }
+
+    const {error:delError}=await client.from('inspection_materials').delete().eq('inspection_id',remoteId);
+    if(delError)throw delError;
+    const materials=Array.isArray(i.materials)?i.materials:[];
+    if(materials.length){
+      const mp=materials.filter(x=>x?.name).map((m,n)=>({
+        inspection_id:remoteId,
+        pohoda_stock_id:m.pohoda_stock_id||null,
+        sort_order:n,
+        role:m.role||null,
+        code:m.code||null,
+        name:m.name,
+        qty:Number(m.qty||0),
+        unit:m.unit||'ks',
+        source:m.source||'manual',
+        original_qty:m.original_qty==null?null:Number(m.original_qty),
+        metadata:m.metadata||{}
+      }));
+      if(mp.length){
+        const {error}=await client.from('inspection_materials').insert(mp);
+        if(error)throw error;
+      }
+    }
+
+    if(eventType){
+      const {error}=await client.from('inspection_events').insert({
+        inspection_id:remoteId,
+        event_type:eventType,
+        payload:{status:payload.status,local_id:i.local_id||null}
+      });
+      if(error)console.warn('Inspection event insert failed',error);
+    }
+
+    return {
+      remote_id:row.id,
+      customer_id:row.customer_id,
+      status:row.status,
+      updated_at:row.updated_at,
+      sync_version:row.sync_version
+    };
+  }
+
+  async function uploadInspectionPhoto(inspectionId,file,category,isRequired=false) {
+    if (!client || !user) throw new Error('Online databáza nie je prihlásená.');
+    if(!inspectionId||!file)throw new Error('Chýba obhliadka alebo fotografia.');
+    const type=(file.type||'image/jpeg').toLowerCase();
+    const ext=type.includes('png')?'png':type.includes('webp')?'webp':type.includes('heic')?'heic':type.includes('heif')?'heif':'jpg';
+    const safeCat=String(category||'other').replace(/[^a-zA-Z0-9_-]/g,'_');
+    const safeName=String(file.name||('photo.'+ext)).replace(/[^a-zA-Z0-9._-]/g,'_').slice(-120);
+    const path=user.id+'/'+inspectionId+'/'+safeCat+'/'+Date.now()+'_'+safeName;
+    const {error:uploadError}=await client.storage.from('inspection-media').upload(path,file,{
+      cacheControl:'3600',upsert:false,contentType:file.type||'image/jpeg'
+    });
+    if(uploadError)throw uploadError;
+    const {data:photo,error}=await client.from('inspection_photos').insert({
+      inspection_id:inspectionId,
+      category:category||'other',
+      storage_path:path,
+      file_name:file.name||null,
+      is_required:!!isRequired
+    }).select('*').single();
+    if(error){
+      await client.storage.from('inspection-media').remove([path]).catch(()=>{});
+      throw error;
+    }
+    const {data:signed}=await client.storage.from('inspection-media').createSignedUrl(path,3600);
+    return {...photo,signed_url:signed?.signedUrl||null};
+  }
+
+  async function deleteInspectionPhoto(photo) {
+    if (!client || !user || !photo?.id) return;
+    if(photo.storage_path){
+      const {error}=await client.storage.from('inspection-media').remove([photo.storage_path]);
+      if(error)console.warn('Inspection media remove failed',error);
+    }
+    const {error}=await client.from('inspection_photos').delete().eq('id',photo.id);
+    if(error)throw error;
+  }
+
+  async function linkInspectionQuote(inspectionId,quoteId,relationType='generated') {
+    if (!client || !user) throw new Error('Online databáza nie je prihlásená.');
+    if(!inspectionId||!quoteId)throw new Error('Chýba obhliadka alebo ponuka.');
+    const {error}=await client.from('inspection_quotes').upsert({
+      inspection_id:inspectionId,
+      quote_id:quoteId,
+      relation_type:relationType
+    },{onConflict:'inspection_id,quote_id'});
+    if(error)throw error;
+    const {error:updateError}=await client.from('inspections').update({
+      status:'converted',
+      updated_by:user.id,
+      updated_at:new Date().toISOString()
+    }).eq('id',inspectionId);
+    if(updateError)throw updateError;
+  }
+
+  async function deleteDraftInspection(inspectionId) {
+    if (!client || !user) throw new Error('Online databáza nie je prihlásená.');
+    const {error}=await client.from('inspections').delete().eq('id',inspectionId).eq('status','draft');
+    if(error)throw error;
+  }
+
+  return { configured, init, signIn, signUp, signOut, isAuthenticated, getUser, getProfile, listStocks, upsertStocks, uploadProductImage, uploadQuoteImage, listPdfBanners, listQuotes, nextQuoteNo, saveQuote, listInspections, saveInspection, uploadInspectionPhoto, deleteInspectionPhoto, linkInspectionQuote, deleteDraftInspection };
 })();
