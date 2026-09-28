@@ -397,17 +397,17 @@
     const pipe=num(r.heating_m||o.route_m,5),cable=num(e.cable_m,12);
     if(types.includes('heat_pump')){
       active.materials=[
-        {name:'Cu potrubie 28 mm',qty:pipe,original_qty:pipe,unit:'m',source:'calculated'},
-        {name:'Izolácia potrubia 28 mm',qty:pipe,original_qty:pipe,unit:'m',source:'calculated'},
-        {name:'CYKY 5×2,5',qty:cable,original_qty:cable,unit:'m',source:'calculated'}
+        {role:'copper_pipe_d28',name:'Cu potrubie 28 mm',qty:2*pipe,original_qty:2*pipe,unit:'m',source:'calculated'},
+        {role:'pipe_insulation_13x28',name:'Izolácia potrubia 28 mm',qty:2*pipe,original_qty:2*pipe,unit:'m',source:'calculated'},
+        {role:'power_cable_cyky_5x2_5',name:'CYKY 5×2,5',qty:cable,original_qty:cable,unit:'m',source:'calculated'}
       ];
     }else if(types.includes('air_conditioning')){
       const ac=num(r.refrigerant_m||o.route_m,5);
       active.materials=[
-        {name:'Chladivové potrubie – pár',qty:ac,original_qty:ac,unit:'m',source:'calculated'},
-        {name:'Odvod kondenzátu',qty:num(r.condensate_m,ac),original_qty:num(r.condensate_m,ac),unit:'m',source:'calculated'},
-        {name:'PVC lišta',qty:num(r.trunking_m,ac),original_qty:num(r.trunking_m,ac),unit:'m',source:'calculated'},
-        {name:'Napájací / komunikačný kábel',qty:cable,original_qty:cable,unit:'m',source:'calculated'}
+        {role:'refrigerant_pipe_pair',name:'Chladivové potrubie – pár',qty:ac,original_qty:ac,unit:'m',source:'calculated'},
+        {role:'condensate_drain',name:'Odvod kondenzátu',qty:num(r.condensate_m,ac),original_qty:num(r.condensate_m,ac),unit:'m',source:'calculated'},
+        {role:'pvc_trunking',name:'PVC lišta',qty:num(r.trunking_m,ac),original_qty:num(r.trunking_m,ac),unit:'m',source:'calculated'},
+        {role:'power_cable',name:'Napájací / komunikačný kábel',qty:cable,original_qty:cable,unit:'m',source:'calculated'}
       ];
     }else{
       active.materials=[{name:'Montážny materiál podľa obhliadky',qty:1,original_qty:1,unit:'súb.',source:'manual'}];
@@ -625,6 +625,12 @@
     brand='';current.brand='';
     current.required_kw=num(h.design_kw);
     current.target_kw=num(h.recommended_kw);
+    // Preserve the technical source of the quote. buildBOM() applies these
+    // values after the user selects the final brand/device.
+    current.inspection_materials=(active.materials||[]).map(m=>({...m}));
+    current.inspection_routes={...(active.routes||{}),route_m:num(active.outdoor_unit?.route_m||0)};
+    current.inspection_extra_work=[...(active.extra_work||[])];
+    current.inspection_notes=active.notes||null;
 
     const vals={
       cName:current.customer.name,cPhone:current.customer.phone,cEmail:current.customer.email,cAddress:current.customer.address,cNote:current.customer.note,
