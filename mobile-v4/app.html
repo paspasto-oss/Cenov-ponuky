@@ -1328,6 +1328,69 @@ function installationPrice(tier){
   if(isSplit) return tier==='economy'?750:1050;
   return tier==='economy'?600:900;
 }
+
+// Kompatibilita starších uložených TČ ponúk:
+// nemeníme uložené ceny zariadenia ani materiálu, iba doplníme chýbajúcu montáž.
+function ensureHeatPumpInstallationItem(){
+  if(!current || (current.category||category)!=='heat_pump')return false;
+  if(!Array.isArray(current.items))current.items=[];
+
+  const existing=current.items.find(i=>i.role==='installation_service'||i.role==='installation');
+  if(existing){
+    existing.visible=true;
+    if(existing.price==null)existing.price=installationPrice(current.installation_tier||'standard');
+    return false;
+  }
+
+  const tier=current.installation_tier||'standard';
+  const sys=current.system_type||systemType(current.device||recommendation||{});
+  const recipeKey=sys==='split'?'hp_split_5m':'hp_monoblock_5m';
+  const bundle=bundleRecipes.find(b=>b.key===recipeKey);
+  const row=bundle?.items?.find(i=>i.role==='installation_service')||null;
+
+  let recipeRow=row;
+  if(row?.tier_pohoda_plu){
+    recipeRow={...row,pohoda_plu:row.tier_pohoda_plu[tier]||row.pohoda_plu};
+  }
+  const st=recipeRow?stockByRecipe(recipeRow):null;
+  const fallbackName=sys==='split'
+    ? 'Montáž split tepelného čerpadla do 5 m'
+    : sys==='monoblock'
+      ? 'Montáž monoblokového tepelného čerpadla do 5 m'
+      : 'Montáž tepelného čerpadla do 5 m';
+
+  current.items.push({
+    role:'installation_service',
+    name:row?recipeName(row,st):fallbackName,
+    qty:1,
+    unit:row?.unit||'súb.',
+    pohoda:st||null,
+    pohoda_code:recipeRow?.pohoda_code||null,
+    price:st?.sell_price_ex_vat??(row?.default_sell_price_ex_vat!=null?Number(row.default_sell_price_ex_vat):installationPrice(tier)),
+    cost:st?.purchase_price_ex_vat??null,
+    visible:true,
+    mapping_status:st?'mapped':'service_repaired',
+    customer_group:row?.customer_group||bundle?.customer_label||'Montáž',
+    note:row?.note||'Montáž, pripojenie a uvedenie zariadenia do prevádzky.',
+    work_scope:Array.isArray(row?.work_scope)?row.work_scope:[]
+  });
+  return true;
+}
+
+function recalcQuoteTotalsFromItems(){
+  if(!current||!Array.isArray(current.items))return;
+  let net=0,missing=false;
+  current.items.forEach(i=>{
+    if(i.price==null)missing=true;
+    else net+=(Number(i.price)||0)*(Number(i.qty)||0);
+  });
+  const vatPct=Number(current.vat_pct||23);
+  current.net=net;
+  current.vat_pct=vatPct;
+  current.vat=net*vatPct/100;
+  current.total=net*(1+vatPct/100);
+  current.price_complete=!missing;
+}
 function syncInstallationTierUI(){
   const tier=current?.installation_tier||'standard';
   const card=document.getElementById('installationTierCard');
@@ -1716,6 +1779,7 @@ function renderRecommendation(){
  syncInstallationTierUI();
  syncOptionalUI();
  renderQuoteImageUI();
+ ensureHeatPumpInstallationItem();
  let d=recommendation,required=current.required_kw,target=current.target_kw;
  document.getElementById('calcNotice').textContent=category==='heat_pump'
    ? (current.building.known_loss?'Zadaná tepelná strata: '+required+' kW. Navrhnutá výkonová trieda: '+target+' kW.':'Orientačný návrhový výkon po rezerve: '+required+' kW. Navrhnutá výkonová trieda: '+target+' kW.')
@@ -1881,6 +1945,8 @@ async function upsertCurrent(){
 async function saveDraft(){current.status='draft';await upsertCurrent();alert(window.SpektraDB?.isAuthenticated()?'Ponuka bola uložená a synchronizovaná.':'Ponuka bola uložená lokálne. Po pripojení sa synchronizuje.')}
 async function finishQuote(){
  if(current.installation_tier==='economy'&&!current.economy_ready){alert('Montáž EKONOM je možné použiť iba po potvrdení všetkých prípravných podmienok zákazníka.');return}
+ ensureHeatPumpInstallationItem();
+ recalcQuoteTotalsFromItems();
  current.status='ready';await upsertCurrent();renderFinal();go('step5')
 }
 function ensurePdfTemplateState(){
@@ -2163,6 +2229,9 @@ function openQuote(id){
     multiCount=current.multisplit_count||current.device?.multisplit_count||2;
     recommendation=current.device&&Object.keys(current.device).length?{...current.device}:null;
 
+    const repairedInstallation=ensureHeatPumpInstallationItem();
+    if(repairedInstallation)recalcQuoteTotalsFromItems();
+
     hydrateQuoteForm();
     renderChoices();
 
@@ -2252,6 +2321,8 @@ async function shareWA(){
 }
 
 function offerHtmlTechnical(){
+  ensureHeatPumpInstallationItem();
+  recalcQuoteTotalsFromItems();
   const issueDate=new Date();
   const validDate=new Date(issueDate.getTime()+14*24*60*60*1000);
   const issue=issueDate.toLocaleDateString('sk-SK');
@@ -2465,6 +2536,8 @@ function offerHtmlTechnical(){
 
 function offerHtmlPresentation(){
   ensurePdfTemplateState();
+  ensureHeatPumpInstallationItem();
+  recalcQuoteTotalsFromItems();
 
   const issueDate=new Date();
   const validDate=new Date(issueDate.getTime()+14*24*60*60*1000);
