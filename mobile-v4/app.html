@@ -2123,15 +2123,47 @@ async function approveQuote(){
 function message(){
   const sub=calculateSubsidy();
   let subsidyText='';
-  if(sub.program==='green')subsidyText=' Orientačná dotácia Zelená domácnostiam: '+eur(sub.estimated_amount)+'.';
-  if(sub.program==='obnov')subsidyText=' Možnosť podpory Obnov dom mini+ až 11 000 € podľa podmienok výzvy.';
+  if(current.category==='heat_pump'&&sub.program==='green')subsidyText=' Orientačná dotácia Zelená domácnostiam: '+eur(sub.estimated_amount)+'.';
+  if(current.category==='heat_pump'&&sub.program==='obnov')subsidyText=' Možnosť podpory Obnov dom mini+ až 11 000 € podľa podmienok výzvy.';
   return 'Dobrý deň, posielame cenovú ponuku Spektra Install na '+(current.device?.brand||'')+' '+(current.device?.model||'')+'. '+(current.price_complete?'Cena spolu s DPH: '+eur(current.total)+'.':'Cena bude doplnená po kontrole.')+subsidyText+' Ďakujeme.'
 }
 
-function shareWA(){
-  let p=s(current.customer.phone).replace(/\s/g,'').replace(/^0/,'421');
-  window.open('https://wa.me/'+p+'?text='+encodeURIComponent(message()),'_blank');
-  markSent()
+async function shareWA(){
+  const p=s(current.customer?.phone).replace(/\D/g,'').replace(/^0/,'421');
+  const waUrl='https://wa.me/'+p+'?text='+encodeURIComponent(message());
+  // Nové okno pripravíme ešte počas kliknutia, aby ho prehliadač nezablokoval.
+  const supportsFiles=!!(navigator.share&&navigator.canShare&&navigator.canShare({
+    files:[new File(['x'],'ponuka.pdf',{type:'application/pdf'})]
+  }));
+  const fallbackWindow=supportsFiles?null:window.open('about:blank','_blank');
+  if(fallbackWindow){
+    fallbackWindow.document.write('<!doctype html><meta charset="utf-8"><title>Pripravujem ponuku…</title><p style="font-family:Arial;padding:24px">Pripravujem PDF pre WhatsApp…</p>');
+    fallbackWindow.document.close();
+  }
+  try{
+    const file=await createPdfFile();
+    if(supportsFiles){
+      await navigator.share({title:'Cenová ponuka Spektra Install',text:message(),files:[file]});
+      markSent();
+      return;
+    }
+    const a=document.createElement('a');
+    const url=URL.createObjectURL(file);
+    a.href=url;
+    a.download=file.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),120000);
+    if(fallbackWindow)fallbackWindow.location.replace(waUrl);
+    else window.open(waUrl,'_blank');
+    alert('PDF ponuka bola stiahnutá. V otvorenom WhatsAppe ju priložte k správe cez ikonu sponky. Prehliadač nevie priložiť súbor automaticky.');
+  }catch(e){
+    if(fallbackWindow)fallbackWindow.close();
+    if(e?.name==='AbortError')return;
+    console.error(e);
+    alert('Zdieľanie PDF cez WhatsApp sa nepodarilo: '+e.message);
+  }
 }
 
 function offerHtmlTechnical(){
