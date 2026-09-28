@@ -88,7 +88,7 @@
         <div class="field"><label>Stav budovy</label><select id="buildingClass"><option value="45">Novostavba / veľmi dobre zateplený</option><option value="60" selected>Zateplený dom</option><option value="95">Starší / slabšie zateplený</option><option value="125">Nezateplený / vysoká strata</option></select></div></div>
       </div>
       <div class="field"><label>Vykurovací systém</label><select id="heating"><option value="underfloor">Podlahové vykurovanie</option><option value="radiators">Radiátory</option><option value="high_temp">Vysokoteplotné radiátory / náročné podmienky</option></select></div>
-      <div class="field"><label>Príprava TÚV</label><select id="dhwMode"><option value="external" selected>Áno – externý zásobník TÚV</option><option value="none">Bez externého zásobníka TÚV</option></select></div>
+      <div class="field" id="dhwField"><label>Príprava TÚV</label><select id="dhwMode"><option value="external" selected>Áno – externý zásobník TÚV</option><option value="none">Bez externého zásobníka TÚV</option></select></div>
     </div>
     <button class="btn primary full" onclick="nextCategory()">Pokračovať →</button>
   </section>
@@ -637,7 +637,7 @@ function labelCat(x){return x==='heat_pump'?'Tepelné čerpadlo':x==='air_condit
 function startWizard(){current={id:'q_'+Date.now(),quote_no:'NÁVRH-'+String(Date.now()).slice(-6),_server_quote_no:false,_dirty:true,status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_template:'presentation',pdf_banner_mode:'auto',pdf_banner_url:null,pdf_banner_path:null,pdf_images_enabled:false,pdf_images_user_disabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;boilerType='gas';acMode='single';multiCount=2;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
 function nextBuilding(){let name=s(document.getElementById('cName').value),phone=s(document.getElementById('cPhone').value),addr=s(document.getElementById('cAddress').value);if(!name||!phone||!addr){alert('Vyplň meno, telefón a adresu realizácie.');return}current.customer={name,phone,email:s(document.getElementById('cEmail').value),address:addr,note:s(document.getElementById('cNote').value)};go('step2')}
 function toggleLoss(){let known=document.getElementById('hasLoss').value==='yes';document.getElementById('lossKnown').classList.toggle('hidden',!known);document.getElementById('lossEstimate').classList.toggle('hidden',known)}
-function nextCategory(){let known=document.getElementById('hasLoss').value==='yes',loss=+document.getElementById('heatLoss').value||0,area=+document.getElementById('area').value||0;if(known&&loss<=0){alert('Zadaj tepelnú stratu.');return}if(!known&&area<=0){alert('Zadaj vykurovanú plochu.');return}current.building={known_loss:known,heat_loss_kw:known?loss:null,area_m2:known?null:area,w_per_m2:+document.getElementById('buildingClass').value,heating:document.getElementById('heating').value,with_external_dhw_tank:document.getElementById('dhwMode').value==='external'};renderChoices();go('step3')}
+function nextCategory(){let known=document.getElementById('hasLoss').value==='yes',loss=+document.getElementById('heatLoss').value||0,area=+document.getElementById('area').value||0;if(known&&loss<=0){alert('Zadaj tepelnú stratu.');return}if(!known&&area<=0){alert('Zadaj vykurovanú plochu.');return}current.building={known_loss:known,heat_loss_kw:known?loss:null,area_m2:known?null:area,w_per_m2:+document.getElementById('buildingClass').value,heating:document.getElementById('heating').value,with_external_dhw_tank:current.category!=='air_conditioning'&&document.getElementById('dhwMode').value==='external'};renderChoices();go('step3')}
 function backToTypeBrand(){
   if(current){
     category=current.category||category||'heat_pump';
@@ -658,6 +658,8 @@ function renderChoices(){
   if(acCard)acCard.classList.toggle('hidden',category!=='air_conditioning');
   const multiCard=document.getElementById('acMultiCountCard');
   if(multiCard)multiCard.classList.toggle('hidden',category!=='air_conditioning'||acMode!=='multi');
+  const dhwField=document.getElementById('dhwField');
+  if(dhwField)dhwField.classList.toggle('hidden',category==='air_conditioning');
   syncBoilerTypeUI();
   syncAcModeUI();
   renderBrands();
@@ -665,7 +667,8 @@ function renderChoices(){
 function selectCat(c){
   category=c;
   brand='';
-  if(current){current.category=c;current.brand='';}
+  if(current){current.category=c;current.brand='';if(c==='air_conditioning'){current.building=current.building||{};current.building.with_external_dhw_tank=false;}}
+  if(c==='air_conditioning'){const dhw=document.getElementById('dhwMode');if(dhw)dhw.value='none';}
   if(c!=='boiler')boilerType='gas';
   if(c!=='air_conditioning'){acMode='single';multiCount=2;}
   renderChoices();
@@ -1090,9 +1093,9 @@ function buildBOM(){
  if(recipes.length){
    recipes.forEach(activeRecipe=>{
      (activeRecipe.items||[]).forEach(r=>{
-       if(r.condition==='with_external_dhw_tank'&&!current.building.with_external_dhw_tank)return;
+       if(r.condition==='with_external_dhw_tank'&&((current?.category||category)==='air_conditioning'||!current.building.with_external_dhw_tank))return;
        if(r.condition==='device_electrical_spec_allows'||r.condition==='3_phase_device_and_spec_allows'||r.condition==='according_to_device'||r.condition==='new_enclosure_required')return;
-       const activeConditional = r.condition==='with_external_dhw_tank' && current.building.with_external_dhw_tank;
+       const activeConditional = r.condition==='with_external_dhw_tank' && (current?.category||category)!=='air_conditioning' && current.building.with_external_dhw_tank;
        if(r.required===false&&r.default_enabled!==true&&r.role!=='installation_service'&&!activeConditional)return;
        let recipeRow=r;
        if((current?.category||category)==='air_conditioning'&&r.role==='refrigerant_pipe_pair'){
@@ -2042,7 +2045,7 @@ function hydrateQuoteForm(){
   setVal('area',current.building.area_m2??'');
   setVal('buildingClass',String(current.building.w_per_m2||60));
   setVal('heating',current.building.heating||'underfloor');
-  setVal('dhwMode',current.building.with_external_dhw_tank===false?'none':'external');
+  setVal('dhwMode',current.category==='air_conditioning'||current.building.with_external_dhw_tank===false?'none':'external');
   toggleLoss();
 }
 
@@ -2280,7 +2283,7 @@ function offerHtmlTechnical(){
     materialScopeParts.push('štandardný montážny a pripojovací materiál podľa zvoleného zariadenia');
   }
   if(current.category!=='boiler')materialScopeParts.push('elektro materiál, istenie, rozvodnica, káble, lišta a vývodky');
-  if(current.building?.with_external_dhw_tank){
+  if(current.category!=='air_conditioning'&&current.building?.with_external_dhw_tank){
     materialScopeParts.push('TÚV armatúry, expanzná nádoba, poistný ventil, prepínací ventil a servo');
   }
   const materialScope='<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:5px">Rozsah materiálu</div><div style="color:#444;line-height:1.45">'+esc(materialScopeParts.join(' · '))+'</div></div>';
@@ -2496,7 +2499,7 @@ function offerHtmlPresentation(){
       'PVC lišta a montážne príslušenstvo'
     );
   }
-  if(current.building?.with_external_dhw_tank)materialParts.push('TÚV armatúry, expanzná nádoba a poistné prvky');
+  if(current.category!=='air_conditioning'&&current.building?.with_external_dhw_tank)materialParts.push('TÚV armatúry, expanzná nádoba a poistné prvky');
 
   const work=(installationItem?.work_scope||[]).slice(0,7);
 
