@@ -1069,8 +1069,10 @@ function buildBOM(){
        }
        let st=stockByRecipe(recipeRow),qty=recipeQty(r);
        let defaultPrice=r.default_sell_price_ex_vat!=null?+r.default_sell_price_ex_vat:null;
+       // Plynová montáž má cenu v cenníku; stará skladová cena ju nesmie prepísať.
+       const gasInstallation=key==='boiler_gas_standard'&&r.role==='installation_service';
        if(r.role==='installation_service'){
-         defaultPrice=st?.sell_price_ex_vat??defaultPrice??installationPrice(current.installation_tier||'standard');
+         defaultPrice=gasInstallation?(defaultPrice??590):(st?.sell_price_ex_vat??defaultPrice??installationPrice(current.installation_tier||'standard'));
        }
        items.push({
          role:r.role,
@@ -1080,7 +1082,7 @@ function buildBOM(){
          pohoda:st,
          pohoda_code:recipeRow.pohoda_code||null,
          mapping_status:r.mapping_status|| (st?'mapped':'unmapped'),
-         price:st?.sell_price_ex_vat??defaultPrice,
+         price:gasInstallation?defaultPrice:(st?.sell_price_ex_vat??defaultPrice),
          cost:st?.purchase_price_ex_vat??null,
          visible:r.role==='installation_service',
          customer_group:r.customer_group||activeRecipe.customer_label,
