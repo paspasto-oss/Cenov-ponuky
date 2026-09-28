@@ -179,7 +179,7 @@
     if(!wrap)return;
     wrap.insertAdjacentHTML('beforeend',
       '<section id="inspectionHome" class="screen">'+
-        '<div class="topline"><button class="btn ghost small" onclick="go(\\'home\\')">← Späť</button><h1>Obhliadky</h1></div>'+
+        '<div class="topline"><button class="btn ghost small" onclick="go(\'home\')">← Späť</button><h1>Obhliadky</h1></div>'+
         '<div class="card hero"><h1>Obhliadky v teréne</h1><p>Technický zápis, materiál a fotodokumentácia synchronizované cez Supabase.</p>'+
           '<div class="actions"><button class="big primary" onclick="SpektraInspections.startNew()"><span>＋</span><b>Nová obhliadka</b><small>Začať zápis u zákazníka</small></button>'+
           '<button class="big" onclick="SpektraInspections.refresh()"><span>⟳</span><b>Synchronizovať</b><small>Mobil ↔ PC práca ↔ PC doma</small></button></div>'+
@@ -245,7 +245,7 @@
     box.innerHTML=rows.slice(0,30).map(x=>{
       const type=(x.inspection_types||[]).map(typeLabel).join(', ')||'Obhliadka';
       const sync=x._dirty?' · čaká na sync':'';
-      return '<div class="row" style="cursor:pointer" onclick="SpektraInspections.edit(\\''+esc(x.local_id)+'\\')">'+
+      return '<div class="row" style="cursor:pointer" onclick="SpektraInspections.edit(\''+esc(x.local_id)+'\')">'+
         '<div style="flex:1;min-width:0"><b>'+esc(x.customer?.name||'Bez mena')+'</b><small>'+esc(x.customer?.address||'')+' · '+esc(type)+sync+'</small></div>'+
         '<span class="inspStatus '+esc(x.status)+'">'+esc(statusLabel(x.status))+'</span>'+
       '</div>';
@@ -330,12 +330,12 @@
   function stepCustomer(){
     const c=active.customer||{};
     return '<div class="card">'+
-      field('Meno alebo firma *','icName',c.name,'text','onchange="SpektraInspections.input(\\'customer.name\\',this)"')+
-      '<div class="grid2">'+field('Telefón *','icPhone',c.phone,'tel','onchange="SpektraInspections.input(\\'customer.phone\\',this)"')+field('E-mail','icEmail',c.email,'email','onchange="SpektraInspections.input(\\'customer.email\\',this)"')+'</div>'+
-      field('Adresa realizácie *','icAddress',c.address,'text','onchange="SpektraInspections.input(\\'customer.address\\',this)"')+
-      '<div class="field"><label>Poznámka k zákazníkovi</label><textarea onchange="SpektraInspections.input(\\'customer.notes\\',this)">'+esc(c.notes||'')+'</textarea></div>'+
+      field('Meno alebo firma *','icName',c.name,'text','onchange="SpektraInspections.input(\'customer.name\',this)"')+
+      '<div class="grid2">'+field('Telefón *','icPhone',c.phone,'tel','onchange="SpektraInspections.input(\'customer.phone\',this)"')+field('E-mail','icEmail',c.email,'email','onchange="SpektraInspections.input(\'customer.email\',this)"')+'</div>'+
+      field('Adresa realizácie *','icAddress',c.address,'text','onchange="SpektraInspections.input(\'customer.address\',this)"')+
+      '<div class="field"><label>Poznámka k zákazníkovi</label><textarea onchange="SpektraInspections.input(\'customer.notes\',this)">'+esc(c.notes||'')+'</textarea></div>'+
       '</div><div class="card"><h2>Čo ideme riešiť?</h2><div class="inspTypeGrid">'+TYPE_OPTIONS.map(t=>
-        '<button type="button" class="inspType '+((active.inspection_types||[]).includes(t[0])?'on':'')+'" onclick="SpektraInspections.toggleType(\\''+t[0]+'\\')"><span>'+t[1]+'</span><b>'+esc(t[2])+'</b></button>'
+        '<button type="button" class="inspType '+((active.inspection_types||[]).includes(t[0])?'on':'')+'" onclick="SpektraInspections.toggleType(\''+t[0]+'\')"><span>'+t[1]+'</span><b>'+esc(t[2])+'</b></button>'
       ).join('')+'</div></div>'+
       '<button class="btn primary full" onclick="SpektraInspections.next()">Pokračovať →</button>';
   }
@@ -343,15 +343,15 @@
   function stepBuilding(){
     const b=active.building||{};
     return '<div class="card">'+
-      selectField('Typ objektu','ibType',b.type||'family_house',[['family_house','Rodinný dom'],['apartment','Byt'],['commercial','Prevádzka'],['other','Iné']],'onchange="SpektraInspections.input(\\'building.type\\',this)"')+
-      selectField('Stav objektu','ibCondition',b.condition||'renovation',[['new','Novostavba'],['renovation','Rekonštrukcia'],['existing','Existujúci objekt']],'onchange="SpektraInspections.input(\\'building.condition\\',this)"')+
+      selectField('Typ objektu','ibType',b.type||'family_house',[['family_house','Rodinný dom'],['apartment','Byt'],['commercial','Prevádzka'],['other','Iné']],'onchange="SpektraInspections.input(\'building.type\',this)"')+
+      selectField('Stav objektu','ibCondition',b.condition||'renovation',[['new','Novostavba'],['renovation','Rekonštrukcia'],['existing','Existujúci objekt']],'onchange="SpektraInspections.input(\'building.condition\',this)"')+
       '<div class="grid2">'+
-        field('Vykurovaná plocha [m²]','ibArea',b.heated_area_m2,'number','min="10" step="1" onchange="SpektraInspections.input(\\'building.heated_area_m2\\',this,\\'number\\')"')+
-        field('Počet podlaží','ibFloors',b.floors,'number','min="1" max="10" onchange="SpektraInspections.input(\\'building.floors\\',this,\\'number\\')"')+
+        field('Vykurovaná plocha [m²]','ibArea',b.heated_area_m2,'number','min="10" step="1" onchange="SpektraInspections.input(\'building.heated_area_m2\',this,\'number\')"')+
+        field('Počet podlaží','ibFloors',b.floors,'number','min="1" max="10" onchange="SpektraInspections.input(\'building.floors\',this,\'number\')"')+
       '</div>'+
-      '<label class="row" style="cursor:pointer"><span><b>Zateplenie</b><small>Objekt má obvodové zateplenie</small></span><input type="checkbox" '+(b.insulated?'checked':'')+' style="width:23px;height:23px" onchange="SpektraInspections.check(\\'building.insulated\\',this,true)"></label>'+
-      (b.insulated?field('Hrúbka izolácie [mm]','ibIns',b.insulation_mm,'number','min="0" step="10" onchange="SpektraInspections.input(\\'building.insulation_mm\\',this,\\'number\\')"'):'')+
-      selectField('Okná','ibWindows',b.windows||'triple',[['old','Staršie'],['double','2-sklo'],['triple','3-sklo']],'onchange="SpektraInspections.input(\\'building.windows\\',this)"')+
+      '<label class="row" style="cursor:pointer"><span><b>Zateplenie</b><small>Objekt má obvodové zateplenie</small></span><input type="checkbox" '+(b.insulated?'checked':'')+' style="width:23px;height:23px" onchange="SpektraInspections.check(\'building.insulated\',this,true)"></label>'+
+      (b.insulated?field('Hrúbka izolácie [mm]','ibIns',b.insulation_mm,'number','min="0" step="10" onchange="SpektraInspections.input(\'building.insulation_mm\',this,\'number\')"'):'')+
+      selectField('Okná','ibWindows',b.windows||'triple',[['old','Staršie'],['double','2-sklo'],['triple','3-sklo']],'onchange="SpektraInspections.input(\'building.windows\',this)"')+
       '</div><button class="btn primary full" onclick="SpektraInspections.next()">Pokračovať →</button>';
   }
 
@@ -373,16 +373,16 @@
     calculateHeatLoss();
     const e=active.existing_system||{},h=active.heat_loss||{};
     return '<div class="card"><h2>Existujúci systém</h2>'+
-      selectField('Aktuálny zdroj','ieSource',e.source||'gas',[['gas','Plyn'],['electric','Elektrina'],['wood','Drevo'],['pellets','Pelety'],['heat_pump','Tepelné čerpadlo'],['other','Iné']],'onchange="SpektraInspections.input(\\'existing_system.source\\',this)"')+
-      field('Ročná spotreba / poznámka','ieConsumption',e.annual_consumption||'','text','placeholder="napr. 1 800 m³/rok" onchange="SpektraInspections.input(\\'existing_system.annual_consumption\\',this)"')+
-      selectField('Odovzdávanie tepla','ieHeating',e.heating||'underfloor',[['underfloor','Podlahové vykurovanie'],['radiators','Radiátory'],['high_temp','Vysokoteplotné radiátory']],'onchange="SpektraInspections.input(\\'existing_system.heating\\',this,null,true)"')+
-      '<div class="grid2">'+field('Bežná teplota vody [°C]','ieTemp',e.water_temp_c||35,'number','min="20" max="80" onchange="SpektraInspections.input(\\'existing_system.water_temp_c\\',this,\\'number\\')"')+field('Počet osôb','iePersons',e.persons||3,'number','min="1" onchange="SpektraInspections.input(\\'existing_system.persons\\',this,\\'number\\')"')+'</div>'+
+      selectField('Aktuálny zdroj','ieSource',e.source||'gas',[['gas','Plyn'],['electric','Elektrina'],['wood','Drevo'],['pellets','Pelety'],['heat_pump','Tepelné čerpadlo'],['other','Iné']],'onchange="SpektraInspections.input(\'existing_system.source\',this)"')+
+      field('Ročná spotreba / poznámka','ieConsumption',e.annual_consumption||'','text','placeholder="napr. 1 800 m³/rok" onchange="SpektraInspections.input(\'existing_system.annual_consumption\',this)"')+
+      selectField('Odovzdávanie tepla','ieHeating',e.heating||'underfloor',[['underfloor','Podlahové vykurovanie'],['radiators','Radiátory'],['high_temp','Vysokoteplotné radiátory']],'onchange="SpektraInspections.input(\'existing_system.heating\',this,null,true)"')+
+      '<div class="grid2">'+field('Bežná teplota vody [°C]','ieTemp',e.water_temp_c||35,'number','min="20" max="80" onchange="SpektraInspections.input(\'existing_system.water_temp_c\',this,\'number\')"')+field('Počet osôb','iePersons',e.persons||3,'number','min="1" onchange="SpektraInspections.input(\'existing_system.persons\',this,\'number\')"')+'</div>'+
       '</div>'+
       '<div class="card"><h2>Tepelná strata</h2>'+
-        '<label class="row" style="cursor:pointer;margin-bottom:10px"><span><b>Poznám presnú tepelnú stratu</b><small>Inak vypočítame orientačne z plochy</small></span><input type="checkbox" '+(h.known?'checked':'')+' style="width:23px;height:23px" onchange="SpektraInspections.check(\\'heat_loss.known\\',this,true)"></label>'+
+        '<label class="row" style="cursor:pointer;margin-bottom:10px"><span><b>Poznám presnú tepelnú stratu</b><small>Inak vypočítame orientačne z plochy</small></span><input type="checkbox" '+(h.known?'checked':'')+' style="width:23px;height:23px" onchange="SpektraInspections.check(\'heat_loss.known\',this,true)"></label>'+
         (h.known
-          ?field('Tepelná strata [kW]','ihKnown',h.known_kw||'','number','min="1" step="0.1" onchange="SpektraInspections.input(\\'heat_loss.known_kw\\',this,\\'number\\',true)"')
-          :selectField('Orientačná strata objektu','ihWm2',h.specific_loss_w_m2||60,[['45','45 W/m² – novostavba'],['60','60 W/m² – zateplený dom'],['95','95 W/m² – starší dom'],['125','125 W/m² – nezateplený']],'onchange="SpektraInspections.input(\\'heat_loss.specific_loss_w_m2\\',this,\\'number\\',true)"'))+
+          ?field('Tepelná strata [kW]','ihKnown',h.known_kw||'','number','min="1" step="0.1" onchange="SpektraInspections.input(\'heat_loss.known_kw\',this,\'number\',true)"')
+          :selectField('Orientačná strata objektu','ihWm2',h.specific_loss_w_m2||60,[['45','45 W/m² – novostavba'],['60','60 W/m² – zateplený dom'],['95','95 W/m² – starší dom'],['125','125 W/m² – nezateplený']],'onchange="SpektraInspections.input(\'heat_loss.specific_loss_w_m2\',this,\'number\',true)"'))+
         '<div class="summary"><div class="srow"><span>Základ</span><b>'+num(h.base_kw).toFixed(2)+' kW</b></div><div class="srow"><span>Rezerva</span><b>+'+num(h.reserve_pct)+' %</b></div><div class="srow total"><span>Návrhový výkon</span><span>'+num(h.design_kw).toFixed(2)+' kW</span></div></div>'+
         '<div class="notice ok" style="margin-top:9px">Odporúčaná výkonová trieda: <b>'+num(h.recommended_kw)+' kW</b>. Orientačný návrh treba pred finálnou ponukou technicky preveriť.</div>'+
       '</div><button class="btn primary full" onclick="SpektraInspections.next()">Pokračovať →</button>';
@@ -426,25 +426,25 @@
     ensureBaseMaterials();
     const o=active.outdoor_unit||{},p=active.plant_room||{},e=active.electrical||{},r=active.routes||{};
     return '<div class="card"><h2>Miesto a trasa</h2>'+
-      selectField('Umiestnenie zariadenia','ioPlace',o.placement||'ground',[['ground','Na zemi'],['wall','Na stene'],['roof','Strecha'],['inside','Technická miestnosť'],['other','Iné']],'onchange="SpektraInspections.input(\\'outdoor_unit.placement\\',this)"')+
-      '<div class="grid2">'+field('Trasa potrubia [m]','ioRoute',o.route_m||5,'number','min="0" step="0.5" onchange="SpektraInspections.routeChanged(this)"')+field('Výškový rozdiel [m]','ioVert',o.vertical_m||0,'number','min="0" step="0.5" onchange="SpektraInspections.input(\\'outdoor_unit.vertical_m\\',this,\\'number\\')"')+'</div>'+
-      '<label class="row" style="cursor:pointer"><span><b>Treba jadrové vŕtanie</b><small>Prestup nie je pripravený</small></span><input type="checkbox" '+(o.drilling?'checked':'')+' style="width:23px;height:23px" onchange="SpektraInspections.check(\\'outdoor_unit.drilling\\',this,true)"></label>'+
-      (o.drilling?field('Hrúbka steny [cm]','ioWall',o.wall_cm||40,'number','min="5" onchange="SpektraInspections.input(\\'outdoor_unit.wall_cm\\',this,\\'number\\')"'):'')+
+      selectField('Umiestnenie zariadenia','ioPlace',o.placement||'ground',[['ground','Na zemi'],['wall','Na stene'],['roof','Strecha'],['inside','Technická miestnosť'],['other','Iné']],'onchange="SpektraInspections.input(\'outdoor_unit.placement\',this)"')+
+      '<div class="grid2">'+field('Trasa potrubia [m]','ioRoute',o.route_m||5,'number','min="0" step="0.5" onchange="SpektraInspections.routeChanged(this)"')+field('Výškový rozdiel [m]','ioVert',o.vertical_m||0,'number','min="0" step="0.5" onchange="SpektraInspections.input(\'outdoor_unit.vertical_m\',this,\'number\')"')+'</div>'+
+      '<label class="row" style="cursor:pointer"><span><b>Treba jadrové vŕtanie</b><small>Prestup nie je pripravený</small></span><input type="checkbox" '+(o.drilling?'checked':'')+' style="width:23px;height:23px" onchange="SpektraInspections.check(\'outdoor_unit.drilling\',this,true)"></label>'+
+      (o.drilling?field('Hrúbka steny [cm]','ioWall',o.wall_cm||40,'number','min="5" onchange="SpektraInspections.input(\'outdoor_unit.wall_cm\',this,\'number\')"'):'')+
       '</div>'+
       '<div class="card"><h2>Kotolňa / elektro</h2>'+
-      '<div class="grid2">'+selectField('Zásobník TÚV','ipDhw',p.dhw_l||200,[['0','Bez nového'],['120','120 l'],['200','200 l'],['300','300 l']],'onchange="SpektraInspections.input(\\'plant_room.dhw_l\\',this,\\'number\\')"')+
-      selectField('Miesto','ipSpace',p.space||'ok',[['ok','Bez problémov'],['tight','Tesné'],['rebuild','Treba úpravu']],'onchange="SpektraInspections.input(\\'plant_room.space\\',this)"')+'</div>'+
-      '<div class="grid2">'+selectField('Prívod','iePhases',e.phases||3,[['1','1 fáza'],['3','3 fázy']],'onchange="SpektraInspections.input(\\'electrical.phases\\',this,\\'number\\')"')+field('Hlavný istič [A]','ieBreaker',e.main_breaker_a||25,'number','min="10" onchange="SpektraInspections.input(\\'electrical.main_breaker_a\\',this,\\'number\\')"')+'</div>'+
-      '<label class="row" style="cursor:pointer"><span><b>Voľné miesto v rozvádzači</b></span><input type="checkbox" '+(e.panel_space?'checked':'')+' style="width:23px;height:23px" onchange="SpektraInspections.check(\\'electrical.panel_space\\',this)"></label>'+
-      field('Dĺžka nového prívodu [m]','ieCable',e.cable_m||12,'number','min="0" step="0.5" onchange="SpektraInspections.input(\\'electrical.cable_m\\',this,\\'number\\')"')+
+      '<div class="grid2">'+selectField('Zásobník TÚV','ipDhw',p.dhw_l||200,[['0','Bez nového'],['120','120 l'],['200','200 l'],['300','300 l']],'onchange="SpektraInspections.input(\'plant_room.dhw_l\',this,\'number\')"')+
+      selectField('Miesto','ipSpace',p.space||'ok',[['ok','Bez problémov'],['tight','Tesné'],['rebuild','Treba úpravu']],'onchange="SpektraInspections.input(\'plant_room.space\',this)"')+'</div>'+
+      '<div class="grid2">'+selectField('Prívod','iePhases',e.phases||3,[['1','1 fáza'],['3','3 fázy']],'onchange="SpektraInspections.input(\'electrical.phases\',this,\'number\')"')+field('Hlavný istič [A]','ieBreaker',e.main_breaker_a||25,'number','min="10" onchange="SpektraInspections.input(\'electrical.main_breaker_a\',this,\'number\')"')+'</div>'+
+      '<label class="row" style="cursor:pointer"><span><b>Voľné miesto v rozvádzači</b></span><input type="checkbox" '+(e.panel_space?'checked':'')+' style="width:23px;height:23px" onchange="SpektraInspections.check(\'electrical.panel_space\',this)"></label>'+
+      field('Dĺžka nového prívodu [m]','ieCable',e.cable_m||12,'number','min="0" step="0.5" onchange="SpektraInspections.input(\'electrical.cable_m\',this,\'number\')"')+
       '</div>'+
-      '<div class="card"><h2>Práce navyše</h2><div class="grid2">'+EXTRA_WORK.map(x=>'<label class="row" style="cursor:pointer"><span>'+esc(x[1])+'</span><input type="checkbox" '+((active.extra_work||[]).includes(x[0])?'checked':'')+' style="width:22px;height:22px" onchange="SpektraInspections.toggleExtra(\\''+x[0]+'\\')"></label>').join('')+'</div></div>'+
+      '<div class="card"><h2>Práce navyše</h2><div class="grid2">'+EXTRA_WORK.map(x=>'<label class="row" style="cursor:pointer"><span>'+esc(x[1])+'</span><input type="checkbox" '+((active.extra_work||[]).includes(x[0])?'checked':'')+' style="width:22px;height:22px" onchange="SpektraInspections.toggleExtra(\''+x[0]+'\')"></label>').join('')+'</div></div>'+
       '<div class="card"><h2>Navrhované zariadenie</h2>'+
-        field('Model / poznámka','ipDevice',active.proposed_device?.name||'','text','placeholder="napr. Panasonic Aquarea 12 kW" onchange="SpektraInspections.input(\\'proposed_device.name\\',this)"')+
-        field('Predbežný výkon [kW]','ipPower',active.proposed_device?.power_kw||active.heat_loss?.recommended_kw||'','number','step="0.1" onchange="SpektraInspections.input(\\'proposed_device.power_kw\\',this,\\'number\\')"')+
+        field('Model / poznámka','ipDevice',active.proposed_device?.name||'','text','placeholder="napr. Panasonic Aquarea 12 kW" onchange="SpektraInspections.input(\'proposed_device.name\',this)"')+
+        field('Predbežný výkon [kW]','ipPower',active.proposed_device?.power_kw||active.heat_loss?.recommended_kw||'','number','step="0.1" onchange="SpektraInspections.input(\'proposed_device.power_kw\',this,\'number\')"')+
       '</div>'+
       '<div class="card"><h2>Materiál z obhliadky</h2><div id="inspMaterials">'+materialRows()+'</div><button class="btn ghost small" onclick="SpektraInspections.addMaterial()">+ Pridať položku</button></div>'+
-      '<div class="card"><h2>Poznámka technika</h2><textarea onchange="SpektraInspections.input(\\'notes\\',this)">'+esc(active.notes||'')+'</textarea></div>'+
+      '<div class="card"><h2>Poznámka technika</h2><textarea onchange="SpektraInspections.input(\'notes\',this)">'+esc(active.notes||'')+'</textarea></div>'+
       '<button class="btn primary full" onclick="SpektraInspections.next()">Pokračovať →</button>';
   }
 
@@ -457,9 +457,9 @@
   function materialRows(){
     return (active.materials||[]).map((m,i)=>
       '<div class="inspMaterial">'+
-      '<input value="'+esc(m.name||'')+'" onchange="SpektraInspections.material('+i+',\\'name\\',this.value)">'+
-      '<input type="number" step="0.5" min="0" value="'+esc(m.qty??0)+'" onchange="SpektraInspections.material('+i+',\\'qty\\',Number(this.value))">'+
-      '<select onchange="SpektraInspections.material('+i+',\\'unit\\',this.value)">'+['ks','m','súb.','l'].map(u=>'<option '+(m.unit===u?'selected':'')+'>'+u+'</option>').join('')+'</select>'+
+      '<input value="'+esc(m.name||'')+'" onchange="SpektraInspections.material('+i+',\'name\',this.value)">'+
+      '<input type="number" step="0.5" min="0" value="'+esc(m.qty??0)+'" onchange="SpektraInspections.material('+i+',\'qty\',Number(this.value))">'+
+      '<select onchange="SpektraInspections.material('+i+',\'unit\',this.value)">'+['ks','m','súb.','l'].map(u=>'<option '+(m.unit===u?'selected':'')+'>'+u+'</option>').join('')+'</select>'+
       '<button type="button" onclick="SpektraInspections.removeMaterial('+i+')">×</button></div>'
     ).join('');
   }
@@ -477,8 +477,8 @@
     const cards=PHOTO_CATEGORIES.map(([key,label])=>{
       const cat=photos.filter(p=>p.category===key);
       return '<div class="card"><div class="row" style="margin-bottom:8px"><div><b>'+esc(label)+'</b><small>'+(cat.length?'✓ '+cat.length+' foto':'Povinné foto')+'</small></div>'+
-        '<label class="btn ghost small" style="cursor:pointer">📷 Foto<input type="file" accept="image/*" capture="environment" style="display:none" onchange="SpektraInspections.photo(\\''+key+'\\',this.files[0]);this.value=\\'\\'"></label></div>'+
-        (cat.length?'<div class="inspPhotoGrid">'+cat.map(p=>'<div class="inspThumb">'+(p.signed_url?'<img src="'+esc(p.signed_url)+'" alt="">':'<div style="padding:15px;font-size:12px">'+esc(p.file_name||'Foto')+'</div>')+'<button onclick="SpektraInspections.deletePhoto(\\''+esc(p.id||'')+'\\')">×</button></div>').join('')+'</div>':'')+
+        '<label class="btn ghost small" style="cursor:pointer">📷 Foto<input type="file" accept="image/*" capture="environment" style="display:none" onchange="SpektraInspections.photo(\''+key+'\',this.files[0]);this.value=\'\'"></label></div>'+
+        (cat.length?'<div class="inspPhotoGrid">'+cat.map(p=>'<div class="inspThumb">'+(p.signed_url?'<img src="'+esc(p.signed_url)+'" alt="">':'<div style="padding:15px;font-size:12px">'+esc(p.file_name||'Foto')+'</div>')+'<button onclick="SpektraInspections.deletePhoto(\''+esc(p.id||'')+'\')">×</button></div>').join('')+'</div>':'')+
       '</div>';
     }).join('');
     const missing=requiredPhotoKeys().filter(k=>!photos.some(p=>p.category===k));
