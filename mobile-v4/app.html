@@ -1557,6 +1557,12 @@ function ensureSubsidyState(){
 
 function calculateSubsidy(){
   ensureSubsidyState();
+  // Plynový kotol nemá v tejto ponuke dotáciu Obnov dom mini+.
+  // Opraví aj staršie uložené ponuky, v ktorých výber dotácie zostal z TČ.
+  if(current.category==='boiler'&&current.boiler_type==='gas'){
+    current.subsidy={program:'none',label:'Bez dotácie',estimated_amount:0,estimated_after_subsidy:null};
+    return current.subsidy;
+  }
   const program=current.subsidy.program;
   const power=Number(current.device?.power_kw||current.target_kw||0);
   const total=Number(current.total||0);
