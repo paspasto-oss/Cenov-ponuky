@@ -2709,41 +2709,20 @@ async function createPdfFile(){
     const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
     const pageWidthMm=210;
     const pageHeightMm=297;
-    const pageHeightPx=Math.floor(canvas.width*(pageHeightMm/pageWidthMm));
+    // Prvá strana je vždy jedna A4. Menšie presahy spôsobené zaokrúhlením
+    // CSS mm a veľké zákazkové poznámky sa prispôsobia dostupnej výške.
+    const renderedWidthMm=Math.min(pageWidthMm,canvas.width*pageHeightMm/canvas.height);
+    const renderedHeightMm=canvas.height*renderedWidthMm/canvas.width;
+    const offsetX=(pageWidthMm-renderedWidthMm)/2;
+    pdf.addImage(canvas.toDataURL('image/jpeg',0.96),'JPEG',
+      offsetX,0,renderedWidthMm,renderedHeightMm,undefined,'FAST');
 
-    let y=0;
-    let page=0;
-    while(y<canvas.height){
-      const sliceHeight=Math.min(pageHeightPx,canvas.height-y);
-      const slice=document.createElement('canvas');
-      slice.width=canvas.width;
-      slice.height=sliceHeight;
-      const ctx=slice.getContext('2d',{alpha:false});
-      ctx.fillStyle='#ffffff';
-      ctx.fillRect(0,0,slice.width,slice.height);
-      ctx.drawImage(canvas,0,y,canvas.width,sliceHeight,0,0,canvas.width,sliceHeight);
-
-      const imgData=slice.toDataURL('image/jpeg',0.96);
-      const heightMm=sliceHeight*pageWidthMm/canvas.width;
-      if(page>0)pdf.addPage('a4','portrait');
-      pdf.addImage(imgData,'JPEG',0,0,pageWidthMm,heightMm,undefined,'FAST');
-
-      y+=sliceHeight;
-      page++;
-    }
-
-    // Klikateľné webové odkazy: prevod CSS súradníc náhľadu na mm a príslušnú PDF stranu.
+    // Odkazy zostanú na svojich miestach aj pri zmenšení prvej strany.
     const rootWidthCss=root.scrollWidth||1;
-    const pageHeightCss=rootWidthCss*(pageHeightMm/pageWidthMm);
+    const scaleMm=renderedWidthMm/rootWidthCss;
     for(const link of pdfLinks){
-      const pageIndex=Math.max(0,Math.floor(link.y/pageHeightCss));
-      if(pageIndex>=page)continue;
-      const xMm=link.x/rootWidthCss*pageWidthMm;
-      const yMm=(link.y-pageIndex*pageHeightCss)/rootWidthCss*pageWidthMm;
-      const wMm=link.w/rootWidthCss*pageWidthMm;
-      const hMm=link.h/rootWidthCss*pageWidthMm;
-      pdf.setPage(pageIndex+1);
-      pdf.link(xMm,yMm,wMm,hMm,{url:link.url});
+      pdf.link(offsetX+link.x*scaleMm,link.y*scaleMm,
+        link.w*scaleMm,link.h*scaleMm,{url:link.url});
     }
 
     // Samostatná druhá strana s podmienkami záruky sa vykreslí ako celá A4.
