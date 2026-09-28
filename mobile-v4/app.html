@@ -323,7 +323,7 @@
         <h2 style="margin-top:0">Podpis zákazníka</h2>
         <label style="display:flex;gap:9px;align-items:flex-start;margin-bottom:13px">
           <input id="warrantyConsentCheck" type="checkbox" style="width:23px;height:23px;flex:none">
-          <span>Súhlasím s podmienkami 5-ročnej záruky Spektra na zariadenie pri pravidelnom ročnom servise počas 5 rokov.</span>
+          <span>Súhlasím s podmienkami 5-ročnej záruky Spektra uvedenými na 2. strane ponuky a s pravidelným ročným servisom počas 5 rokov.</span>
         </label>
         <canvas id="warrantySignatureCanvas" style="display:block;width:100%;height:190px;background:#fff;border:1px solid #9fc6da;border-radius:8px;touch-action:none"></canvas>
         <div class="sub" style="margin:8px 0 12px">Zákazník sa podpíše prstom alebo myšou.</div>
@@ -1887,9 +1887,11 @@ function pdfPresentationSubtitle(){
     type==='biomass'?'Efektívne vykurovanie biomasou':'Riešenie navrhnuté pre váš domov';
 }
 const SPEKTRA_WARRANTY='ZÁRUKA SPEKTRA 5 rokov na zariadenia pri pravidelnom ročnom servise.';
-const SPEKTRA_CONSENT='Súhlasím s podmienkami 5-ročnej záruky Spektra na zariadenie pri pravidelnom ročnom servise počas 5 rokov.';
+const SPEKTRA_CONSENT='Súhlasím s podmienkami 5-ročnej záruky Spektra na zariadenie uvedenými na 2. strane tejto ponuky a s pravidelným ročným servisom počas 5 rokov.';
+const SPEKTRA_WARRANTY_TERMS_VERSION='2026-09-28-v1';
 function warrantyOfferKey(){
   return JSON.stringify({
+    warranty_terms_version:SPEKTRA_WARRANTY_TERMS_VERSION,
     customer:[current?.customer?.name||'',current?.customer?.address||''],
     category:current?.category||'',device:[current?.device?.id||'',current?.device?.brand||'',current?.device?.model||''],
     items:(current?.items||[]).map(i=>[i.role,i.name,i.qty,i.price]),
@@ -2573,9 +2575,31 @@ function offerHtmlPresentation(){
   '</div>';
 }
 
+function warrantyTermsHtml(){
+  const device=[current?.device?.brand,current?.device?.model,current?.device?.variant].filter(Boolean).join(' ');
+  const row=(n,title,body)=>'<div style="display:grid;grid-template-columns:7mm 1fr;gap:2mm;margin:0 0 4.2mm;break-inside:avoid">'+
+    '<div style="color:#c20000;font-size:11px;font-weight:900">'+n+'.</div><div><div style="color:#00539B;font-size:10.5px;font-weight:800;margin-bottom:1.5mm">'+title+'</div><div style="font-size:9px;line-height:1.45">'+body+'</div></div></div>';
+  return '<div style="box-sizing:border-box;width:210mm;height:297mm;padding:15mm 16mm 13mm;font-family:Arial,sans-serif;color:#173247;background:#fff;position:relative;overflow:hidden">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:5mm;border-bottom:2px solid #00539B">'+
+      '<div><div style="color:#c20000;font-size:8px;font-weight:900;letter-spacing:1px">SPEKTRA INSTALL</div><div style="font-size:21px;line-height:1.1;font-weight:900;color:#00539B;margin-top:2mm">Podmienky 5-ročnej záruky</div><div style="font-size:9px;margin-top:2mm">ZÁRUKA SPEKTRA na zariadenie pri pravidelnom ročnom servise</div></div>'+
+      '<div style="text-align:right;font-size:8px;line-height:1.45;color:#516474">Strana 2/2<br>Č. ponuky: <b>'+esc(current.quote_no||'—')+'</b></div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4mm;background:#f2f7fa;padding:3.5mm 4mm;margin:5mm 0 6mm;font-size:8.5px;line-height:1.45">'+
+      '<div><b>Poskytovateľ záruky</b><br>Spektra Install s.r.o.<br>Hollého 210, 015 01 Rajec<br>IČO: 53690036</div>'+
+      '<div><b>Zákazník a zariadenie</b><br>'+esc(current.customer?.name||'—')+'<br>'+esc(device||'Zariadenie uvedené v ponuke')+'<br>Identifikácia a sériové číslo: podľa dokladu o odovzdaní</div>'+
+    '</div>'+
+    row(1,'Rozsah a trvanie','Spektra Install s.r.o. poskytuje na nové zariadenie uvedené v tejto cenovej ponuke, ktoré dodala a odborne nainštalovala, dobrovoľnú záruku 5 rokov. Plynutie záruky začína dňom dokončenia montáže a odovzdania zariadenia zákazníkovi, uvedeným v odovzdávacom alebo montážnom protokole. Záruka sa vzťahuje na vady samotného zariadenia, ktoré sa prejavia pri používaní v súlade s návodom. Nevzťahuje sa na ostatné práce a materiál, ak nie je výslovne uvedené inak.')+
+    row(2,'Podmienka ročného servisu','Počas celej 5-ročnej doby musí byť na zariadení vykonaný odborný servis najmenej raz v každom 12-mesačnom období od jeho odovzdania, v rozsahu predpísanom výrobcom. Servis vykoná odborne spôsobilá osoba; zákazník uchová doklady o dátume a rozsahu každého servisu a pri uplatnení záruky ich predloží. Ročný servis je platená služba, účtovaná pri vykonaní podľa dohodnutej ceny. Ak pravidelný servis nie je preukázaný, nárok z tejto dobrovoľnej 5-ročnej záruky za obdobie po zmeškanom servise nevzniká; zákonné práva zákazníka tým nie sú dotknuté.')+
+    row(3,'Čo záruka zahŕňa','Pri vade krytej touto zárukou Spektra bezplatne zabezpečí diagnostiku, opravu vrátane potrebných náhradných dielov a práce. Ak oprava nie je možná alebo primeraná, zabezpečí výmenu vadného zariadenia za rovnaké alebo porovnateľné zariadenie. Spôsob vybavenia oznámi zákazníkovi po posúdení vady.')+
+    row(4,'Čo záruka nezahŕňa','Záruka nekryje bežné opotrebovanie a pravidelnú údržbu (napr. filtre, čistenie, nastavenie), ani poškodenie spôsobené nesprávnym používaním, neodborným zásahom, zanedbaním údržby, nevhodným médiom alebo palivom, mrazom, prepätím či inou vonkajšou príčinou. Vylúčenie sa uplatní len v rozsahu, v akom táto okolnosť spôsobila reklamovanú vadu. Záruka sa nevzťahuje na škody na iných veciach alebo následné škody.')+
+    row(5,'Ako uplatniť záruku','Vadu oznámte bez zbytočného odkladu spoločnosti Spektra Install s.r.o. na adrese uvedenej vyššie alebo cez kontaktné údaje v ponuke. Uveďte číslo ponuky, označenie a sériové číslo zariadenia, opis vady a kontakt; priložte doklad o kúpe alebo odovzdaní a záznamy o ročných servisoch. Umožnite obhliadku a prístup k zariadeniu. O prijatí a vybavení uplatnenia dostanete potvrdenie.')+
+    row(6,'Zákonné práva zákazníka','Táto dobrovoľná spotrebiteľská záruka je nad rámec práv zo zodpovednosti predávajúceho za vady. Zákazník má voči predávajúcemu zákonné práva zo zodpovednosti za vady podľa § 621 Občianskeho zákonníka. Podmienky ročného servisu, výluky ani uplynutie tejto 5-ročnej záruky tieto zákonné práva neobmedzujú.')+
+    '<div style="position:absolute;bottom:12mm;left:16mm;right:16mm;border-top:1px solid #cbd9e1;padding-top:3mm;display:flex;justify-content:space-between;color:#60717d;font-size:7.5px"><span>Spektra Install s.r.o. · Hollého 210, 015 01 Rajec</span><span>Podmienky záruky · '+SPEKTRA_WARRANTY_TERMS_VERSION+'</span></div>'+
+  '</div>';
+}
 function offerHtml(){
   ensurePdfTemplateState();
-  return current.pdf_template==='technical'?offerHtmlTechnical():offerHtmlPresentation();
+  return (current.pdf_template==='technical'?offerHtmlTechnical():offerHtmlPresentation())+warrantyTermsHtml();
 }
 
 async function blobToDataUrl(blob){
@@ -2720,6 +2744,20 @@ async function createPdfFile(){
       const hMm=link.h/rootWidthCss*pageWidthMm;
       pdf.setPage(pageIndex+1);
       pdf.link(xMm,yMm,wMm,hMm,{url:link.url});
+    }
+
+    // Samostatná druhá strana s podmienkami záruky sa vykreslí ako celá A4.
+    const termsPage=holder.children[1];
+    if(termsPage){
+      const termsCanvas=await window.html2canvas(termsPage,{
+        scale:2.4,useCORS:false,allowTaint:true,backgroundColor:'#ffffff',
+        logging:false,imageTimeout:0,scrollX:0,scrollY:0,
+        width:termsPage.scrollWidth,height:termsPage.scrollHeight,
+        windowWidth:termsPage.scrollWidth,windowHeight:termsPage.scrollHeight
+      });
+      if(!termsCanvas.width||!termsCanvas.height)throw new Error('Nepodarilo sa vyrenderovať podmienky záruky.');
+      pdf.addPage('a4','portrait');
+      pdf.addImage(termsCanvas.toDataURL('image/jpeg',0.96),'JPEG',0,0,210,297,undefined,'FAST');
     }
 
     const blob=pdf.output('blob');
