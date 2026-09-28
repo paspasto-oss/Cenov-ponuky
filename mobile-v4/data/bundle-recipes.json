@@ -1336,7 +1336,8 @@
             "napustenie a odvzdušnenie vykurovacieho systému",
             "základná kontrola tesnosti a funkcie po montáži"
           ],
-          "note": "Cena sa načítava priamo z POHODY; aktuálne 590 € bez DPH."
+          "note": "Základná montáž plynového kotla podľa cenníka: 590 € bez DPH. Cena sa použije aj vtedy, keď zásoba POHODA nemá cenu alebo má nesprávnu starú cenu.",
+          "default_sell_price_ex_vat": 590
         }
       ]
     },
