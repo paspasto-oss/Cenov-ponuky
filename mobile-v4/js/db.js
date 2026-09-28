@@ -389,7 +389,10 @@ window.SpektraDB = (() => {
       pdf_banner_path:q.pdf_banner_path||null,
       pohoda_offer_exported_at:q.pohoda_offer_exported_at||null,
       pohoda_offer_export_file:q.pohoda_offer_export_file||null,
-      server_quote_no:!!q._server_quote_no
+      server_quote_no:!!q._server_quote_no,
+      warranty_consent:q.warranty_consent?.accepted && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(q.warranty_consent.signature_data_url||'')
+        ? {accepted:true,signature_data_url:q.warranty_consent.signature_data_url,signed_at:q.warranty_consent.signed_at||null,offer_key:q.warranty_consent.offer_key||null}
+        : null
     };
   }
 
