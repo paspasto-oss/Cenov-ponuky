@@ -390,6 +390,11 @@ window.SpektraDB = (() => {
       pohoda_offer_exported_at:q.pohoda_offer_exported_at||null,
       pohoda_offer_export_file:q.pohoda_offer_export_file||null,
       server_quote_no:!!q._server_quote_no,
+      inspection_id:q.inspection_id||null,
+      inspection_materials:Array.isArray(q.inspection_materials)?q.inspection_materials:[],
+      inspection_routes:q.inspection_routes||{},
+      inspection_extra_work:Array.isArray(q.inspection_extra_work)?q.inspection_extra_work:[],
+      inspection_notes:q.inspection_notes||null,
       warranty_consent:q.warranty_consent?.accepted && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(q.warranty_consent.signature_data_url||'')
         ? {accepted:true,signature_data_url:q.warranty_consent.signature_data_url,signed_at:q.warranty_consent.signed_at||null,offer_key:q.warranty_consent.offer_key||null}
         : null
@@ -637,10 +642,15 @@ window.SpektraDB = (() => {
 
     let row=null;
     if(remoteId){
-      payload.sync_version=Math.max(1,Number(i.sync_version||1)+1);
-      const {data,error}=await client.from('inspections').update(payload).eq('id',remoteId)
-        .select('id,customer_id,status,updated_at,sync_version').single();
+      const expectedVersion=Math.max(1,Number(i.sync_version||1));
+      payload.sync_version=expectedVersion+1;
+      const {data,error}=await client.from('inspections').update(payload)
+        .eq('id',remoteId)
+        .eq('sync_version',expectedVersion)
+        .select('id,customer_id,status,updated_at,sync_version')
+        .maybeSingle();
       if(error)throw error;
+      if(!data)throw new Error('Obhliadka bola medzitým zmenená na inom zariadení. Synchronizuj ju a skontroluj zmeny pred ďalším uložením.');
       row=data;
     }else{
       const {data,error}=await client.from('inspections').insert(payload)
