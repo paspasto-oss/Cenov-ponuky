@@ -43,11 +43,18 @@
   let active=null;
   let step=1;
   let busy=false;
+  let stockSearchResults=[];
+  let stockSearchTimer=null;
 
   const esc=v=>String(v==null?'':v).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
   const num=(v,d=0)=>Number.isFinite(Number(v))?Number(v):d;
   const nowIso=()=>new Date().toISOString();
   const uuid=()=>crypto?.randomUUID?crypto.randomUUID():'insp_'+Date.now()+'_'+Math.random().toString(36).slice(2,10);
+  const fold=v=>String(v==null?'':v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const priceText=v=>v==null||v===''?'—':new Intl.NumberFormat('sk-SK',{style:'currency',currency:'EUR'}).format(Number(v)||0);
+  function stockPool(){
+    try{return Array.isArray(stocks)?stocks:[]}catch(_){return []}
+  }
 
   function loadCache(){
     try{return JSON.parse(localStorage.getItem(CACHE_KEY)||'[]')}catch(_){return []}
@@ -138,7 +145,8 @@
       '.inspectionProgress{display:flex;gap:5px;margin:0 0 11px}.inspectionProgress i{height:5px;flex:1;background:#8eb6cb;border-radius:999px}.inspectionProgress i.on{background:#00539B}'+
       '.inspTypeGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.inspType{border:1px solid #8fb8cf;background:#f7fbfd;border-radius:12px;padding:11px;text-align:center;color:#173247}.inspType.on{background:#00539B;color:#fff;border-color:#00539B}.inspType span{display:block;font-size:21px}.inspType b{font-size:12px}'+
       '.inspPhotoGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.inspThumb{height:110px;background:#f0f6f9;border:1px solid #a9cadb;border-radius:10px;overflow:hidden;position:relative}.inspThumb img{width:100%;height:100%;object-fit:cover}.inspThumb button{position:absolute;right:5px;top:5px;width:27px;height:27px;border:0;border-radius:50%;background:#173247;color:#fff;font-weight:900}'+
-      '.inspMaterial{display:grid;grid-template-columns:minmax(0,1fr) 72px 62px 34px;gap:6px;align-items:center;margin-bottom:7px}.inspMaterial input,.inspMaterial select{padding:8px;font-size:14px}.inspMaterial button{border:0;border-radius:8px;background:#dfeaf0;color:#173247;height:38px}'+
+      '.inspMaterial{display:grid;grid-template-columns:minmax(0,1fr) 72px 62px 34px;gap:6px;align-items:center;margin-bottom:7px}.inspMaterial input,.inspMaterial select{padding:8px;font-size:14px}.inspMaterial button{border:0;border-radius:8px;background:#dfeaf0;color:#173247;height:38px}.inspMaterialMain{min-width:0}.inspMaterialMeta{font-size:10px;color:#607787;margin:3px 2px 0;white-space:normal}.inspMaterialMeta.linked{color:#28775c;font-weight:700}'+
+      '.inspStockSearch{margin:0 0 10px}.inspStockResults{display:flex;flex-direction:column;gap:6px;margin-top:7px}.inspStockResult{width:100%;border:1px solid #a9cadb;background:#f7fbfd;color:#173247;border-radius:11px;padding:10px;text-align:left}.inspStockResult b{display:block;font-size:13px}.inspStockResult small{display:block;color:#607787;margin-top:3px}.inspStockResult .price{font-weight:900;color:#00539B}.inspStockHint{font-size:11px;color:#607787;margin-top:6px}'+
       '.inspStatus{font-size:11px;padding:5px 8px;border-radius:999px;background:#d7e1e7;color:#425766}.inspStatus.completed,.inspStatus.converted{background:#d9efe5;color:#24684f}.inspStatus.in_progress{background:#fff0ca;color:#755c18}'+
       '@media(max-width:720px){.inspMaterial{grid-template-columns:minmax(0,1fr) 62px 58px 32px}.inspPhotoGrid{grid-template-columns:1fr 1fr}}';
     document.head.appendChild(style);
@@ -443,7 +451,11 @@
         field('Model / poznámka','ipDevice',active.proposed_device?.name||'','text','placeholder="napr. Panasonic Aquarea 12 kW" onchange="SpektraInspections.input(\'proposed_device.name\',this)"')+
         field('Predbežný výkon [kW]','ipPower',active.proposed_device?.power_kw||active.heat_loss?.recommended_kw||'','number','step="0.1" onchange="SpektraInspections.input(\'proposed_device.power_kw\',this,\'number\')"')+
       '</div>'+
-      '<div class="card"><h2>Materiál z obhliadky</h2><div id="inspMaterials">'+materialRows()+'</div><button class="btn ghost small" onclick="SpektraInspections.addMaterial()">+ Pridať položku</button></div>'+
+      '<div class="card"><h2>Materiál z obhliadky</h2>'+
+        '<div class="inspStockSearch"><div class="field" style="margin-bottom:0"><label>Hľadať v POHODE</label><input id="inspStockSearchInput" placeholder="Názov, kód, PLU, výrobca…" autocomplete="off" oninput="SpektraInspections.searchStock(this.value)"></div>'+
+        '<div id="inspStockResults" class="inspStockResults"></div><div class="inspStockHint">Výberom zo skladu sa uloží presná karta POHODA a pri cenovej ponuke sa použije jej aktuálna cena.</div></div>'+
+        '<div id="inspMaterials">'+materialRows()+'</div>'+
+        '<button class="btn ghost small" onclick="SpektraInspections.addMaterial()">+ Pridať ručne</button></div>'+
       '<div class="card"><h2>Poznámka technika</h2><textarea onchange="SpektraInspections.input(\'notes\',this)">'+esc(active.notes||'')+'</textarea></div>'+
       '<button class="btn primary full" onclick="SpektraInspections.next()">Pokračovať →</button>';
   }
@@ -455,21 +467,113 @@
     setPath('routes.refrigerant_m',v,false);
   }
   function materialRows(){
-    return (active.materials||[]).map((m,i)=>
-      '<div class="inspMaterial">'+
-      '<input value="'+esc(m.name||'')+'" onchange="SpektraInspections.material('+i+',\'name\',this.value)">'+
-      '<input type="number" step="0.5" min="0" value="'+esc(m.qty??0)+'" onchange="SpektraInspections.material('+i+',\'qty\',Number(this.value))">'+
-      '<select onchange="SpektraInspections.material('+i+',\'unit\',this.value)">'+['ks','m','súb.','l'].map(u=>'<option '+(m.unit===u?'selected':'')+'>'+u+'</option>').join('')+'</select>'+
-      '<button type="button" onclick="SpektraInspections.removeMaterial('+i+')">×</button></div>'
-    ).join('');
+    return (active.materials||[]).map((m,i)=>{
+      const meta=m.metadata||{};
+      const linked=!!m.pohoda_stock_id;
+      const details=linked
+        ? 'POHODA'+(m.code?' · '+m.code:'')+(meta.plu?' · PLU '+meta.plu:'')+' · '+priceText(meta.sell_price_ex_vat)+' bez DPH'+(meta.quantity_available!=null?' · sklad '+meta.quantity_available+' '+(m.unit||'ks'):'')
+        : (m.source==='manual'?'Ručná položka – ak sa nenájde v POHODE, ponuka môže zostať bez ceny':'Množstvo vypočítané z obhliadky');
+      return '<div class="inspMaterial">'+
+        '<div class="inspMaterialMain"><input value="'+esc(m.name||'')+'" '+(linked?'readonly':'')+' onchange="SpektraInspections.material('+i+',\'name\',this.value)"><div class="inspMaterialMeta '+(linked?'linked':'')+'">'+esc(details)+'</div></div>'+
+        '<input type="number" step="0.5" min="0" value="'+esc(m.qty??0)+'" onchange="SpektraInspections.material('+i+',\'qty\',Number(this.value))">'+
+        '<select onchange="SpektraInspections.material('+i+',\'unit\',this.value)">'+['ks','m','súb.','l','bal'].map(u=>'<option '+(m.unit===u?'selected':'')+'>'+u+'</option>').join('')+'</select>'+
+        '<button type="button" onclick="SpektraInspections.removeMaterial('+i+')">×</button></div>';
+    }).join('');
   }
   function material(index,key,value){
     if(!active.materials[index])return;
     active.materials[index][key]=value;
     active._dirty=true;saveLocal(active);
   }
-  function addMaterial(){active.materials.push({name:'Nová položka',qty:1,unit:'ks',source:'manual'});active._dirty=true;saveLocal(active);renderWizard()}
+  function addMaterial(){active.materials.push({name:'Nová položka',qty:1,unit:'ks',source:'manual',metadata:{}});active._dirty=true;saveLocal(active);renderWizard()}
   function removeMaterial(i){active.materials.splice(i,1);active._dirty=true;saveLocal(active);renderWizard()}
+
+  function renderStockSearchResults(message=''){
+    const box=document.getElementById('inspStockResults');
+    if(!box)return;
+    if(message){box.innerHTML='<div class="notice">'+esc(message)+'</div>';return}
+    if(!stockSearchResults.length){box.innerHTML='';return}
+    box.innerHTML=stockSearchResults.map((st,i)=>{
+      const code=st.code||st.plu||'bez kódu';
+      const qty=st.quantity_available==null?'—':Number(st.quantity_available).toLocaleString('sk-SK');
+      return '<button type="button" class="inspStockResult" onclick="SpektraInspections.chooseStock('+i+')">'+
+        '<b>'+esc(st.name||'Bez názvu')+'</b>'+
+        '<small>'+esc(code)+(st.plu&&st.plu!==code?' · PLU '+esc(st.plu):'')+(st.manufacturer?' · '+esc(st.manufacturer):'')+'</small>'+
+        '<small>Sklad: '+qty+' '+esc(st.unit||'ks')+' · <span class="price">'+priceText(st.sell_price_ex_vat)+' bez DPH</span></small>'+
+      '</button>';
+    }).join('');
+  }
+
+  async function searchStock(query){
+    const q=fold(query);
+    clearTimeout(stockSearchTimer);
+    if(q.length<2){stockSearchResults=[];renderStockSearchResults();return}
+    renderStockSearchResults('Hľadám v POHODE…');
+    stockSearchTimer=setTimeout(async()=>{
+      try{
+        let pool=stockPool();
+        if(!pool.length&&window.SpektraDB?.isAuthenticated()){
+          pool=await SpektraDB.listStocks();
+          try{stocks=pool}catch(_){}
+        }
+        const tokens=q.split(/\s+/).filter(Boolean);
+        stockSearchResults=pool.filter(st=>{
+          if(st.active===false)return false;
+          const hay=fold([st.name,st.code,st.plu,st.ean,st.manufacturer,st.stock_group].filter(Boolean).join(' '));
+          return tokens.every(t=>hay.includes(t));
+        }).sort((a,b)=>{
+          const qa=fold(a.name).startsWith(q)?1:0,qb=fold(b.name).startsWith(q)?1:0;
+          if(qa!==qb)return qb-qa;
+          const sa=Number(a.quantity_available||0)>0?1:0,sb=Number(b.quantity_available||0)>0?1:0;
+          if(sa!==sb)return sb-sa;
+          return String(a.name||'').localeCompare(String(b.name||''),'sk');
+        }).slice(0,20);
+        renderStockSearchResults(stockSearchResults.length?'':'Nenašla sa žiadna položka.');
+      }catch(e){
+        console.error('Inspection POHODA search failed',e);
+        stockSearchResults=[];
+        renderStockSearchResults('Vyhľadávanie zlyhalo: '+(e.message||String(e)));
+      }
+    },180);
+  }
+
+  function chooseStock(index){
+    const st=stockSearchResults[index];
+    if(!st||!active)return;
+    active.materials=active.materials||[];
+    const existing=active.materials.find(m=>m.pohoda_stock_id===st.id);
+    if(existing){
+      existing.qty=Number(existing.qty||0)+1;
+      existing.metadata={...(existing.metadata||{}),
+        plu:st.plu||null,ean:st.ean||null,manufacturer:st.manufacturer||null,
+        sell_price_ex_vat:st.sell_price_ex_vat==null?null:Number(st.sell_price_ex_vat),
+        purchase_price_ex_vat:st.purchase_price_ex_vat==null?null:Number(st.purchase_price_ex_vat),
+        quantity_available:st.quantity_available==null?null:Number(st.quantity_available)
+      };
+    }else{
+      active.materials.push({
+        pohoda_stock_id:st.id,
+        role:'inspection_material',
+        code:st.code||null,
+        name:st.name||'POHODA položka',
+        qty:1,
+        unit:st.unit||'ks',
+        source:'pohoda',
+        original_qty:null,
+        metadata:{
+          plu:st.plu||null,ean:st.ean||null,manufacturer:st.manufacturer||null,
+          sell_price_ex_vat:st.sell_price_ex_vat==null?null:Number(st.sell_price_ex_vat),
+          purchase_price_ex_vat:st.purchase_price_ex_vat==null?null:Number(st.purchase_price_ex_vat),
+          quantity_available:st.quantity_available==null?null:Number(st.quantity_available)
+        }
+      });
+    }
+    active._dirty=true;
+    saveLocal(active);
+    stockSearchResults=[];
+    renderWizard();
+    setTimeout(()=>document.getElementById('inspStockSearchInput')?.focus(),0);
+  }
 
   function requiredPhotoKeys(){return PHOTO_CATEGORIES.map(x=>x[0])}
   function stepPhotos(){
@@ -663,7 +767,7 @@
     openHome,startNew,edit,refresh,next,back,save,complete,createQuote,
     input:(path,el,kind,rerender)=>setFromInput(path,el,kind||'text',!!rerender),
     check:(path,el,rerender)=>setFromInput(path,el,'bool',!!rerender),
-    toggleType,toggleExtra,routeChanged,material,addMaterial,removeMaterial,photo,deletePhoto
+    toggleType,toggleExtra,routeChanged,material,addMaterial,removeMaterial,searchStock,chooseStock,photo,deletePhoto
   };
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initUI);
