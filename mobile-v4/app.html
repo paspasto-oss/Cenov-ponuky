@@ -1132,8 +1132,8 @@ function applyInspectionOverrides(items,d){
     }
 
     // Calculated rows incompatible with the finally selected system are ignored.
-    // Manually added rows are preserved as extra technical material.
-    if(m.source!=='manual')return;
+    // Manual rows and explicitly selected POHODA rows are preserved as extra material.
+    if(!['manual','pohoda'].includes(m.source))return;
     let st=null;
     if(m.pohoda_stock_id)st=stocks.find(x=>x.id===m.pohoda_stock_id)||null;
     if(!st&&code)st=stockByCodeMap.get(norm(code))||null;
@@ -3104,6 +3104,6 @@ loadConfig().then(async()=>{
 window.addEventListener('focus',()=>syncQuotes(false,true));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncQuotes(false,true)});
 </script>
-<script src="js/inspections.js?v=20260928-inspections1"></script>
+<script src="js/inspections.js?v=20260928-inspections2"></script>
 </body>
 </html>
