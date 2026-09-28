@@ -211,7 +211,7 @@
       <label class="row" style="cursor:pointer">
         <div>
           <b>Ročný servis kotla na biomasu</b>
-          <small>Zobrazí sa v ponuke ako odporúčaná pravidelná servisná prehliadka. Cena sa doplní po vytvorení servisnej karty v POHODE.</small>
+          <small>110 € / rok · účtuje sa pri vykonaní servisu</small>
         </div>
         <input id="biomassAnnualServiceToggle" type="checkbox" checked style="width:24px;height:24px" onchange="toggleBiomassAnnualService()">
       </label>
@@ -232,13 +232,24 @@
       <label class="row" style="cursor:pointer;margin-top:10px">
         <div>
           <b>Ročná servisná prehliadka TČ</b>
-          <small>150 € s DPH / rok · účtuje sa až pri vykonaní prehliadky</small>
+          <small id="hpAnnualServicePrice">150 € / rok · účtuje sa až pri vykonaní prehliadky</small>
         </div>
         <input id="annualServiceToggle" type="checkbox" checked style="width:24px;height:24px" onchange="toggleAnnualService()">
       </label>
       <div id="annualServiceNote" class="notice" style="margin-top:10px">
-        Ročný servis sa v ponuke zobrazuje samostatne a nezvyšuje cenu montáže. Pri predĺženej záruke sa vždy riadime podmienkami konkrétneho výrobcu.
+        Ročný servis sa zobrazuje samostatne a nezvyšuje cenu montáže. ZÁRUKA SPEKTRA 5 rokov na zariadenia pri pravidelnom ročnom servise.
       </div>
+    </div>
+    <div id="acAnnualServiceCard" class="card hidden">
+      <h2>Servis a záruka</h2>
+      <label class="row" style="cursor:pointer">
+        <div>
+          <b>Ročný servis klimatizácie</b>
+          <small>69 € / 1 split jednotku / rok · účtuje sa pri vykonaní servisu</small>
+        </div>
+        <input id="acAnnualServiceToggle" type="checkbox" checked style="width:24px;height:24px" onchange="toggleAcAnnualService()">
+      </label>
+      <div class="notice" style="margin-top:10px">ZÁRUKA SPEKTRA 5 rokov na zariadenia pri pravidelnom ročnom servise.</div>
     </div>
     <div id="subsidyCard" class="card">
       <h2>Dotácia</h2>
@@ -1259,6 +1270,12 @@ function syncOptionalUI(){
   if(biomassCard)biomassCard.classList.toggle('hidden',!showBiomass);
   const biomassAnnual=document.getElementById('biomassAnnualServiceToggle');
   if(biomassAnnual)biomassAnnual.checked=current?.optional_services?.annual_service!==false;
+  const acCard=document.getElementById('acAnnualServiceCard');
+  if(acCard)acCard.classList.toggle('hidden',activeCategory!=='air_conditioning');
+  const acAnnual=document.getElementById('acAnnualServiceToggle');
+  if(acAnnual)acAnnual.checked=current?.optional_services?.annual_service!==false;
+  const hpServicePrice=document.getElementById('hpAnnualServicePrice');
+  if(hpServicePrice&&activeCategory==='heat_pump')hpServicePrice.textContent=annualServiceInfo().price+' · účtuje sa pri vykonaní prehliadky';
   const tankRow=document.getElementById('boilerDhwTankRow');
   const tankToggle=document.getElementById('boilerDhwTankToggle');
   const tankEligible=showBoilerGas && (current?.device?.dhw_mode||recommendation?.dhw_mode||'none')==='none';
@@ -1280,6 +1297,10 @@ function toggleBoilerAnnualService(){
   current.optional_services.annual_service=!!document.getElementById('gasAnnualServiceToggle')?.checked;
   renderFinal();
   upsertCurrent();
+}
+function toggleAcAnnualService(){
+  if(!current.optional_services)current.optional_services={};
+  current.optional_services.annual_service=!!document.getElementById('acAnnualServiceToggle')?.checked;
 }
 function toggleBiomassAnnualService(){
   if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false};
@@ -1842,22 +1863,35 @@ function pdfPresentationSubtitle(){
     type==='gas_boiler'?'Moderné a spoľahlivé vykurovanie domácnosti':
     type==='biomass'?'Efektívne vykurovanie biomasou':'Riešenie navrhnuté pre váš domov';
 }
+const SPEKTRA_WARRANTY='ZÁRUKA SPEKTRA 5 rokov na zariadenia pri pravidelnom ročnom servise.';
+function annualServiceInfo(){
+  const activeCategory=current?.category||category;
+  if(activeCategory==='heat_pump'){
+    const split=current?.system_type==='split'||systemType(current?.device||recommendation||{})==='split';
+    return {label:'Ročná servisná prehliadka tepelného čerpadla',price:split?'170 € / rok':'150 € / rok'};
+  }
+  if(activeCategory==='air_conditioning')return {label:'Ročný servis klimatizácie',price:'69 € / 1 split jednotku / rok'};
+  if(activeCategory==='boiler'&&current?.boiler_type==='gas')return {label:'Ročný servis plynového kotla',price:'90 € bez DPH / 110,70 € s DPH / rok'};
+  if(activeCategory==='boiler')return {label:'Ročný servis kotla na biomasu',price:'110 € / rok'};
+  return null;
+}
+function annualServiceText(){
+  const service=annualServiceInfo();
+  return service&&current?.optional_services?.annual_service!==false
+    ? service.label+': '+service.price+'. Účtuje sa pri vykonaní servisu.'
+    : '';
+}
 function renderFinal(){
  syncPdfTemplateUI();
  const install=current.items.find(i=>i.role==='installation_service'||i.role==='installation');
  const flush=current.items.find(i=>i.role==='heating_system_flush_cleaner_inhibitor');
  const scope=install?.work_scope?.length?'<div style="margin-top:12px"><b>Montáž zahŕňa:</b><ul style="margin:7px 0 0 18px;padding:0">'+install.work_scope.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>':'';
  const optional=flush?'<div class="srow" style="margin-top:10px"><span>Preplach + cleaner + inhibitor</span><b>'+eur(flush.price)+'</b></div>':'';
- let annual='';
- if(current.optional_services?.annual_service!==false){
-   if(current.category==='heat_pump'){
-     annual='<div class="srow" style="margin-top:10px"><span>Ročná servisná prehliadka TČ</span><b>150 € s DPH / rok</b></div><div class="sub">Účtuje sa pri vykonaní servisu. Podmienky predĺženej záruky určuje výrobca.</div>';
-   }else if(current.category==='boiler'&&current.boiler_type==='gas'){
-     annual='<div class="srow" style="margin-top:10px"><span>Ročný servis plynového kotla</span><b>90 € bez DPH / 110,70 € s DPH</b></div><div class="sub">Servis sa účtuje až pri vykonaní pravidelnej prehliadky a nezvyšuje cenu tejto montáže.</div>';
-   }else if(current.category==='boiler'&&['pellet','biomass'].includes(current.boiler_type)){
-     annual='<div class="srow" style="margin-top:10px"><span>Ročný servis kotla na biomasu</span><b>cena podľa rozsahu</b></div><div class="sub">Pravidelná servisná prehliadka sa účtuje samostatne. Cena bude doplnená podľa servisnej karty v POHODE.</div>';
-   }
- }
+ const service=annualServiceInfo();
+ const annual=service&&current.optional_services?.annual_service!==false
+   ? '<div class="srow" style="margin-top:10px"><span>'+esc(service.label)+'</span><b>'+esc(service.price)+'</b></div><div class="sub">Účtuje sa pri vykonaní servisu a nezvyšuje cenu montáže.</div>'
+   : '';
+ const warranty='<div class="sub" style="margin-top:10px"><b>'+esc(SPEKTRA_WARRANTY)+'</b></div>';
  const subsidy=calculateSubsidy();
  const subsidyHtml=subsidy.program==='green'
    ? '<div class="srow" style="margin-top:10px"><span>Orientačná dotácia Zelená domácnostiam</span><b>− '+eur(subsidy.estimated_amount)+'</b></div><div class="srow"><span>Orientačne po dotácii</span><b>'+eur(subsidy.estimated_after_subsidy)+'</b></div>'
@@ -1868,7 +1902,7 @@ function renderFinal(){
    current.category==='heat_pump'
      ? (current.installation_tier==='economy'?'EKONOM – '+installationPrice('economy')+' €':'ŠTANDARD – '+installationPrice('standard')+' €')
      : (install?.price!=null?eur(install.price):'podľa cenníka')
- )+'</b></div>'+optional+annual+subsidyHtml+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+ (current.price_complete?eur(current.total):'Cena ešte nie je kompletná') +'</span></div>'
+ )+'</b></div>'+optional+annual+warranty+subsidyHtml+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+ (current.price_complete?eur(current.total):'Cena ešte nie je kompletná') +'</span></div>'
 }
 function hydrateQuoteForm(){
   if(!current)return;
@@ -2098,16 +2132,11 @@ function offerHtmlTechnical(){
   }
   const materialScope='<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:5px">Rozsah materiálu</div><div style="color:#444;line-height:1.45">'+esc(materialScopeParts.join(' · '))+'</div></div>';
 
-  let annual='';
-  if(current.optional_services?.annual_service!==false){
-    if(current.category==='heat_pump'){
-      annual='<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:4px">Servis a záruka</div><div><b>Ročná servisná prehliadka tepelného čerpadla: 150 € s DPH / rok.</b><br><span style="color:#555">Účtuje sa pri vykonaní prehliadky. Podmienky predĺženej záruky sa riadia konkrétnym výrobcom a záručným programom.</span></div></div>';
-    }else if(current.category==='boiler'&&current.boiler_type==='gas'){
-      annual='<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:4px">Pravidelný servis</div><div><b>Ročný servis plynového kotla: 90 € bez DPH / 110,70 € s DPH.</b><br><span style="color:#555">Servis sa účtuje samostatne až pri vykonaní pravidelnej prehliadky a nezvyšuje cenu tejto montáže.</span></div></div>';
-    }else if(current.category==='boiler'&&['pellet','biomass'].includes(current.boiler_type)){
-      annual='<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:4px">Pravidelný servis</div><div><b>Ročný servis kotla na biomasu.</b><br><span style="color:#555">Odporúčaná pravidelná servisná prehliadka. Cena podľa rozsahu servisu a aktuálnej servisnej karty v POHODE.</span></div></div>';
-    }
-  }
+  const service=annualServiceInfo();
+  const annual='<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:4px">Servis a záruka</div><div><b>'+esc(SPEKTRA_WARRANTY)+'</b>'+
+    (service&&current.optional_services?.annual_service!==false
+      ? '<br><span style="color:#555">'+esc(annualServiceText())+' Servis sa účtuje samostatne a nezvyšuje cenu montáže.</span>'
+      : '')+'</div></div>';
 
   const note=current.customer.note
     ? '<div style="margin-top:14px;padding:10px 12px;background:#f6f6f6;border-left:3px solid #c20000">'+esc(current.customer.note)+'</div>'
@@ -2318,13 +2347,7 @@ function offerHtmlPresentation(){
 
   const work=(installationItem?.work_scope||[]).slice(0,7);
 
-  const annual=current.category==='heat_pump'
-    ? 'Ročná servisná prehliadka tepelného čerpadla: 150 € s DPH / rok.'
-    : current.category==='boiler'&&current.boiler_type==='gas'
-      ? 'Ročný servis plynového kotla: 90 € bez DPH / 110,70 € s DPH.'
-      : current.category==='boiler'
-        ? 'Ročný servis kotla na biomasu podľa rozsahu.'
-        : 'Pravidelný servis podľa typu zariadenia a podmienok výrobcu.';
+  const annual=annualServiceText();
 
   const sub=calculateSubsidy();
   const subsidyBox=sub.program==='green'
@@ -2424,7 +2447,7 @@ function offerHtmlPresentation(){
         '</div>'+
         '<div style="border-left:1px solid #dbe3e9;padding-left:4mm">'+
           '<div style="display:flex;align-items:center;gap:5px;font-size:10.7px;color:#00539B;font-weight:900;margin-bottom:5px"><span style="color:#c20000;font-size:14px">◇</span>Servis a záruka</div>'+
-          '<div style="font-size:7.8px;line-height:1.5">✓ '+esc(annual)+'<br>✓ Záruka podľa podmienok výrobcu<br>✓ Profesionálny servis Spektra Install</div>'+
+          '<div style="font-size:7.8px;line-height:1.5">✓ '+esc(SPEKTRA_WARRANTY)+(annual?'<br>✓ '+esc(annual):'')+'</div>'+
         '</div>'+
       '</div>'+
       '<div style="margin-top:6mm;padding:3mm 0 0;border-top:1px solid #cfdbe3;display:grid;grid-template-columns:1fr 1fr 1fr;align-items:end;color:#516474;font-size:7.3px">'+
