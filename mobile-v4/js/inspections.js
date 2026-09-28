@@ -407,7 +407,7 @@
         {role:'refrigerant_pipe_pair',name:'Chladivové potrubie – pár',qty:ac,original_qty:ac,unit:'m',source:'calculated'},
         {role:'condensate_drain',name:'Odvod kondenzátu',qty:num(r.condensate_m,ac),original_qty:num(r.condensate_m,ac),unit:'m',source:'calculated'},
         {role:'pvc_trunking',name:'PVC lišta',qty:num(r.trunking_m,ac),original_qty:num(r.trunking_m,ac),unit:'m',source:'calculated'},
-        {role:'power_cable',name:'Napájací / komunikačný kábel',qty:cable,original_qty:cable,unit:'m',source:'calculated'}
+        {role:'power_cable',name:'Napájací / komunikačný kábel',qty:ac,original_qty:ac,unit:'m',source:'calculated'}
       ];
     }else{
       active.materials=[{name:'Montážny materiál podľa obhliadky',qty:1,original_qty:1,unit:'súb.',source:'manual'}];
