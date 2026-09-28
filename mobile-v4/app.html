@@ -19,7 +19,7 @@
 </style>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="js/db.js?v=20260927-mideabuttonfix1"></script>
+<script src="js/db.js?v=20260928-inspections1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
@@ -1079,6 +1079,84 @@ function consolidateBOM(items){
   }
   return out
 }
+function applyInspectionOverrides(items,d){
+  if(!current?.inspection_id)return items;
+  const mats=Array.isArray(current.inspection_materials)?current.inspection_materials:[];
+  const route=Number(current.inspection_routes?.route_m||current.inspection_routes?.heating_m||current.inspection_routes?.refrigerant_m||0);
+  const activeCategory=current.category||category;
+  const hpSystem=activeCategory==='heat_pump'?systemType(d):null;
+
+  // First adjust route-sensitive rows using the measured route from the site.
+  if(route>0){
+    const acExtensionRoles=new Set(['refrigerant_pipe_pair','communication_cable','power_cable','condensate_drain','pvc_trunking']);
+    items.forEach(i=>{
+      if(activeCategory==='heat_pump'&&hpSystem==='monoblock'){
+        if(i.role==='copper_pipe_d28'||i.role==='pipe_insulation_13x28')i.qty=2*route;
+      }
+      if(activeCategory==='heat_pump'&&hpSystem==='split'){
+        if(i.role==='refrigerant_pipe_pair_3_8_5_8'||i.role==='condensate_drain')i.qty=route;
+      }
+      if(activeCategory==='air_conditioning'&&(current.ac_mode||acMode||'single')==='single'&&acExtensionRoles.has(i.role)){
+        // The existing AC service includes the first 3 m; these BOM rows represent only the extension.
+        i.qty=Math.max(0,route-3);
+      }
+    });
+  }
+
+  // Then apply explicit quantities entered by the technician.
+  mats.forEach(m=>{
+    if(!m?.name)return;
+    const role=String(m.role||'');
+    const code=String(m.code||'');
+    const mn=norm(m.name);
+    let target=null;
+    if(role)target=items.find(i=>i.role===role)||null;
+    if(!target&&code)target=items.find(i=>norm(i.pohoda?.code||i.pohoda_code||'')===norm(code))||null;
+    if(!target&&mn)target=items.find(i=>{
+      const n=norm(i.name||'');
+      return n===mn||(n&&mn&&(n.includes(mn)||mn.includes(n)));
+    })||null;
+
+    if(target&&target.role!=='device'&&target.role!=='installation_service'&&target.role!=='installation'){
+      let q=Number(m.qty||0);
+      if(activeCategory==='air_conditioning'&&(current.ac_mode||acMode||'single')==='single'&&
+         ['refrigerant_pipe_pair','communication_cable','power_cable','condensate_drain','pvc_trunking'].includes(target.role)&&
+         m.source==='calculated'){
+        q=Math.max(0,q-3);
+      }
+      target.qty=q;
+      target.unit=m.unit||target.unit;
+      target.note=[target.note,'Množstvo podľa obhliadky.'].filter(Boolean).join(' ');
+      target.inspection_source=true;
+      return;
+    }
+
+    // Calculated rows incompatible with the finally selected system are ignored.
+    // Manually added rows are preserved as extra technical material.
+    if(m.source!=='manual')return;
+    let st=null;
+    if(m.pohoda_stock_id)st=stocks.find(x=>x.id===m.pohoda_stock_id)||null;
+    if(!st&&code)st=stockByCodeMap.get(norm(code))||null;
+    if(!st&&mn)st=stockByNameMap.get(mn)||null;
+    items.push({
+      role:role||'inspection_material',
+      name:m.name,
+      qty:Number(m.qty||0),
+      unit:m.unit||'ks',
+      pohoda:st,
+      pohoda_code:st?.code||code||null,
+      price:st?.sell_price_ex_vat??null,
+      cost:st?.purchase_price_ex_vat??null,
+      visible:false,
+      mapping_status:st?'mapped_from_inspection':'inspection_manual',
+      customer_group:'Materiál z obhliadky',
+      note:'Ručne doplnené technikom pri obhliadke.',
+      inspection_source:true
+    });
+  });
+
+  return items.filter(i=>!(i.inspection_source&&Number(i.qty)===0));
+}
 function buildBOM(){
  let d=recommendation,stock=findStockForDevice(d),items=[];
  if(stock){syncProductImagesFromStock(stock);d=recommendation;}
@@ -1236,8 +1314,9 @@ function buildBOM(){
    }
    }
  }
+ items=applyInspectionOverrides(items,d);
  items=consolidateBOM(items);
- current.items=items;current.system_type=systemType(d);current.bundle_key=key;current.device=recommendation;current.route_m=5;current.updated=Date.now()
+ current.items=items;current.system_type=systemType(d);current.bundle_key=key;current.device=recommendation;current.route_m=Number(current.inspection_routes?.route_m||5);current.updated=Date.now()
 }
 function installationPrice(tier){
   const activeCategory=current?.category||category;
@@ -3025,5 +3104,6 @@ loadConfig().then(async()=>{
 window.addEventListener('focus',()=>syncQuotes(false,true));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncQuotes(false,true)});
 </script>
+<script src="js/inspections.js?v=20260928-inspections1"></script>
 </body>
 </html>
