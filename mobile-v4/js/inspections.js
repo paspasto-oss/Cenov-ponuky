@@ -443,7 +443,47 @@
     return h;
   }
 
+  function editTradeSetup(){
+    if(!active)return;
+    const i=ensureTradeDefaults(),type=tradePrimaryType();
+    if(type==='floor_heating'){
+      const area=prompt('Plocha podlahového kúrenia [m²]:',String(active.building?.heated_area_m2||0));
+      if(area!==null&&num(area)>0)active.building.heated_area_m2=num(area);
+      const spacing=prompt('Rozstup rúry [cm] – napr. 10, 15 alebo 20:',String(i.floor_spacing_cm||15));
+      if(spacing!==null&&num(spacing)>0)i.floor_spacing_cm=num(spacing);
+      const rate=prompt('Cena práce bez DPH [€/m²]:',String(i.floor_labor_rate_m2||8));
+      if(rate!==null&&num(rate)>=0)i.floor_labor_rate_m2=num(rate);
+      active.materials=[];ensureBaseMaterials();
+    }else if(type==='water_heater'){
+      const mode=prompt('1 = jednoduchá výmena na rovnakom mieste, 2 = nové miesto / úprava rozvodov',i.water_heater_mode==='new_place'?'2':'1');
+      if(mode==='2'){i.water_heater_mode='new_place';if(i.water_heater_labor_ex_vat===150)i.water_heater_labor_ex_vat=225}else if(mode==='1'){i.water_heater_mode='same_place';}
+      const price=prompt('Odhad práce bez DPH [€]:',String(i.water_heater_labor_ex_vat||150));
+      if(price!==null&&num(price)>=0)i.water_heater_labor_ex_vat=num(price);
+    }else{
+      const workers=prompt('Počet montérov:',String(i.labor_workers||1));
+      if(workers!==null&&num(workers)>0)i.labor_workers=num(workers);
+      const hours=prompt('Hodiny na jedného montéra:',String(i.labor_hours||8));
+      if(hours!==null&&num(hours)>=0)i.labor_hours=num(hours);
+      const rate=prompt('Sadzba práce bez DPH [€/h]:',String(i.labor_hour_rate_ex_vat||35));
+      if(rate!==null&&num(rate)>=0)i.labor_hour_rate_ex_vat=num(rate);
+    }
+    active._dirty=true;saveLocal(active);renderWizard();
+  }
+  function stepTradeTechnical(){
+    const i=ensureTradeDefaults(),type=tradePrimaryType();
+    let detail='';
+    if(type==='floor_heating'){
+      const d=floorDesign();
+      detail='<div class="srow"><span>Plocha</span><b>'+d.area+' m²</b></div><div class="srow"><span>Rozstup</span><b>'+d.spacing+' cm</b></div><div class="srow"><span>Orientačná rúrka</span><b>'+d.pipeM+' m</b></div><div class="srow"><span>Odhad okruhov</span><b>'+d.circuits+'</b></div><div class="srow"><span>Práca</span><b>'+priceText(i.floor_labor_rate_m2)+' / m²</b></div>';
+    }else if(type==='water_heater'){
+      detail='<div class="srow"><span>Rozsah</span><b>'+(i.water_heater_mode==='new_place'?'nové miesto / úpravy':'rovnaké miesto')+'</b></div><div class="srow"><span>Odhad práce</span><b>'+priceText(tradeLaborPrice())+'</b></div>';
+    }else{
+      detail='<div class="srow"><span>Montéri</span><b>'+num(i.labor_workers,1)+'</b></div><div class="srow"><span>Hodiny / montér</span><b>'+num(i.labor_hours,8)+' h</b></div><div class="srow"><span>Sadzba</span><b>'+priceText(i.labor_hour_rate_ex_vat)+' / h</b></div><div class="srow"><span>Odhad práce</span><b>'+priceText(tradeLaborPrice())+'</b></div>';
+    }
+    return '<div class="card"><h2>'+esc(tradeLabel(type))+'</h2><div class="summary">'+detail+'<div class="srow total"><span>Práca bez DPH</span><span>'+priceText(tradeLaborPrice())+'</span></div></div><button class="btn ghost full" style="margin-top:10px" onclick="SpektraInspections.editTradeSetup()">Upraviť odhad práce</button></div><div class="notice" style="margin-bottom:10px">Materiál sa doplní v ďalšom kroku z POHODY. Cena je orientačný návrh a pred odoslaním zákazníkovi ju môže kancelária upraviť.</div><button class="btn primary full" onclick="SpektraInspections.next()">Pokračovať →</button>';
+  }
   function stepTechnical(){
+    if(isTradeInspection())return stepTradeTechnical();
     calculateHeatLoss();
     const e=active.existing_system||{},h=active.heat_loss||{};
     return '<div class="card"><h2>Existujúci systém</h2>'+
