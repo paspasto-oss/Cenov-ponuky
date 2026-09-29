@@ -278,7 +278,7 @@
   </section>
 
   <section id="step5" class="screen">
-    <div class="topline"><button class="btn ghost small" onclick="go('step4')">← Upraviť</button><h1>5. Ponuka zákazníkovi</h1></div>
+    <div class="topline"><button class="btn ghost small" onclick="backFromFinal()">← Upraviť</button><h1>5. Ponuka zákazníkovi</h1></div>
     <div class="steps"><div class="step on"></div><div class="step on"></div><div class="step on"></div><div class="step on"></div><div class="step on"></div></div>
     <div class="card">
       <h2>Vzhľad PDF</h2>
@@ -2143,6 +2143,14 @@ function renderWarrantySignatureStatus(){
   if(el)el.textContent=signed?'Zákazník podpísal súhlas '+new Date(signed.signed_at).toLocaleString('sk-SK')+'.':current?.warranty_consent?.accepted?'Ponuka sa po podpise zmenila. Zákazník ju musí podpísať znova.':'Podpis zákazníka zatiaľ nie je uložený.';
   const btn=document.getElementById('removeWarrantySignatureButton');
   if(btn)btn.classList.toggle('hidden',!current?.warranty_consent?.accepted);
+}
+function backFromFinal(){
+  if(isTradeQuote(current)){
+    if(window.SpektraInspections)SpektraInspections.openHome();
+    else go('home');
+    return;
+  }
+  go('step4');
 }
 function annualServiceInfo(){
   const activeCategory=current?.category||category;
