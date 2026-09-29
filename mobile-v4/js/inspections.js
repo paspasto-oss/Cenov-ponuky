@@ -497,11 +497,12 @@
 
     // Hlavný uzáver vody – kompletná zostava podľa Spektra štandardu.
     add(ztiMaterial('154079591609750002',z.main*3,'ks','zti_main_ball_valve_1','IVR 954 EVERLAST guľový kohút FF1"','main_water_shutoff','Hlavný uzáver vody'));
-    add(ztiMaterial('M0237',z.main,'ks','zti_main_brass_tee_1','Mosadzný T-kus G1"','main_water_shutoff','Hlavný uzáver vody'));
+    add(ztiMaterial('2520009',z.main,'ks','zti_main_brass_tee_1','T-kus mosadzný 1"','main_water_shutoff','Hlavný uzáver vody'));
     add(ztiMaterial('200001',z.main*8,'ks','zti_main_brass_nipple_1','Vsuvka 1" mosadz','main_water_shutoff','Hlavný uzáver vody'));
     add(ztiMaterial('5061001',z.main*4,'ks','zti_main_union_1','Šróbenie V4300 1" mosadz','main_water_shutoff','Hlavný uzáver vody'));
     add(ztiMaterial('22116032',z.main*2,'ks','zti_main_pe_transition_32_1','PE prechod 32x1" vonkajší závit','main_water_shutoff','Hlavný uzáver vody'));
     add(ztiMaterial('38100',z.main,'ks','zti_main_filter_10','Sada filtra Senior 10" MONO, komplet 1"','main_water_shutoff','Hlavný uzáver vody'));
+    add(ztiMaterial('PPS1020',z.main,'ks','zti_main_filter_cartridge_10','Vložka filtra lisovaná 10"x2,5" 20 micron','main_water_shutoff','Hlavný uzáver vody'));
     add(ztiMaterial('150047100009300038',z.main,'ks','zti_main_pressure_reducer','HERZ tlakový ventil DN25 membránový, redukčný','main_water_shutoff','Hlavný uzáver vody'));
 
     // Odpad DN50: 1× koleno 87° + 1× metrová rúra na každý vývod.
