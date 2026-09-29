@@ -2549,7 +2549,7 @@ function offerHtmlTechnical(){
       '</div>'+
     '</div>'+
 
-    subsidyBlock+extraImages+note+materialScope+scope+annual+warrantyConsentHtml()+
+    subsidyBlock+extraImages+note+materialScope+scope+annual+(isTradeQuote(current)?'':warrantyConsentHtml())+
 
     '<div style="position:absolute;left:9mm;right:9mm;bottom:8mm;border-top:1px solid #888;padding-top:5px;display:flex;justify-content:space-between;color:#555;font-size:8px">'+
       '<div>Spektra Install s.r.o.<br>Hollého 210, 015 01 Rajec</div>'+
