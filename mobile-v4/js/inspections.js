@@ -13,6 +13,7 @@
     ['recovery','💨','Rekuperácia'],
     ['zti','🚿','ZTI'],
     ['floor_heating','▤','Podlahovka'],
+    ['water_heater','♨','Bojler / TÚV'],
     ['other','🔧','Iné']
   ];
   const PHOTO_CATEGORIES=[
@@ -87,7 +88,16 @@
       electrical:{phases:3,main_breaker_a:25,panel_space:true,cable_m:12},
       routes:{heating_m:5,refrigerant_m:5,condensate_m:5,trunking_m:5},
       extra_work:[],
-      installation:{tier:'standard'},
+      installation:{
+        tier:'standard',
+        labor_hour_rate_ex_vat:35,
+        labor_workers:1,
+        labor_hours:8,
+        floor_labor_rate_m2:8,
+        floor_spacing_cm:15,
+        water_heater_mode:'same_place',
+        water_heater_labor_ex_vat:150
+      },
       checklist:{},
       notes:'',
       materials:[],
@@ -363,6 +373,62 @@
       '</div><button class="btn primary full" onclick="SpektraInspections.next()">Pokračovať →</button>';
   }
 
+  function selectedTypes(){return active?.inspection_types||[]}
+  function equipmentInspection(){return selectedTypes().some(x=>['heat_pump','air_conditioning','gas_boiler','biomass'].includes(x))}
+  function tradePrimaryType(){return ['floor_heating','water_heater','zti','recovery','other'].find(x=>selectedTypes().includes(x))||null}
+  function isTradeInspection(){return !equipmentInspection() && !!tradePrimaryType()}
+  function ensureTradeDefaults(){
+    active.installation=active.installation||{};
+    const i=active.installation;
+    if(i.labor_hour_rate_ex_vat==null)i.labor_hour_rate_ex_vat=35;
+    if(i.labor_workers==null)i.labor_workers=1;
+    if(i.labor_hours==null)i.labor_hours=8;
+    if(i.floor_labor_rate_m2==null)i.floor_labor_rate_m2=8;
+    if(i.floor_spacing_cm==null)i.floor_spacing_cm=15;
+    if(i.water_heater_mode==null)i.water_heater_mode='same_place';
+    if(i.water_heater_labor_ex_vat==null)i.water_heater_labor_ex_vat=i.water_heater_mode==='new_place'?225:150;
+    return i;
+  }
+  function tradeLabel(type=tradePrimaryType()){
+    return type==='floor_heating'?'Podlahové kúrenie':type==='water_heater'?'Výmena bojlera / ohrievača TÚV':type==='zti'?'ZTI / vodoinštalačné práce':type==='recovery'?'Rekuperácia / vzduchotechnické práce':'Montážne práce';
+  }
+  function stockByExactCode(code){
+    const q=String(code||'').toLowerCase();
+    return stockPool().find(x=>String(x.code||'').toLowerCase()===q)||null;
+  }
+  function materialFromStockCode(code,qty,unit,role,nameFallback){
+    const st=stockByExactCode(code);
+    return {
+      pohoda_stock_id:st?.id||null, role:role||null, code:st?.code||code||null, name:st?.name||nameFallback||code,
+      qty:Number(qty||0), unit:unit||st?.unit||'ks', source:'calculated', original_qty:Number(qty||0),
+      metadata:{plu:st?.plu||null,manufacturer:st?.manufacturer||null,sell_price_ex_vat:st?.sell_price_ex_vat==null?null:Number(st.sell_price_ex_vat),purchase_price_ex_vat:st?.purchase_price_ex_vat==null?null:Number(st.purchase_price_ex_vat),quantity_available:st?.quantity_available==null?null:Number(st.quantity_available)}
+    };
+  }
+  function floorDesign(){
+    const i=ensureTradeDefaults();
+    const area=Math.max(0,num(active.building?.heated_area_m2,0));
+    const spacing=Math.max(5,num(i.floor_spacing_cm,15));
+    const pipeM=Math.ceil(area*(100/spacing)*1.05);
+    const circuits=Math.max(1,Math.ceil(pipeM/95));
+    return {area,spacing,pipeM,circuits};
+  }
+  function tradeLaborPrice(){
+    const i=ensureTradeDefaults(),type=tradePrimaryType();
+    if(type==='floor_heating')return Math.round(floorDesign().area*num(i.floor_labor_rate_m2,8)*100)/100;
+    if(type==='water_heater')return Math.max(0,num(i.water_heater_labor_ex_vat,i.water_heater_mode==='new_place'?225:150));
+    return Math.round(num(i.labor_workers,1)*num(i.labor_hours,8)*num(i.labor_hour_rate_ex_vat,35)*100)/100;
+  }
+  function currentMaterialEstimate(){
+    let total=0,missing=0;
+    for(const m of (active.materials||[])){
+      let st=m.pohoda_stock_id?stockPool().find(x=>x.id===m.pohoda_stock_id):null;
+      if(!st&&m.code)st=stockByExactCode(m.code);
+      const p=st?.sell_price_ex_vat??m.metadata?.sell_price_ex_vat;
+      if(p==null){missing++;continue}
+      total+=Number(p||0)*Number(m.qty||0);
+    }
+    return {total:Math.round(total*100)/100,missing};
+  }
   function calculateHeatLoss(){
     const h=active.heat_loss||(active.heat_loss={});
     const b=active.building||{};
