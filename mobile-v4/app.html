@@ -2693,7 +2693,7 @@ function offerHtmlPresentation(){
   }
   if(!isTradeQuote(current)&&current.category!=='air_conditioning'&&current.building?.with_external_dhw_tank)materialParts.push('TÚV armatúry, expanzná nádoba a poistné prvky');
 
-  const work=(installationItem?.work_scope||[]).slice(0,7);
+  const work=(installationItem?.work_scope||[]).slice(0,isTradeQuote(current)?12:7);
 
   const annual=isTradeQuote(current)?'':annualServiceText();
 
