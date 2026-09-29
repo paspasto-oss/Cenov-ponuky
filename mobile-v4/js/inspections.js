@@ -546,7 +546,28 @@
     active._dirty=true;saveLocal(active);renderWizard();
   }
 
+  function tradeMaterialCardHtml(){
+    return '<div class="card"><h2>Materiál z obhliadky</h2>'+
+      '<div class="inspStockSearch"><div class="field" style="margin-bottom:0"><label>Hľadať v POHODE</label><input id="inspStockSearchInput" placeholder="Názov, kód, PLU, výrobca…" autocomplete="off" oninput="SpektraInspections.searchStock(this.value)"></div>'+
+      '<div id="inspStockResults" class="inspStockResults"></div><div class="inspStockHint">Vybraná karta sa prenesie do ponuky s aktuálnou cenou z POHODY.</div></div>'+
+      '<div id="inspMaterials">'+materialRows()+'</div><button class="btn ghost small" onclick="SpektraInspections.addMaterial()">+ Pridať ručne</button></div>';
+  }
+  function stepTradeInstallation(){
+    ensureBaseMaterials();
+    const mat=currentMaterialEstimate(),labor=tradeLaborPrice(),net=mat.total+labor,gross=net*1.23;
+    return '<div class="card"><h2>Orientačný návrh ceny</h2><div class="summary">'+
+      '<div class="srow"><span>Materiál z POHODY</span><b>'+priceText(mat.total)+'</b></div>'+
+      '<div class="srow"><span>Práca</span><b>'+priceText(labor)+'</b></div>'+
+      '<div class="srow"><span>Spolu bez DPH</span><b>'+priceText(net)+'</b></div>'+
+      '<div class="srow total"><span>Spolu s DPH</span><span>'+priceText(gross)+'</span></div></div>'+
+      (mat.missing?'<div class="notice warn" style="margin-top:9px">'+mat.missing+' položkám chýba cena. Vyber ich z POHODY alebo doplň pred odoslaním ponuky.</div>':'')+
+      '<button class="btn ghost full" style="margin-top:10px" onclick="SpektraInspections.editTradeSetup()">Upraviť odhad práce</button></div>'+
+      tradeMaterialCardHtml()+
+      '<div class="card"><h2>Poznámka technika</h2><textarea onchange="SpektraInspections.input(\'notes\',this)">'+esc(active.notes||'')+'</textarea></div>'+
+      '<button class="btn primary full" onclick="SpektraInspections.next()">Pokračovať →</button>';
+  }
   function stepInstallation(){
+    if(isTradeInspection())return stepTradeInstallation();
     ensureBaseMaterials();
     const o=active.outdoor_unit||{},p=active.plant_room||{},e=active.electrical||{},r=active.routes||{};
     return '<div class="card"><h2>Miesto a trasa</h2>'+
