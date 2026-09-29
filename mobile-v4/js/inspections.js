@@ -540,6 +540,66 @@
     return h;
   }
 
+
+  function ztiGeneratedPreview(){
+    const rows=(active.materials||[]).filter(m=>m.metadata?.zti_macro);
+    if(!rows.length)return '<div class="notice">Zatiaľ bez ZTI materiálu. Zadaj počty vývodov alebo metre potrubia.</div>';
+    const groups=new Map();
+    rows.forEach(m=>{
+      const key=m.metadata.zti_macro,label=m.metadata.zti_macro_label||key;
+      if(!groups.has(key))groups.set(key,{label,rows:[]});
+      groups.get(key).rows.push(m);
+    });
+    return [...groups.values()].map(g=>{
+      const amount=g.rows.reduce((sum,m)=>{
+        let st=m.pohoda_stock_id?stockPool().find(x=>x.id===m.pohoda_stock_id):null;
+        if(!st&&m.code)st=stockByExactCode(m.code);
+        const p=st?.sell_price_ex_vat??m.metadata?.sell_price_ex_vat;
+        return sum+(p==null?0:Number(p||0)*Number(m.qty||0));
+      },0);
+      return '<details style="margin:7px 0;border:1px solid #d4e3eb;border-radius:10px;padding:8px 10px;background:#f9fcfd">'+
+        '<summary style="cursor:pointer;font-weight:800">'+esc(g.label)+' · '+priceText(amount)+'</summary>'+
+        '<div style="margin-top:7px;font-size:11px;line-height:1.55">'+g.rows.map(m=>esc(m.name)+' — <b>'+Number(m.qty||0).toLocaleString('sk-SK')+' '+esc(m.unit||'ks')+'</b>').join('<br>')+'</div>'+
+      '</details>';
+    }).join('');
+  }
+  function stepZtiTechnical(){
+    rebuildZtiMaterials(false);
+    const i=ensureTradeDefaults(),z=ztiInputs(),mat=currentMaterialEstimate();
+    return '<div class="card"><h2>ZTI – počty vývodov</h2>'+
+      '<div class="notice" style="margin-bottom:10px">1× <b>Vývod voda</b> = 1 nástenka 16×1/2. Umývadlo teplá + studená teda zapíš ako 2 vývody vody.</div>'+
+      '<div class="grid2">'+
+        field('Vývod voda 16×1/2 [ks]','ztiWater',z.water,'number','min="0" step="1" onchange="SpektraInspections.ztiChanged(\'zti_water_outlets\',this)"')+
+        field('Vývod odpad DN50 [ks]','ztiWaste',z.waste,'number','min="0" step="1" onchange="SpektraInspections.ztiChanged(\'zti_waste_outlets\',this)"')+
+      '</div>'+
+      '<div class="grid2">'+
+        field('Práčkový sifón [ks]','ztiSiphon',z.siphon,'number','min="0" step="1" onchange="SpektraInspections.ztiChanged(\'zti_washing_siphons\',this)"')+
+        field('WC Geberit Duofix [ks]','ztiGeberit',z.wc,'number','min="0" step="1" onchange="SpektraInspections.ztiChanged(\'zti_wc_duofix\',this)"')+
+      '</div>'+
+      field('Vývod technická miestnosť 25×3/4 [ks]','ztiBoiler',z.boiler,'number','min="0" step="1" onchange="SpektraInspections.ztiChanged(\'zti_boiler_room_outlets\',this)"')+
+      '</div>'+
+      '<div class="card"><h2>ZTI – potrubie</h2>'+
+      '<div class="grid2">'+
+        field('RAUTITAN 16 + TUBEX 10×18 [m]','ztiP16',z.p16,'number','min="0" step="0.5" onchange="SpektraInspections.ztiChanged(\'zti_pipe16_m\',this)"')+
+        field('RAUTITAN 20 + TUBEX 10×22 [m]','ztiP20',z.p20,'number','min="0" step="0.5" onchange="SpektraInspections.ztiChanged(\'zti_pipe20_m\',this)"')+
+      '</div>'+
+      field('RAUTITAN 25 + TUBEX 10×28 [m]','ztiP25',z.p25,'number','min="0" step="0.5" onchange="SpektraInspections.ztiChanged(\'zti_pipe25_m\',this)"')+
+      '<div class="sub">Každý meter potrubia automaticky obsahuje rovnakú metráž TUBEX izolácie a '+ZTI_PIPE_CLIPS_PER_M+' podlahové príchytky / m.</div>'+
+      '</div>'+
+      '<div class="card"><h2>Materiál na pozadí</h2>'+ztiGeneratedPreview()+
+        '<div class="summary" style="margin-top:10px"><div class="srow total"><span>Materiál spolu bez DPH</span><span>'+priceText(mat.total)+'</span></div></div>'+
+        (mat.missing?'<div class="notice warn" style="margin-top:8px">'+mat.missing+' položkám sa nenašla cena v POHODE.</div>':'')+
+      '</div>'+
+      '<div class="card"><h2>Práca</h2><div class="summary">'+
+        '<div class="srow"><span>Montéri</span><b>'+num(i.labor_workers,1)+'</b></div>'+
+        '<div class="srow"><span>Hodiny / montér</span><b>'+num(i.labor_hours,8)+' h</b></div>'+
+        '<div class="srow"><span>Sadzba</span><b>'+priceText(i.labor_hour_rate_ex_vat)+' / h</b></div>'+
+        '<div class="srow total"><span>Práca bez DPH</span><span>'+priceText(tradeLaborPrice())+'</span></div></div>'+
+        '<button class="btn ghost full" style="margin-top:10px" onclick="SpektraInspections.editTradeSetup()">Upraviť prácu</button>'+
+      '</div>'+
+      '<button class="btn primary full" onclick="SpektraInspections.next()">Pokračovať →</button>';
+  }
+
   function editTradeSetup(){
     if(!active)return;
     const i=ensureTradeDefaults(),type=tradePrimaryType();
@@ -568,6 +628,7 @@
   }
   function stepTradeTechnical(){
     const i=ensureTradeDefaults(),type=tradePrimaryType();
+    if(type==='zti')return stepZtiTechnical();
     let detail='';
     if(type==='floor_heating'){
       const d=floorDesign();
@@ -600,8 +661,9 @@
   }
 
   function ensureBaseMaterials(){
-    if((active.materials||[]).length)return;
     const types=active.inspection_types||[];
+    if(types.includes('zti')&&!equipmentInspection()){rebuildZtiMaterials(false);return}
+    if((active.materials||[]).length)return;
     const r=active.routes||(active.routes={});
     const o=active.outdoor_unit||{};
     const e=active.electrical||{};
@@ -1074,7 +1136,7 @@
     openHome,startNew,edit,refresh,next,back,save,complete,createQuote,
     input:(path,el,kind,rerender)=>setFromInput(path,el,kind||'text',!!rerender),
     check:(path,el,rerender)=>setFromInput(path,el,'bool',!!rerender),
-    toggleType,toggleExtra,routeChanged,material,addMaterial,removeMaterial,searchStock,chooseStock,editTradeSetup,photo,deletePhoto
+    toggleType,toggleExtra,routeChanged,material,addMaterial,removeMaterial,searchStock,chooseStock,editTradeSetup,ztiChanged,photo,deletePhoto
   };
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initUI);
