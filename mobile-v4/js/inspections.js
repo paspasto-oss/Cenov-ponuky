@@ -511,11 +511,17 @@
     const pipe=num(r.heating_m||o.route_m,5),cable=num(e.cable_m,12);
     if(types.includes('floor_heating')&&!equipmentInspection()){
       const d=floorDesign();
-      const manifoldCircuits=Math.min(12,Math.max(2,d.circuits));
+      const manifoldCount=Math.max(1,Math.ceil(d.circuits/12));
+      const baseCircuits=Math.floor(d.circuits/manifoldCount),remainder=d.circuits%manifoldCount;
+      const manifoldRows=[];
+      for(let n=0;n<manifoldCount;n++){
+        const circuits=Math.max(2,baseCircuits+(n<remainder?1:0));
+        manifoldRows.push(materialFromStockCode('HR1103-'+circuits,1,'ks','floor_manifold_'+(n+1),'Nerezový rozdeľovač '+circuits+' cestný pre podlahové'));
+      }
       active.materials=[
         materialFromStockCode('12051591001',Math.ceil(d.area*1.05*10)/10,'m2','floor_system_board','REHAU VARIONOVA systémová doska'),
         materialFromStockCode('11361401500',d.pipeM,'m','floor_pipe','REHAU RAUTHERM S 17x2'),
-        materialFromStockCode('HR1103-'+manifoldCircuits,1,'ks','floor_manifold','Nerezový rozdeľovač '+manifoldCircuits+' cestný pre podlahové')
+        ...manifoldRows
       ];
     }else if(types.includes('heat_pump')){
       active.materials=[
