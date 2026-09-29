@@ -810,16 +810,11 @@
     const tradePriceHtml=tradeEstimate
       ? '<div class="card"><h2>Orientačný návrh ceny</h2><div class="summary">'+summaryRow('Materiál',priceText(tradeEstimate.total)+' bez DPH')+summaryRow('Práca',priceText(tradeLaborPrice())+' bez DPH')+summaryRow('Spolu bez DPH',priceText(tradeTotal))+summaryRow('Spolu s DPH',priceText(tradeTotal*1.23))+'</div>'+(tradeEstimate.missing?'<div class="notice warn" style="margin-top:9px">'+tradeEstimate.missing+' položkám chýba cena.</div>':'')+'</div>'
       : '';
+    const technicalRows=isTradeInspection()
+      ? summaryRow('Typ zákazky',tradeLabel())+summaryRow('Materiál',(active.materials||[]).length+' položiek')+summaryRow('Odhad práce',priceText(tradeLaborPrice())+' bez DPH')+summaryRow('Práce navyše',work)
+      : summaryRow('Plocha',(active.building?.heated_area_m2||'—')+' m²')+summaryRow('Vykurovanie',active.existing_system?.heating==='underfloor'?'Podlahovka':active.existing_system?.heating==='radiators'?'Radiátory':'Vysokoteplotné')+summaryRow('Návrhový výkon',num(active.heat_loss?.design_kw).toFixed(2)+' kW')+summaryRow('Odporúčaná trieda',num(active.heat_loss?.recommended_kw)+' kW')+summaryRow('Trasa',num(active.outdoor_unit?.route_m)+' m')+summaryRow('Materiál',(active.materials||[]).length+' položiek')+summaryRow('Práce navyše',work);
     return '<div class="card"><h2>'+esc(active.customer?.name||'Bez mena')+'</h2><div class="sub">'+esc(active.customer?.address||'')+'</div>'+
-      '<div class="summary" style="margin-top:12px">'+
-      summaryRow('Typ',types)+summaryRow('Plocha',(active.building?.heated_area_m2||'—')+' m²')+
-      summaryRow('Vykurovanie',active.existing_system?.heating==='underfloor'?'Podlahovka':active.existing_system?.heating==='radiators'?'Radiátory':'Vysokoteplotné')+
-      summaryRow('Návrhový výkon',num(active.heat_loss?.design_kw).toFixed(2)+' kW')+
-      summaryRow('Odporúčaná trieda',num(active.heat_loss?.recommended_kw)+' kW')+
-      summaryRow('Trasa',num(active.outdoor_unit?.route_m)+' m')+
-      summaryRow('Materiál',(active.materials||[]).length+' položiek')+
-      summaryRow('Práce navyše',work)+
-      '</div></div>'+
+      '<div class="summary" style="margin-top:12px">'+summaryRow('Typ',types)+technicalRows+'</div></div>'+tradePriceHtml+
       '<div class="card"><h2>Fotodokumentácia</h2><div class="notice '+(missing.length?'warn':'ok')+'">'+((active.photos||[]).length)+' fotografií · '+(missing.length?'chýba: '+missing.map(photoLabel).join(', '):'kompletná ✓')+'</div></div>'+
       '<div class="card"><h2>Poznámka technika</h2><div>'+esc(active.notes||'Bez poznámky')+'</div></div>'+
       '<div class="sendgrid">'+
