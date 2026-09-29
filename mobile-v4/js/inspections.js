@@ -455,7 +455,7 @@
   function ztiMaterial(code,qty,unit,role,nameFallback,macro,label){
     if(Number(qty||0)<=0)return null;
     const m=materialFromStockCode(code,qty,unit,role,nameFallback);
-    m.metadata={...(m.metadata||{}),zti_macro:macro,zti_macro_label:label||macro};
+    m.metadata={...(m.metadata||{}),zti_macro:macro,zti_macro_label:label||macro,inspection_auto_owner:'zti'};
     return m;
   }
   function ztiInputs(){
@@ -732,7 +732,7 @@
       if(spacing!==null&&num(spacing)>0)i.floor_spacing_cm=num(spacing);
       const rate=prompt('Cena práce bez DPH [€/m²]:',String(i.floor_labor_rate_m2||8));
       if(rate!==null&&num(rate)>=0)i.floor_labor_rate_m2=num(rate);
-      active.materials=[];ensureBaseMaterials();
+      rebuildFloorHeatingMaterials(false);
     }else if(type==='water_heater'){
       const mode=prompt('1 = jednoduchá výmena na rovnakom mieste, 2 = nové miesto / úprava rozvodov',i.water_heater_mode==='new_place'?'2':'1');
       if(mode==='2'){i.water_heater_mode='new_place';if(i.water_heater_labor_ex_vat===150)i.water_heater_labor_ex_vat=225}else if(mode==='1'){i.water_heater_mode='same_place';}
@@ -782,28 +782,67 @@
       '</div><button class="btn primary full" onclick="SpektraInspections.next()">Pokračovať →</button>';
   }
 
+
+  function isFloorAutoMaterial(m){
+    const role=String(m?.role||'');
+    return m?.metadata?.inspection_auto_owner==='floor_heating'
+      || role==='floor_system_board'
+      || role==='floor_pipe'
+      || role.startsWith('floor_manifold_');
+  }
+  function isZtiAutoMaterial(m){
+    return !!m?.metadata?.zti_macro || m?.metadata?.inspection_auto_owner==='zti';
+  }
+  function manualOrSelectedMaterials(){
+    return (active.materials||[]).filter(m=>!isFloorAutoMaterial(m)&&!isZtiAutoMaterial(m));
+  }
+  function floorAutoMaterial(code,qty,unit,role,nameFallback){
+    const m=materialFromStockCode(code,qty,unit,role,nameFallback);
+    m.metadata={...(m.metadata||{}),inspection_auto_owner:'floor_heating'};
+    return m;
+  }
+  function rebuildFloorHeatingMaterials(save=true){
+    if(!active)return;
+    const d=floorDesign();
+    const manifoldCount=Math.max(1,Math.ceil(d.circuits/12));
+    const baseCircuits=Math.floor(d.circuits/manifoldCount),remainder=d.circuits%manifoldCount;
+    const manifoldRows=[];
+    for(let n=0;n<manifoldCount;n++){
+      const circuits=Math.max(2,baseCircuits+(n<remainder?1:0));
+      manifoldRows.push(floorAutoMaterial('HR1103-'+circuits,1,'ks','floor_manifold_'+(n+1),'Nerezový rozdeľovač '+circuits+' cestný pre podlahové'));
+    }
+    active.materials=[
+      floorAutoMaterial('12051591001',Math.ceil(d.area*1.05*10)/10,'m2','floor_system_board','REHAU VARIONOVA systémová doska'),
+      floorAutoMaterial('11361401500',d.pipeM,'m','floor_pipe','REHAU RAUTHERM S 17x2'),
+      ...manifoldRows,
+      ...manualOrSelectedMaterials()
+    ];
+    active._dirty=true;
+    if(save)saveLocal(active);
+  }
+
   function ensureBaseMaterials(){
     const types=active.inspection_types||[];
-    if(types.includes('zti')&&!equipmentInspection()){rebuildZtiMaterials(false);return}
+    const primaryTrade=tradePrimaryType();
+    if(!equipmentInspection()&&primaryTrade==='zti'){
+      if((active.materials||[]).some(isFloorAutoMaterial))active.materials=manualOrSelectedMaterials();
+      rebuildZtiMaterials(false);
+      return;
+    }
+    if(!equipmentInspection()&&primaryTrade==='floor_heating'){
+      const hasFloor=(active.materials||[]).some(isFloorAutoMaterial);
+      const hasWrong=(active.materials||[]).some(isZtiAutoMaterial);
+      if(!hasFloor||hasWrong)rebuildFloorHeatingMaterials(false);
+      return;
+    }
     if((active.materials||[]).length)return;
     const r=active.routes||(active.routes={});
     const o=active.outdoor_unit||{};
     const e=active.electrical||{};
     const pipe=num(r.heating_m||o.route_m,5),cable=num(e.cable_m,12);
     if(types.includes('floor_heating')&&!equipmentInspection()){
-      const d=floorDesign();
-      const manifoldCount=Math.max(1,Math.ceil(d.circuits/12));
-      const baseCircuits=Math.floor(d.circuits/manifoldCount),remainder=d.circuits%manifoldCount;
-      const manifoldRows=[];
-      for(let n=0;n<manifoldCount;n++){
-        const circuits=Math.max(2,baseCircuits+(n<remainder?1:0));
-        manifoldRows.push(materialFromStockCode('HR1103-'+circuits,1,'ks','floor_manifold_'+(n+1),'Nerezový rozdeľovač '+circuits+' cestný pre podlahové'));
-      }
-      active.materials=[
-        materialFromStockCode('12051591001',Math.ceil(d.area*1.05*10)/10,'m2','floor_system_board','REHAU VARIONOVA systémová doska'),
-        materialFromStockCode('11361401500',d.pipeM,'m','floor_pipe','REHAU RAUTHERM S 17x2'),
-        ...manifoldRows
-      ];
+      rebuildFloorHeatingMaterials(false);
+      return;
     }else if(types.includes('heat_pump')){
       active.materials=[
         {role:'copper_pipe_d28',name:'Cu potrubie 28 mm',qty:2*pipe,original_qty:2*pipe,unit:'m',source:'calculated'},
@@ -1266,10 +1305,17 @@
 
   function toggleType(key){
     const a=active.inspection_types||(active.inspection_types=[]);
+    const before=tradePrimaryType();
     const i=a.indexOf(key);
     if(i>=0){
       if(a.length>1)a.splice(i,1);
     }else a.push(key);
+    const after=tradePrimaryType();
+    if(before!==after){
+      if(after==='floor_heating')rebuildFloorHeatingMaterials(false);
+      else if(after==='zti'){active.materials=manualOrSelectedMaterials();rebuildZtiMaterials(false)}
+      else active.materials=manualOrSelectedMaterials();
+    }
     active._dirty=true;saveLocal(active);renderWizard();
   }
 
