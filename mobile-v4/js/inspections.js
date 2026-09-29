@@ -775,7 +775,7 @@
     if(!authed){alert('Fotografie sa ukladajú do privátneho online úložiska. Najprv sa prihlás do databázy.');return}
     try{
       if(!active.remote_id)await saveRemote(active,'inspection_saved',true);
-      const p=await SpektraDB.uploadInspectionPhoto(active.remote_id,file,category,true);
+      const p=await SpektraDB.uploadInspectionPhoto(active.remote_id,file,category,requiredPhotoKeys().includes(category));
       active.photos=active.photos||[];
       active.photos.push(p);
       active.checklist=active.checklist||{};
