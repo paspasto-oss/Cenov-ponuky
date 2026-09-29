@@ -392,6 +392,7 @@ window.SpektraDB = (() => {
       server_quote_no:!!q._server_quote_no,
       inspection_id:q.inspection_id||null,
       inspection_materials:Array.isArray(q.inspection_materials)?q.inspection_materials:[],
+      inspection_installation:q.inspection_installation||{},
       inspection_routes:q.inspection_routes||{},
       inspection_extra_work:Array.isArray(q.inspection_extra_work)?q.inspection_extra_work:[],
       inspection_notes:q.inspection_notes||null,
