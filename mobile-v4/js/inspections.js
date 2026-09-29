@@ -13,6 +13,8 @@
     washing_siphon_mh:0.30,
     wc_duofix_mh:1.75,
     boiler_outlet_mh:0.50,
+    frost_valve_mh:0.75,
+    main_water_shutoff_mh:2.50,
     pipe16_mh_per_m:0.06,
     pipe20_mh_per_m:0.07,
     pipe25_mh_per_m:0.08,
@@ -120,6 +122,10 @@
         zti_pipe16_m:0,
         zti_pipe20_m:0,
         zti_pipe25_m:0,
+        zti_frost_valves:0,
+        zti_main_water_shutoffs:0,
+        zti_rate_newbuild_ex_vat:35,
+        zti_rate_renovation_ex_vat:40,
         zti_labor_mode:'auto',
         zti_crew_size:2,
         zti_manual_man_hours:null
@@ -421,6 +427,10 @@
     if(i.zti_pipe16_m==null)i.zti_pipe16_m=0;
     if(i.zti_pipe20_m==null)i.zti_pipe20_m=0;
     if(i.zti_pipe25_m==null)i.zti_pipe25_m=0;
+    if(i.zti_frost_valves==null)i.zti_frost_valves=0;
+    if(i.zti_main_water_shutoffs==null)i.zti_main_water_shutoffs=0;
+    if(i.zti_rate_newbuild_ex_vat==null)i.zti_rate_newbuild_ex_vat=35;
+    if(i.zti_rate_renovation_ex_vat==null)i.zti_rate_renovation_ex_vat=40;
     if(!['auto','manual'].includes(i.zti_labor_mode))i.zti_labor_mode='auto';
     if(i.zti_crew_size==null)i.zti_crew_size=2;
     if(i.zti_manual_man_hours===undefined)i.zti_manual_man_hours=null;
@@ -456,6 +466,8 @@
       siphon:Math.max(0,num(i.zti_washing_siphons,0)),
       wc:Math.max(0,num(i.zti_wc_duofix,0)),
       boiler:Math.max(0,num(i.zti_boiler_room_outlets,0)),
+      frost:Math.max(0,num(i.zti_frost_valves,0)),
+      main:Math.max(0,num(i.zti_main_water_shutoffs,0)),
       p16:Math.max(0,num(i.zti_pipe16_m,0)),
       p20:Math.max(0,num(i.zti_pipe20_m,0)),
       p25:Math.max(0,num(i.zti_pipe25_m,0))
@@ -479,6 +491,18 @@
     // Technická miestnosť / kotol: nástenka 25x3/4 + 1 objímka 25.
     add(ztiMaterial('14563611001',z.boiler,'ks','zti_boiler_wallplate_25','REHAU RAUTITAN nástenka 25x3/4','boiler_outlet','Vývod technická miestnosť'));
     add(ztiMaterial('11600031001',z.boiler,'ks','zti_boiler_sleeve_25','REHAU RAUTITAN objímka 25','boiler_outlet','Vývod technická miestnosť'));
+
+    // Nezamŕzavý vonkajší ventil.
+    add(ztiMaterial('039970399',z.frost,'ks','zti_frost_valve','SCHELL POLAR II nezámrzný ventil DN15','frost_valve','Nezamŕzavý ventil'));
+
+    // Hlavný uzáver vody – kompletná zostava podľa Spektra štandardu.
+    add(ztiMaterial('154079591609750002',z.main*3,'ks','zti_main_ball_valve_1','IVR 954 EVERLAST guľový kohút FF1"','main_water_shutoff','Hlavný uzáver vody'));
+    add(ztiMaterial('M0237',z.main,'ks','zti_main_brass_tee_1','Mosadzný T-kus G1"','main_water_shutoff','Hlavný uzáver vody'));
+    add(ztiMaterial('200001',z.main*8,'ks','zti_main_brass_nipple_1','Vsuvka 1" mosadz','main_water_shutoff','Hlavný uzáver vody'));
+    add(ztiMaterial('5061001',z.main*4,'ks','zti_main_union_1','Šróbenie V4300 1" mosadz','main_water_shutoff','Hlavný uzáver vody'));
+    add(ztiMaterial('22116032',z.main*2,'ks','zti_main_pe_transition_32_1','PE prechod 32x1" vonkajší závit','main_water_shutoff','Hlavný uzáver vody'));
+    add(ztiMaterial('38100',z.main,'ks','zti_main_filter_10','Sada filtra Senior 10" MONO, komplet 1"','main_water_shutoff','Hlavný uzáver vody'));
+    add(ztiMaterial('150047100009300038',z.main,'ks','zti_main_pressure_reducer','HERZ tlakový ventil DN25 membránový, redukčný','main_water_shutoff','Hlavný uzáver vody'));
 
     // Odpad DN50: 1× koleno 87° + 1× metrová rúra na každý vývod.
     add(ztiMaterial('112140',z.waste,'ks','zti_waste_elbow_50','HT PLUS koleno DN50 87°','waste_outlet','Vývod odpad'));
@@ -531,11 +555,13 @@
       {key:'siphon',label:'Práčkové sifóny',qty:z.siphon,mh:z.siphon*ZTI_LABOR_RULES.washing_siphon_mh},
       {key:'wc',label:'Geberit Duofix',qty:z.wc,mh:z.wc*ZTI_LABOR_RULES.wc_duofix_mh},
       {key:'boiler',label:'Vývody technická miestnosť',qty:z.boiler,mh:z.boiler*ZTI_LABOR_RULES.boiler_outlet_mh},
+      {key:'frost',label:'Nezamŕzavé ventily',qty:z.frost,mh:z.frost*ZTI_LABOR_RULES.frost_valve_mh},
+      {key:'main',label:'Hlavný uzáver vody',qty:z.main,mh:z.main*ZTI_LABOR_RULES.main_water_shutoff_mh},
       {key:'p16',label:'Potrubie 16',qty:z.p16,mh:z.p16*ZTI_LABOR_RULES.pipe16_mh_per_m},
       {key:'p20',label:'Potrubie 20',qty:z.p20,mh:z.p20*ZTI_LABOR_RULES.pipe20_mh_per_m},
       {key:'p25',label:'Potrubie 25',qty:z.p25,mh:z.p25*ZTI_LABOR_RULES.pipe25_mh_per_m}
     ];
-    const hasScope=(z.water+z.waste+z.siphon+z.wc+z.boiler+z.p16+z.p20+z.p25)>0;
+    const hasScope=(z.water+z.waste+z.siphon+z.wc+z.boiler+z.frost+z.main+z.p16+z.p20+z.p25)>0;
     const raw=parts.reduce((s,p)=>s+Number(p.mh||0),0);
     const manHours=hasScope?Math.max(ZTI_LABOR_RULES.min_mh,Math.ceil(raw*4)/4):0;
     const crew=Math.max(1,Math.round(num(i.zti_crew_size,2)));
@@ -569,11 +595,17 @@
     const circuits=Math.max(1,Math.ceil(pipeM/95));
     return {area,spacing,pipeM,circuits};
   }
+  function ztiHourlyRate(){
+    const i=ensureTradeDefaults();
+    return active.building?.condition==='new'
+      ? Math.max(0,num(i.zti_rate_newbuild_ex_vat,35))
+      : Math.max(0,num(i.zti_rate_renovation_ex_vat,40));
+  }
   function tradeLaborPrice(){
     const i=ensureTradeDefaults(),type=tradePrimaryType();
     if(type==='floor_heating')return Math.round(floorDesign().area*num(i.floor_labor_rate_m2,8)*100)/100;
     if(type==='water_heater')return Math.max(0,num(i.water_heater_labor_ex_vat,i.water_heater_mode==='new_place'?225:150));
-    if(type==='zti')return Math.round(ztiLaborManHours()*num(i.labor_hour_rate_ex_vat,35)*100)/100;
+    if(type==='zti')return Math.round(ztiLaborManHours()*ztiHourlyRate()*100)/100;
     return Math.round(num(i.labor_workers,1)*num(i.labor_hours,8)*num(i.labor_hour_rate_ex_vat,35)*100)/100;
   }
   function currentMaterialEstimate(){
@@ -633,9 +665,15 @@
     const detail=mode==='auto'
       ? e.parts.map(p=>'<div class="srow"><span>'+esc(p.label)+'</span><b>'+Number(p.mh).toFixed(2)+' čh</b></div>').join('')
       : '<div class="notice" style="margin-bottom:8px">Použitý je ručný odhad človekohodín. Rozsah ZTI sa ďalej počíta automaticky pre materiál.</div>';
+    const usedRate=ztiHourlyRate();
+    const conditionLabel=active.building?.condition==='new'?'Novostavba':'Rekonštrukcia / existujúci objekt';
     return '<div class="grid2">'+
       selectField('Výpočet práce','ztiLaborMode',mode,[['auto','Automaticky podľa rozsahu'],['manual','Ručne']],'onchange="SpektraInspections.ztiLaborChanged(\'zti_labor_mode\',this,\'text\')"')+
-      field('Sadzba bez DPH [€/čh]','ztiLaborRate',i.labor_hour_rate_ex_vat,'number','min="0" step="1" onchange="SpektraInspections.ztiLaborChanged(\'labor_hour_rate_ex_vat\',this,\'number\')"')+
+      '<div class="field"><label>Použitá sadzba</label><div class="notice ok">'+esc(conditionLabel)+' · '+priceText(usedRate)+' / čh</div></div>'+
+      '</div>'+
+      '<div class="grid2">'+
+        field('Sadzba novostavba [€/čh]','ztiRateNew',i.zti_rate_newbuild_ex_vat,'number','min="0" step="1" onchange="SpektraInspections.ztiLaborChanged(\'zti_rate_newbuild_ex_vat\',this,\'number\')"')+
+        field('Sadzba rekonštrukcia [€/čh]','ztiRateRen',i.zti_rate_renovation_ex_vat,'number','min="0" step="1" onchange="SpektraInspections.ztiLaborChanged(\'zti_rate_renovation_ex_vat\',this,\'number\')"')+
       '</div>'+
       (mode==='auto'
         ? '<div class="grid2">'+field('Odporúčaná posádka [os.]','ztiCrew',i.zti_crew_size,'number','min="1" max="6" step="1" onchange="SpektraInspections.ztiLaborChanged(\'zti_crew_size\',this,\'number\')"')+
@@ -662,6 +700,10 @@
         field('WC Geberit Duofix [ks]','ztiGeberit',z.wc,'number','min="0" step="1" onchange="SpektraInspections.ztiChanged(\'zti_wc_duofix\',this)"')+
       '</div>'+
       field('Vývod technická miestnosť 25×3/4 [ks]','ztiBoiler',z.boiler,'number','min="0" step="1" onchange="SpektraInspections.ztiChanged(\'zti_boiler_room_outlets\',this)"')+
+      '<div class="grid2">'+
+        field('Nezamŕzavý ventil [ks]','ztiFrost',z.frost,'number','min="0" step="1" onchange="SpektraInspections.ztiChanged(\'zti_frost_valves\',this)"')+
+        field('Hlavný uzáver vody [súb.]','ztiMainWater',z.main,'number','min="0" step="1" onchange="SpektraInspections.ztiChanged(\'zti_main_water_shutoffs\',this)"')+
+      '</div>'+
       '</div>'+
       '<div class="card"><h2>ZTI – potrubie</h2>'+
       '<div class="grid2">'+
@@ -1101,6 +1143,8 @@
     if(z.siphon)out.push(z.siphon+'× práčkový sifón');
     if(z.wc)out.push(z.wc+'× WC Geberit Duofix');
     if(z.boiler)out.push(z.boiler+'× vývod technická miestnosť 25×3/4');
+    if(z.frost)out.push(z.frost+'× nezamŕzavý ventil');
+    if(z.main)out.push(z.main+'× hlavný uzáver vody');
     if(z.p16)out.push(z.p16+' m RAUTITAN 16 + TUBEX 10×18');
     if(z.p20)out.push(z.p20+' m RAUTITAN 20 + TUBEX 10×22');
     if(z.p25)out.push(z.p25+' m RAUTITAN 25 + TUBEX 10×28');
