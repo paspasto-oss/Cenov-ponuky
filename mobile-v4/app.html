@@ -278,7 +278,7 @@
   </section>
 
   <section id="step5" class="screen">
-    <div class="topline"><button class="btn ghost small" onclick="go('step4')">← Upraviť</button><h1>5. Ponuka zákazníkovi</h1></div>
+    <div class="topline"><button class="btn ghost small" onclick="backFromFinal()">← Upraviť</button><h1>5. Ponuka zákazníkovi</h1></div>
     <div class="steps"><div class="step on"></div><div class="step on"></div><div class="step on"></div><div class="step on"></div><div class="step on"></div></div>
     <div class="card">
       <h2>Vzhľad PDF</h2>
@@ -311,7 +311,7 @@
       </div>
     </div>
     <div id="finalSummary" class="card"></div>
-    <div class="card">
+    <div id="warrantyCard" class="card">
       <h2>Súhlas so zárukou</h2>
       <div class="sub">Zákazník potvrdí podmienku ročného servisu počas 5 rokov vlastným podpisom.</div>
       <button type="button" class="btn primary full" style="margin-top:10px" onclick="openWarrantySignature()">✍ Podpis zákazníka</button>
@@ -633,7 +633,16 @@ function renderHome(){
  }));
 }
 function labelStatus(x){return x==='ready'?'Na schválenie':x==='sent'?'Odoslaná':x==='approved'?'Schválená':'Rozpracovaná'}
-function labelCat(x){return x==='heat_pump'?'Tepelné čerpadlo':x==='air_conditioning'?'Klimatizácia':x==='boiler'?'Kotol':'Iné'}
+function labelCat(x){return x==='heat_pump'?'Tepelné čerpadlo':x==='air_conditioning'?'Klimatizácia':x==='boiler'?'Kotol':x==='floor_heating'?'Podlahové kúrenie':x==='water_heater'?'Bojler / TÚV':x==='zti'?'ZTI':x==='recovery'?'Rekuperácia':'Iné'}
+function isTradeQuote(q=current){return !!q && (q.system_type==='service'||['zti','floor_heating','water_heater','recovery','other'].includes(q.category))}
+function customerMaterialBundleName(){
+  if(current.category==='floor_heating')return 'Materiál podlahového kúrenia podľa obhliadky';
+  if(current.category==='water_heater')return 'Bojler a montážne príslušenstvo podľa obhliadky';
+  if(current.category==='zti')return 'Vodoinštalačný a odpadový materiál podľa obhliadky';
+  if(current.category==='recovery')return 'Vzduchotechnický materiál podľa obhliadky';
+  if(current.category==='air_conditioning'&&current.ac_mode==='multi')return 'Inštalačný materiál multisplit – do 5 m / vnútornú jednotku';
+  return 'Inštalačný materiál a príslušenstvo do 5 m';
+}
 function startWizard(){current={id:'q_'+Date.now(),quote_no:'NÁVRH-'+String(Date.now()).slice(-6),_server_quote_no:false,_dirty:true,status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_template:'presentation',pdf_banner_mode:'auto',pdf_banner_url:null,pdf_banner_path:null,pdf_images_enabled:false,pdf_images_user_disabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;boilerType='gas';acMode='single';multiCount=2;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
 function nextBuilding(){let name=s(document.getElementById('cName').value),phone=s(document.getElementById('cPhone').value),addr=s(document.getElementById('cAddress').value);if(!name||!phone||!addr){alert('Vyplň meno, telefón a adresu realizácie.');return}current.customer={name,phone,email:s(document.getElementById('cEmail').value),address:addr,note:s(document.getElementById('cNote').value)};go('step2')}
 function toggleLoss(){let known=document.getElementById('hasLoss').value==='yes';document.getElementById('lossKnown').classList.toggle('hidden',!known);document.getElementById('lossEstimate').classList.toggle('hidden',known)}
@@ -2135,6 +2144,14 @@ function renderWarrantySignatureStatus(){
   const btn=document.getElementById('removeWarrantySignatureButton');
   if(btn)btn.classList.toggle('hidden',!current?.warranty_consent?.accepted);
 }
+function backFromFinal(){
+  if(isTradeQuote(current)){
+    if(window.SpektraInspections)SpektraInspections.openHome();
+    else go('home');
+    return;
+  }
+  go('step4');
+}
 function annualServiceInfo(){
   const activeCategory=current?.category||category;
   if(activeCategory==='heat_pump'){
@@ -2154,7 +2171,9 @@ function annualServiceText(){
 }
 function renderFinal(){
  syncPdfTemplateUI();
- renderWarrantySignatureStatus();
+ const tradeQuote=isTradeQuote(current);
+ const warrantyCard=document.getElementById('warrantyCard');if(warrantyCard)warrantyCard.classList.toggle('hidden',tradeQuote);
+ if(!tradeQuote)renderWarrantySignatureStatus();
  const install=current.items.find(i=>i.role==='installation_service'||i.role==='installation');
  const flush=current.items.find(i=>i.role==='heating_system_flush_cleaner_inhibitor');
  const scope=install?.work_scope?.length?'<div style="margin-top:12px"><b>Montáž zahŕňa:</b><ul style="margin:7px 0 0 18px;padding:0">'+install.work_scope.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>':'';
@@ -2163,7 +2182,7 @@ function renderFinal(){
  const annual=service&&current.optional_services?.annual_service!==false
    ? '<div class="srow" style="margin-top:10px"><span>'+esc(service.label)+'</span><b>'+esc(service.price)+'</b></div><div class="sub">Účtuje sa pri vykonaní servisu a nezvyšuje cenu montáže.</div>'
    : '';
- const warranty='<div class="sub" style="margin-top:10px"><b>'+esc(SPEKTRA_WARRANTY)+'</b></div>'+warrantyConsentHtml();
+ const warranty=tradeQuote?'':'<div class="sub" style="margin-top:10px"><b>'+esc(SPEKTRA_WARRANTY)+'</b></div>'+warrantyConsentHtml();
  const subsidy=calculateSubsidy();
  const subsidyHtml=subsidy.program==='green'
    ? '<div class="srow" style="margin-top:10px"><span>Orientačná dotácia Zelená domácnostiam</span><b>− '+eur(subsidy.estimated_amount)+'</b></div><div class="srow"><span>Orientačne po dotácii</span><b>'+eur(subsidy.estimated_after_subsidy)+'</b></div>'
@@ -2228,6 +2247,13 @@ function openQuote(id){
     acMode=current.ac_mode||current.device?.ac_mode||'single';
     multiCount=current.multisplit_count||current.device?.multisplit_count||2;
     recommendation=current.device&&Object.keys(current.device).length?{...current.device}:null;
+    if(isTradeQuote(current)){
+      current.optional_services=current.optional_services||{};
+      current.optional_services.annual_service=false;
+      renderFinal();
+      go('step5');
+      return;
+    }
 
     const repairedInstallation=ensureHeatPumpInstallationItem();
     if(repairedInstallation)recalcQuoteTotalsFromItems();
@@ -2279,7 +2305,8 @@ function message(){
   let subsidyText='';
   if(current.category==='heat_pump'&&sub.program==='green')subsidyText=' Orientačná dotácia Zelená domácnostiam: '+eur(sub.estimated_amount)+'.';
   if(current.category==='heat_pump'&&sub.program==='obnov')subsidyText=' Možnosť podpory Obnov dom mini+ až 11 000 € podľa podmienok výzvy.';
-  return 'Dobrý deň, posielame cenovú ponuku Spektra Install na '+(current.device?.brand||'')+' '+(current.device?.model||'')+'. '+(current.price_complete?'Cena spolu s DPH: '+eur(current.total)+'.':'Cena bude doplnená po kontrole.')+subsidyText+' Ďakujeme.'
+  const subject=isTradeQuote(current)?labelCat(current.category):((current.device?.brand||'')+' '+(current.device?.model||'')).trim();
+  return 'Dobrý deň, posielame cenovú ponuku Spektra Install – '+subject+'. '+(current.price_complete?'Cena spolu s DPH: '+eur(current.total)+'.':'Cena bude doplnená po kontrole.')+subsidyText+' Ďakujeme.'
 }
 
 async function shareWA(){
@@ -2348,7 +2375,7 @@ function offerHtmlTechnical(){
   if(materialItems.length){
     customerRows.push({
       role:'customer_material_bundle',
-      name:current.category==='air_conditioning'&&current.ac_mode==='multi'?'Inštalačný materiál multisplit – do 5 m / vnútornú jednotku':'Inštalačný materiál a príslušenstvo do 5 m',
+      name:customerMaterialBundleName(),
       qty:1,
       unit:'súb.',
       price:materialTotal
@@ -2406,7 +2433,13 @@ function offerHtmlTechnical(){
     : '';
 
   const materialScopeParts=[];
-  if(current.system_type==='monoblock'){
+  if(isTradeQuote(current)){
+    if(current.category==='floor_heating')materialScopeParts.push('REHAU podlahové kúrenie a príslušenstvo podľa obhliadky');
+    else if(current.category==='water_heater')materialScopeParts.push('bojler / ohrievač a pripojovací materiál podľa obhliadky');
+    else if(current.category==='zti')materialScopeParts.push('vodoinštalačný a odpadový materiál podľa obhliadky');
+    else if(current.category==='recovery')materialScopeParts.push('vzduchotechnický materiál podľa obhliadky');
+    else materialScopeParts.push('materiál podľa rozsahu obhliadky');
+  }else if(current.system_type==='monoblock'){
     materialScopeParts.push('hydraulické armatúry, filtre a odlučovače');
     materialScopeParts.push('obehové čerpadlo, expanzná nádoba a poistné prvky');
     materialScopeParts.push('Cu potrubie 28 mm + izolácia do 5 m');
@@ -2435,14 +2468,14 @@ function offerHtmlTechnical(){
   }else{
     materialScopeParts.push('štandardný montážny a pripojovací materiál podľa zvoleného zariadenia');
   }
-  if(current.category!=='boiler')materialScopeParts.push('elektro materiál, istenie, rozvodnica, káble, lišta a vývodky');
-  if(current.category!=='air_conditioning'&&current.building?.with_external_dhw_tank){
+  if(!isTradeQuote(current)&&current.category!=='boiler')materialScopeParts.push('elektro materiál, istenie, rozvodnica, káble, lišta a vývodky');
+  if(!isTradeQuote(current)&&current.category!=='air_conditioning'&&current.building?.with_external_dhw_tank){
     materialScopeParts.push('TÚV armatúry, expanzná nádoba, poistný ventil, prepínací ventil a servo');
   }
   const materialScope='<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:5px">Rozsah materiálu</div><div style="color:#444;line-height:1.45">'+esc(materialScopeParts.join(' · '))+'</div></div>';
 
   const service=annualServiceInfo();
-  const annual='<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:4px">Servis a záruka</div><div><b>'+esc(SPEKTRA_WARRANTY)+'</b>'+
+  const annual=isTradeQuote(current)?'':'<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:4px">Servis a záruka</div><div><b>'+esc(SPEKTRA_WARRANTY)+'</b>'+
     (service&&current.optional_services?.annual_service!==false
       ? '<br><span style="color:#555">'+esc(annualServiceText())+' Servis sa účtuje samostatne a nezvyšuje cenu montáže.</span>'
       : '')+'</div></div>';
@@ -2524,7 +2557,7 @@ function offerHtmlTechnical(){
       '</div>'+
     '</div>'+
 
-    subsidyBlock+extraImages+note+materialScope+scope+annual+warrantyConsentHtml()+
+    subsidyBlock+extraImages+note+materialScope+scope+annual+(isTradeQuote(current)?'':warrantyConsentHtml())+
 
     '<div style="position:absolute;left:9mm;right:9mm;bottom:8mm;border-top:1px solid #888;padding-top:5px;display:flex;justify-content:space-between;color:#555;font-size:8px">'+
       '<div>Spektra Install s.r.o.<br>Hollého 210, 015 01 Rajec</div>'+
@@ -2558,9 +2591,7 @@ function offerHtmlPresentation(){
   if(deviceItem)rows.push(deviceItem);
   if(materialItems.length)rows.push({
     role:'customer_material_bundle',
-    name:current.category==='air_conditioning'&&current.ac_mode==='multi'
-      ?'Inštalačný materiál multisplit – do 5 m / vnútornú jednotku'
-      :'Inštalačný materiál a príslušenstvo do 5 m',
+    name:customerMaterialBundleName(),
     qty:1,unit:'súb.',price:materialTotal
   });
   if(installationItem)rows.push(installationItem);
@@ -2617,7 +2648,13 @@ function offerHtmlPresentation(){
   }).join('');
 
   const materialParts=[];
-  if(current.system_type==='monoblock'){
+  if(isTradeQuote(current)){
+    if(current.category==='floor_heating')materialParts.push('systémové dosky, vykurovacia rúrka a rozdeľovač podľa obhliadky');
+    else if(current.category==='water_heater')materialParts.push('bojler / ohrievač, poistné a pripojovacie prvky podľa obhliadky');
+    else if(current.category==='zti')materialParts.push('rozvody vody, odpadu a tvarovky podľa obhliadky');
+    else if(current.category==='recovery')materialParts.push('vzduchotechnický materiál podľa obhliadky');
+    else materialParts.push('materiál podľa rozsahu obhliadky');
+  }else if(current.system_type==='monoblock'){
     materialParts.push(
       'hydraulické armatúry, filtre a odlučovače',
       'obehové čerpadlo, expanzná nádoba a poistné prvky',
@@ -2654,11 +2691,11 @@ function offerHtmlPresentation(){
       'PVC lišta a montážne príslušenstvo'
     );
   }
-  if(current.category!=='air_conditioning'&&current.building?.with_external_dhw_tank)materialParts.push('TÚV armatúry, expanzná nádoba a poistné prvky');
+  if(!isTradeQuote(current)&&current.category!=='air_conditioning'&&current.building?.with_external_dhw_tank)materialParts.push('TÚV armatúry, expanzná nádoba a poistné prvky');
 
   const work=(installationItem?.work_scope||[]).slice(0,7);
 
-  const annual=annualServiceText();
+  const annual=isTradeQuote(current)?'':annualServiceText();
 
   const sub=calculateSubsidy();
   const subsidyBox=sub.program==='green'
@@ -2744,7 +2781,7 @@ function offerHtmlPresentation(){
       (current.customer?.note
         ?'<div style="margin-top:4mm;padding:3mm;background:#f8fafb;border-left:2px solid #c20000;font-size:8px">'+esc(current.customer.note)+'</div>'
         :'')+
-      warrantyConsentHtml(true)+
+      (isTradeQuote(current)?'':warrantyConsentHtml(true))+
     '</div>'+
 
     '<div style="position:absolute;left:7mm;right:7mm;bottom:4mm;background:#fff">'+
@@ -2758,8 +2795,9 @@ function offerHtmlPresentation(){
           '<div style="font-size:7.8px;line-height:1.5">'+(work.length?work.map(x=>'✓ '+esc(x)).join('<br>'):'✓ Montáž a uvedenie zariadenia do prevádzky')+'</div>'+
         '</div>'+
         '<div style="border-left:1px solid #dbe3e9;padding-left:4mm">'+
-          '<div style="display:flex;align-items:center;gap:5px;font-size:10.7px;color:#00539B;font-weight:900;margin-bottom:5px"><span style="color:#c20000;font-size:14px">◇</span>Servis a záruka</div>'+
-          '<div style="font-size:7.8px;line-height:1.5">✓ '+esc(SPEKTRA_WARRANTY)+(annual?'<br>✓ '+esc(annual):'')+'</div>'+
+          (isTradeQuote(current)
+            ? '<div style="display:flex;align-items:center;gap:5px;font-size:10.7px;color:#00539B;font-weight:900;margin-bottom:5px"><span style="color:#c20000;font-size:14px">◇</span>Ponuka podľa obhliadky</div><div style="font-size:7.8px;line-height:1.5">✓ Materiál a práca podľa zaznamenaného rozsahu<br>✓ Konečná cena sa potvrdí pred realizáciou</div>'
+            : '<div style="display:flex;align-items:center;gap:5px;font-size:10.7px;color:#00539B;font-weight:900;margin-bottom:5px"><span style="color:#c20000;font-size:14px">◇</span>Servis a záruka</div><div style="font-size:7.8px;line-height:1.5">✓ '+esc(SPEKTRA_WARRANTY)+(annual?'<br>✓ '+esc(annual):'')+'</div>')+
         '</div>'+
       '</div>'+
       '<div style="margin-top:6mm;padding:3mm 0 0;border-top:1px solid #cfdbe3;display:grid;grid-template-columns:1fr 1fr 1fr;align-items:end;color:#516474;font-size:7.3px">'+
@@ -2795,7 +2833,7 @@ function warrantyTermsHtml(){
 }
 function offerHtml(){
   ensurePdfTemplateState();
-  return (current.pdf_template==='technical'?offerHtmlTechnical():offerHtmlPresentation())+warrantyTermsHtml();
+  return (current.pdf_template==='technical'?offerHtmlTechnical():offerHtmlPresentation())+(isTradeQuote(current)?'':warrantyTermsHtml());
 }
 
 async function blobToDataUrl(blob){
@@ -3180,6 +3218,6 @@ loadConfig().then(async()=>{
 window.addEventListener('focus',()=>syncQuotes(false,true));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncQuotes(false,true)});
 </script>
-<script src="js/inspections.js?v=20260928-inspections2"></script>
+<script src="js/inspections.js?v=20260929-tradequotes1"></script>
 </body>
 </html>
