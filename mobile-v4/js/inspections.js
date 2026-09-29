@@ -63,6 +63,8 @@
   let busy=false;
   let stockSearchResults=[];
   let stockSearchTimer=null;
+  let manualStockSearch={index:-1,results:[]};
+  let manualStockSearchTimer=null;
 
   const esc=v=>String(v==null?'':v).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
   const num=(v,d=0)=>Number.isFinite(Number(v))?Number(v):d;
@@ -189,6 +191,7 @@
       '.inspPhotoGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.inspThumb{height:110px;background:#f0f6f9;border:1px solid #a9cadb;border-radius:10px;overflow:hidden;position:relative}.inspThumb img{width:100%;height:100%;object-fit:cover}.inspThumb button{position:absolute;right:5px;top:5px;width:27px;height:27px;border:0;border-radius:50%;background:#173247;color:#fff;font-weight:900}'+
       '.inspMaterial{display:grid;grid-template-columns:minmax(0,1fr) 72px 62px 34px;gap:6px;align-items:center;margin-bottom:7px}.inspMaterial input,.inspMaterial select{padding:8px;font-size:14px}.inspMaterial button{border:0;border-radius:8px;background:#dfeaf0;color:#173247;height:38px}.inspMaterialMain{min-width:0}.inspMaterialMeta{font-size:10px;color:#607787;margin:3px 2px 0;white-space:normal}.inspMaterialMeta.linked{color:#28775c;font-weight:700}'+
       '.inspStockSearch{margin:0 0 10px}.inspStockResults{display:flex;flex-direction:column;gap:6px;margin-top:7px}.inspStockResult{width:100%;border:1px solid #a9cadb;background:#f7fbfd;color:#173247;border-radius:11px;padding:10px;text-align:left}.inspStockResult b{display:block;font-size:13px}.inspStockResult small{display:block;color:#607787;margin-top:3px}.inspStockResult .price{font-weight:900;color:#00539B}.inspStockHint{font-size:11px;color:#607787;margin-top:6px}'+
+      '.inspManualAuto{position:relative}.inspManualSuggestions{position:absolute;left:0;right:0;top:100%;z-index:50;background:#fff;border:1px solid #86b8d1;border-radius:10px;box-shadow:0 8px 24px rgba(15,61,84,.18);max-height:300px;overflow:auto;margin-top:3px}.inspManualSuggestions:empty{display:none}.inspManualSuggestion{display:block;width:100%;border:0;border-bottom:1px solid #e2edf2;background:#fff;padding:9px 10px;text-align:left;color:#173247}.inspManualSuggestion:last-child{border-bottom:0}.inspManualSuggestion:hover,.inspManualSuggestion:focus{background:#eef7fb}.inspManualSuggestion b{display:block;font-size:12px}.inspManualSuggestion small{display:block;font-size:10px;color:#607787;margin-top:2px}.inspManualSuggestion .price{font-weight:900;color:#00539B}'+
       '.inspStatus{font-size:11px;padding:5px 8px;border-radius:999px;background:#d7e1e7;color:#425766}.inspStatus.completed,.inspStatus.converted{background:#d9efe5;color:#24684f}.inspStatus.in_progress{background:#fff0ca;color:#755c18}'+
       '@media(max-width:720px){.inspMaterial{grid-template-columns:minmax(0,1fr) 62px 58px 32px}.inspPhotoGrid{grid-template-columns:1fr 1fr}}';
     document.head.appendChild(style);
@@ -938,8 +941,11 @@
       const details=linked
         ? (macro?'ZTI · '+(meta.zti_macro_label||'automaticky')+' · ':'')+'POHODA'+(m.code?' · '+m.code:'')+(meta.plu?' · PLU '+meta.plu:'')+' · '+priceText(meta.sell_price_ex_vat)+' bez DPH'+(meta.quantity_available!=null?' · sklad '+meta.quantity_available+' '+(m.unit||'ks'):'')
         : (m.source==='manual'?'Ručná položka – ak sa nenájde v POHODE, ponuka môže zostať bez ceny':'Množstvo vypočítané z obhliadky');
+      const nameInput=(linked||macro)
+        ? '<input value="'+esc(m.name||'')+'" readonly>'
+        : '<div class="inspManualAuto"><input value="'+esc(m.name||'')+'" autocomplete="off" placeholder="Začni písať názov alebo kód…" oninput="SpektraInspections.materialAutocomplete('+i+',this.value)" onfocus="SpektraInspections.materialAutocomplete('+i+',this.value)"><div id="inspManualSuggestions-'+i+'" class="inspManualSuggestions"></div></div>';
       return '<div class="inspMaterial">'+
-        '<div class="inspMaterialMain"><input value="'+esc(m.name||'')+'" '+((linked||macro)?'readonly':'')+' onchange="SpektraInspections.material('+i+',\'name\',this.value)"><div class="inspMaterialMeta '+(linked?'linked':'')+'">'+esc(details)+'</div></div>'+
+        '<div class="inspMaterialMain">'+nameInput+'<div class="inspMaterialMeta '+(linked?'linked':'')+'">'+esc(details)+'</div></div>'+
         '<input type="number" step="0.5" min="0" value="'+esc(m.qty??0)+'" '+(macro?'readonly':'')+' onchange="SpektraInspections.material('+i+',\'qty\',Number(this.value))">'+
         '<select '+(macro?'disabled':'')+' onchange="SpektraInspections.material('+i+',\'unit\',this.value)">'+[...new Set(['ks','m','súb.','l','bal',m.unit].filter(Boolean))].map(u=>'<option '+(m.unit===u?'selected':'')+'>'+u+'</option>').join('')+'</select>'+
         (macro?'<button type="button" disabled title="Mení sa cez ZTI vstupy">↻</button>':'<button type="button" onclick="SpektraInspections.removeMaterial('+i+')">×</button>')+'</div>';
@@ -950,8 +956,111 @@
     active.materials[index][key]=value;
     active._dirty=true;saveLocal(active);
   }
-  function addMaterial(){active.materials.push({name:'Nová položka',qty:1,unit:'ks',source:'manual',metadata:{}});active._dirty=true;saveLocal(active);renderWizard()}
+  function addMaterial(){
+    active.materials.push({name:'',qty:1,unit:'ks',source:'manual',metadata:{}});
+    const index=active.materials.length-1;
+    active._dirty=true;saveLocal(active);renderWizard();
+    setTimeout(()=>document.querySelector('#inspManualSuggestions-'+index)?.previousElementSibling?.focus(),0);
+  }
   function removeMaterial(i){active.materials.splice(i,1);active._dirty=true;saveLocal(active);renderWizard()}
+
+
+  function localStockMatches(query,limit=8){
+    const q=fold(query);
+    if(q.length<2)return [];
+    const tokens=q.split(/\s+/).filter(Boolean);
+    return stockPool().filter(st=>{
+      if(st.active===false)return false;
+      const hay=fold([st.name,st.code,st.plu,st.ean,st.manufacturer,st.stock_group].filter(Boolean).join(' '));
+      return tokens.every(t=>hay.includes(t));
+    }).sort((a,b)=>{
+      const exactA=[a.code,a.plu,a.ean].some(v=>fold(v)===q)?1:0;
+      const exactB=[b.code,b.plu,b.ean].some(v=>fold(v)===q)?1:0;
+      if(exactA!==exactB)return exactB-exactA;
+      const qa=fold(a.name).startsWith(q)?1:0,qb=fold(b.name).startsWith(q)?1:0;
+      if(qa!==qb)return qb-qa;
+      const sa=Number(a.quantity_available||0)>0?1:0,sb=Number(b.quantity_available||0)>0?1:0;
+      if(sa!==sb)return sb-sa;
+      return String(a.name||'').localeCompare(String(b.name||''),'sk');
+    }).slice(0,limit);
+  }
+  function renderMaterialAutocomplete(index,message=''){
+    const box=document.getElementById('inspManualSuggestions-'+index);
+    if(!box)return;
+    if(message){box.innerHTML='<div style="padding:9px 10px;font-size:11px;color:#607787">'+esc(message)+'</div>';return}
+    if(manualStockSearch.index!==index||!manualStockSearch.results.length){box.innerHTML='';return}
+    box.innerHTML=manualStockSearch.results.map((st,n)=>{
+      const code=st.code||st.plu||'bez kódu';
+      const qty=st.quantity_available==null?'—':Number(st.quantity_available).toLocaleString('sk-SK');
+      return '<button type="button" class="inspManualSuggestion" onmousedown="event.preventDefault();SpektraInspections.chooseMaterialAutocomplete('+index+','+n+')">'+
+        '<b>'+esc(st.name||'Bez názvu')+'</b>'+
+        '<small>'+esc(code)+(st.manufacturer?' · '+esc(st.manufacturer):'')+' · sklad '+qty+' '+esc(st.unit||'ks')+' · <span class="price">'+priceText(st.sell_price_ex_vat)+' bez DPH</span></small>'+
+      '</button>';
+    }).join('');
+  }
+  async function materialAutocomplete(index,value){
+    if(!active?.materials?.[index])return;
+    const m=active.materials[index];
+    if(m.pohoda_stock_id||m.metadata?.zti_macro)return;
+    m.name=value;
+    m.source='manual';
+    active._dirty=true;
+    saveLocal(active);
+    clearTimeout(manualStockSearchTimer);
+    const q=fold(value);
+    if(q.length<2){
+      manualStockSearch={index,results:[]};
+      renderMaterialAutocomplete(index);
+      return;
+    }
+    renderMaterialAutocomplete(index,'Hľadám v POHODE…');
+    manualStockSearchTimer=setTimeout(async()=>{
+      try{
+        let pool=stockPool();
+        if(!pool.length&&window.SpektraDB?.isAuthenticated()){
+          pool=await SpektraDB.listStocks();
+          try{stocks=pool}catch(_){}
+        }
+        manualStockSearch={index,results:localStockMatches(value,8)};
+        renderMaterialAutocomplete(index,manualStockSearch.results.length?'':'Bez zhody – položku môžeš nechať ručne.');
+      }catch(e){
+        console.error('Manual material autocomplete failed',e);
+        manualStockSearch={index,results:[]};
+        renderMaterialAutocomplete(index,'Vyhľadávanie zlyhalo.');
+      }
+    },120);
+  }
+  function chooseMaterialAutocomplete(index,resultIndex){
+    if(!active?.materials?.[index]||manualStockSearch.index!==index)return;
+    const st=manualStockSearch.results[resultIndex];
+    if(!st)return;
+    const current=active.materials[index],qty=Number(current.qty||1);
+    const duplicateIndex=active.materials.findIndex((m,n)=>n!==index&&m.pohoda_stock_id===st.id);
+    if(duplicateIndex>=0){
+      active.materials[duplicateIndex].qty=Number(active.materials[duplicateIndex].qty||0)+qty;
+      active.materials.splice(index,1);
+    }else{
+      active.materials[index]={
+        pohoda_stock_id:st.id,
+        role:current.role||null,
+        code:st.code||null,
+        name:st.name||current.name||'POHODA položka',
+        qty,
+        unit:st.unit||current.unit||'ks',
+        source:'pohoda',
+        original_qty:current.original_qty??null,
+        metadata:{
+          ...(current.metadata||{}),
+          plu:st.plu||null,ean:st.ean||null,manufacturer:st.manufacturer||null,
+          sell_price_ex_vat:st.sell_price_ex_vat==null?null:Number(st.sell_price_ex_vat),
+          purchase_price_ex_vat:st.purchase_price_ex_vat==null?null:Number(st.purchase_price_ex_vat),
+          quantity_available:st.quantity_available==null?null:Number(st.quantity_available)
+        }
+      };
+    }
+    manualStockSearch={index:-1,results:[]};
+    active._dirty=true;saveLocal(active);renderWizard();
+  }
 
   function renderStockSearchResults(message=''){
     const box=document.getElementById('inspStockResults');
@@ -1323,7 +1432,7 @@
     openHome,startNew,edit,refresh,next,back,save,complete,createQuote,
     input:(path,el,kind,rerender)=>setFromInput(path,el,kind||'text',!!rerender),
     check:(path,el,rerender)=>setFromInput(path,el,'bool',!!rerender),
-    toggleType,toggleExtra,routeChanged,material,addMaterial,removeMaterial,searchStock,chooseStock,editTradeSetup,ztiChanged,ztiLaborChanged,photo,deletePhoto
+    toggleType,toggleExtra,routeChanged,material,addMaterial,removeMaterial,searchStock,chooseStock,materialAutocomplete,chooseMaterialAutocomplete,editTradeSetup,ztiChanged,ztiLaborChanged,photo,deletePhoto
   };
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initUI);
