@@ -5,6 +5,7 @@
   'use strict';
 
   const CACHE_KEY='spektra_inspections_v1';
+  const ZTI_PIPE_CLIPS_PER_M=2;
   const TYPE_OPTIONS=[
     ['heat_pump','♨','Tepelné čerpadlo'],
     ['air_conditioning','❄','Klimatizácia'],
@@ -96,7 +97,15 @@
         floor_labor_rate_m2:8,
         floor_spacing_cm:15,
         water_heater_mode:'same_place',
-        water_heater_labor_ex_vat:150
+        water_heater_labor_ex_vat:150,
+        zti_water_outlets:0,
+        zti_waste_outlets:0,
+        zti_washing_siphons:0,
+        zti_wc_duofix:0,
+        zti_boiler_room_outlets:0,
+        zti_pipe16_m:0,
+        zti_pipe20_m:0,
+        zti_pipe25_m:0
       },
       checklist:{},
       notes:'',
@@ -387,6 +396,14 @@
     if(i.floor_spacing_cm==null)i.floor_spacing_cm=15;
     if(i.water_heater_mode==null)i.water_heater_mode='same_place';
     if(i.water_heater_labor_ex_vat==null)i.water_heater_labor_ex_vat=i.water_heater_mode==='new_place'?225:150;
+    if(i.zti_water_outlets==null)i.zti_water_outlets=0;
+    if(i.zti_waste_outlets==null)i.zti_waste_outlets=0;
+    if(i.zti_washing_siphons==null)i.zti_washing_siphons=0;
+    if(i.zti_wc_duofix==null)i.zti_wc_duofix=0;
+    if(i.zti_boiler_room_outlets==null)i.zti_boiler_room_outlets=0;
+    if(i.zti_pipe16_m==null)i.zti_pipe16_m=0;
+    if(i.zti_pipe20_m==null)i.zti_pipe20_m=0;
+    if(i.zti_pipe25_m==null)i.zti_pipe25_m=0;
     return i;
   }
   function tradeLabel(type=tradePrimaryType()){
@@ -404,6 +421,86 @@
       metadata:{plu:st?.plu||null,manufacturer:st?.manufacturer||null,sell_price_ex_vat:st?.sell_price_ex_vat==null?null:Number(st.sell_price_ex_vat),purchase_price_ex_vat:st?.purchase_price_ex_vat==null?null:Number(st.purchase_price_ex_vat),quantity_available:st?.quantity_available==null?null:Number(st.quantity_available)}
     };
   }
+
+  function ztiMaterial(code,qty,unit,role,nameFallback,macro,label){
+    if(Number(qty||0)<=0)return null;
+    const m=materialFromStockCode(code,qty,unit,role,nameFallback);
+    m.metadata={...(m.metadata||{}),zti_macro:macro,zti_macro_label:label||macro};
+    return m;
+  }
+  function ztiInputs(){
+    const i=ensureTradeDefaults();
+    return {
+      water:Math.max(0,num(i.zti_water_outlets,0)),
+      waste:Math.max(0,num(i.zti_waste_outlets,0)),
+      siphon:Math.max(0,num(i.zti_washing_siphons,0)),
+      wc:Math.max(0,num(i.zti_wc_duofix,0)),
+      boiler:Math.max(0,num(i.zti_boiler_room_outlets,0)),
+      p16:Math.max(0,num(i.zti_pipe16_m,0)),
+      p20:Math.max(0,num(i.zti_pipe20_m,0)),
+      p25:Math.max(0,num(i.zti_pipe25_m,0))
+    };
+  }
+  function rebuildZtiMaterials(save=true){
+    if(!active)return;
+    const z=ztiInputs();
+    const keep=(active.materials||[]).filter(m=>!m.metadata?.zti_macro);
+    const auto=[];
+    const add=m=>{if(m)auto.push(m)};
+
+    // 1× vývod voda = 1 nástenka 16x1/2.
+    // T-kus 20-16-20 má dve 20 mm vetvy + jednu 16 mm vetvu,
+    // nástenka má ďalší 16 mm spoj => spolu 2× objímka 16 + 2× objímka 20.
+    add(ztiMaterial('14563581001',z.water,'ks','zti_water_wallplate_16','REHAU RAUTITAN nástenka 16x1/2','water_outlet','Vývod voda'));
+    add(ztiMaterial('11600611001',z.water,'ks','zti_water_tee_20_16_20','REHAU RAUTITAN T-kus 20-16-20','water_outlet','Vývod voda'));
+    add(ztiMaterial('11600011001',z.water*2,'ks','zti_water_sleeve_16','REHAU RAUTITAN objímka 16','water_outlet','Vývod voda'));
+    add(ztiMaterial('11600021001',z.water*2,'ks','zti_water_sleeve_20','REHAU RAUTITAN objímka 20','water_outlet','Vývod voda'));
+
+    // Technická miestnosť / kotol: nástenka 25x3/4 + 1 objímka 25.
+    add(ztiMaterial('14563611001',z.boiler,'ks','zti_boiler_wallplate_25','REHAU RAUTITAN nástenka 25x3/4','boiler_outlet','Vývod technická miestnosť'));
+    add(ztiMaterial('11600031001',z.boiler,'ks','zti_boiler_sleeve_25','REHAU RAUTITAN objímka 25','boiler_outlet','Vývod technická miestnosť'));
+
+    // Odpad DN50: 1× koleno 87° + 1× metrová rúra na každý vývod.
+    add(ztiMaterial('112140',z.waste,'ks','zti_waste_elbow_50','HT PLUS koleno DN50 87°','waste_outlet','Vývod odpad'));
+    add(ztiMaterial('112040',z.waste,'ks','zti_waste_pipe_50_1m','HT PLUS rúra DN50 1000 mm','waste_outlet','Vývod odpad'));
+
+    add(ztiMaterial('PT100PS3',z.siphon,'ks','zti_washing_siphon','CONCEPT podomietkový práčkový sifón DN40/50','washing_siphon','Práčkový sifón'));
+    add(ztiMaterial('111.154.11.2',z.wc,'ks','zti_wc_duofix','Geberit Duofix Delta pre WC','wc_duofix','WC Geberit Duofix'));
+
+    // Potrubné balíky: rúrka + TUBEX + podlahová príchytka.
+    add(ztiMaterial('11301211100',z.p16,'m','zti_pipe16','REHAU RAUTITAN STABIL 16','pipe16','Potrubie 16 + izolácia'));
+    add(ztiMaterial('511450013',z.p16,'m','zti_tubex18','TUBEX STANDARD 10-18','pipe16','Potrubie 16 + izolácia'));
+    add(ztiMaterial('11301311100',z.p20,'m','zti_pipe20','REHAU RAUTITAN STABIL 20','pipe20','Potrubie 20 + izolácia'));
+    add(ztiMaterial('511450014',z.p20,'m','zti_tubex22','TUBEX STANDARD 10-22','pipe20','Potrubie 20 + izolácia'));
+    add(ztiMaterial('11301411050',z.p25,'m','zti_pipe25','REHAU RAUTITAN STABIL 25','pipe25','Potrubie 25 + izolácia'));
+    add(ztiMaterial('511450015',z.p25,'m','zti_tubex28','TUBEX STANDARD 10-28','pipe25','Potrubie 25 + izolácia'));
+
+    const totalPipe=z.p16+z.p20+z.p25;
+    add(ztiMaterial('144013000000001257',totalPipe*ZTI_PIPE_CLIPS_PER_M,'ks','zti_floor_clip','Podlahová príchytka potrubia','pipe_clips','Uchytenie potrubia'));
+
+    active.materials=[...auto,...keep];
+    active._dirty=true;
+    if(save)saveLocal(active);
+    return auto;
+  }
+  function ztiMacroAmount(macro){
+    let total=0,missing=0;
+    for(const m of (active.materials||[]).filter(x=>x.metadata?.zti_macro===macro)){
+      let st=m.pohoda_stock_id?stockPool().find(x=>x.id===m.pohoda_stock_id):null;
+      if(!st&&m.code)st=stockByExactCode(m.code);
+      const p=st?.sell_price_ex_vat??m.metadata?.sell_price_ex_vat;
+      if(p==null){missing++;continue}
+      total+=Number(p||0)*Number(m.qty||0);
+    }
+    return {total:Math.round(total*100)/100,missing};
+  }
+  function ztiChanged(key,el){
+    const i=ensureTradeDefaults();
+    i[key]=Math.max(0,num(el.value,0));
+    rebuildZtiMaterials(true);
+    renderWizard();
+  }
+
   function floorDesign(){
     const i=ensureTradeDefaults();
     const area=Math.max(0,num(active.building?.heated_area_m2,0));
