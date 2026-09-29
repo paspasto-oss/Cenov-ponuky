@@ -542,13 +542,19 @@
   }
   function ztiLaborManHours(){
     const i=ensureTradeDefaults();
-    if(i.zti_labor_mode==='manual')return Math.max(0,num(i.zti_manual_man_hours,0));
+    if(i.zti_labor_mode==='manual'){
+      if(i.zti_manual_man_hours==null)return ztiLaborEstimate().manHours;
+      return Math.max(0,num(i.zti_manual_man_hours,0));
+    }
     return ztiLaborEstimate().manHours;
   }
   function ztiLaborChanged(key,el,kind='number'){
     const i=ensureTradeDefaults();
     let v=el.value;
     if(kind==='number')v=el.value===''?null:Number(el.value);
+    if(key==='zti_labor_mode'&&v==='manual'&&i.zti_manual_man_hours==null){
+      i.zti_manual_man_hours=ztiLaborEstimate().manHours;
+    }
     i[key]=v;
     active._dirty=true;saveLocal(active);renderWizard();
   }
@@ -797,7 +803,9 @@
       '<div class="srow"><span>Spolu bez DPH</span><b>'+priceText(net)+'</b></div>'+
       '<div class="srow total"><span>Spolu s DPH</span><span>'+priceText(gross)+'</span></div></div>'+
       (mat.missing?'<div class="notice warn" style="margin-top:9px">'+mat.missing+' položkám chýba cena. Vyber ich z POHODY alebo doplň pred odoslaním ponuky.</div>':'')+
-      '<button class="btn ghost full" style="margin-top:10px" onclick="SpektraInspections.editTradeSetup()">Upraviť odhad práce</button></div>'+
+      (tradePrimaryType()==='zti'
+        ? '<button class="btn ghost full" style="margin-top:10px" onclick="SpektraInspections.back()">← Upraviť ZTI rozsah a prácu</button></div>'
+        : '<button class="btn ghost full" style="margin-top:10px" onclick="SpektraInspections.editTradeSetup()">Upraviť odhad práce</button></div>')+
       tradeMaterialCardHtml()+
       '<div class="card"><h2>Poznámka technika</h2><textarea onchange="SpektraInspections.input(\'notes\',this)">'+esc(active.notes||'')+'</textarea></div>'+
       '<button class="btn primary full" onclick="SpektraInspections.next()">Pokračovať →</button>';
