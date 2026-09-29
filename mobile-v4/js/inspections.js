@@ -32,6 +32,8 @@
   const PHOTO_CATEGORIES=[
     ['building','Objekt'],
     ['plant_room','Kotolňa / technická miestnosť'],
+    ['bathroom','Kúpeľňa'],
+    ['kitchen','Kuchyňa'],
     ['existing_device','Existujúci zdroj'],
     ['outdoor_unit','Miesto nového zariadenia'],
     ['electrical_panel','Rozvádzač'],
@@ -957,11 +959,11 @@
   }
 
   function requiredPhotoKeys(){
-    if(equipmentInspection())return PHOTO_CATEGORIES.map(x=>x[0]);
+    if(equipmentInspection())return ['building','plant_room','existing_device','outdoor_unit','electrical_panel','pipe_route','nameplate'];
     const type=tradePrimaryType();
     if(type==='floor_heating')return ['building','plant_room','pipe_route'];
     if(type==='water_heater')return ['plant_room','existing_device','electrical_panel','nameplate'];
-    if(type==='zti')return ['building','plant_room','pipe_route'];
+    if(type==='zti')return ['building','plant_room','bathroom','kitchen'];
     if(type==='recovery')return ['building','electrical_panel','pipe_route'];
     return ['building','pipe_route'];
   }
