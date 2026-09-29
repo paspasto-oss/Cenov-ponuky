@@ -712,12 +712,21 @@
     setTimeout(()=>document.getElementById('inspStockSearchInput')?.focus(),0);
   }
 
-  function requiredPhotoKeys(){return PHOTO_CATEGORIES.map(x=>x[0])}
+  function requiredPhotoKeys(){
+    if(equipmentInspection())return PHOTO_CATEGORIES.map(x=>x[0]);
+    const type=tradePrimaryType();
+    if(type==='floor_heating')return ['building','plant_room','pipe_route'];
+    if(type==='water_heater')return ['plant_room','existing_device','electrical_panel','nameplate'];
+    if(type==='zti')return ['building','plant_room','pipe_route'];
+    if(type==='recovery')return ['building','electrical_panel','pipe_route'];
+    return ['building','pipe_route'];
+  }
   function stepPhotos(){
     const photos=active.photos||[];
+    const required=requiredPhotoKeys();
     const cards=PHOTO_CATEGORIES.map(([key,label])=>{
-      const cat=photos.filter(p=>p.category===key);
-      return '<div class="card"><div class="row" style="margin-bottom:8px"><div><b>'+esc(label)+'</b><small>'+(cat.length?'✓ '+cat.length+' foto':'Povinné foto')+'</small></div>'+
+      const cat=photos.filter(p=>p.category===key),must=required.includes(key);
+      return '<div class="card"><div class="row" style="margin-bottom:8px"><div><b>'+esc(label)+'</b><small>'+(cat.length?'✓ '+cat.length+' foto':(must?'Povinné foto':'Voliteľné foto'))+'</small></div>'+
         '<label class="btn ghost small" style="cursor:pointer">📷 Foto<input type="file" accept="image/*" capture="environment" style="display:none" onchange="SpektraInspections.photo(\''+key+'\',this.files[0]);this.value=\'\'"></label></div>'+
         (cat.length?'<div class="inspPhotoGrid">'+cat.map(p=>'<div class="inspThumb">'+(p.signed_url?'<img src="'+esc(p.signed_url)+'" alt="">':'<div style="padding:15px;font-size:12px">'+esc(p.file_name||'Foto')+'</div>')+'<button onclick="SpektraInspections.deletePhoto(\''+esc(p.id||'')+'\')">×</button></div>').join('')+'</div>':'')+
       '</div>';
@@ -796,6 +805,11 @@
     const missing=requiredPhotoKeys().filter(k=>!(active.photos||[]).some(p=>p.category===k));
     const types=(active.inspection_types||[]).map(typeLabel).join(', ');
     const work=(active.extra_work||[]).map(k=>EXTRA_WORK.find(x=>x[0]===k)?.[1]||k).join(', ')||'bez doplnkov';
+    const tradeEstimate=isTradeInspection()?currentMaterialEstimate():null;
+    const tradeTotal=tradeEstimate?tradeEstimate.total+tradeLaborPrice():0;
+    const tradePriceHtml=tradeEstimate
+      ? '<div class="card"><h2>Orientačný návrh ceny</h2><div class="summary">'+summaryRow('Materiál',priceText(tradeEstimate.total)+' bez DPH')+summaryRow('Práca',priceText(tradeLaborPrice())+' bez DPH')+summaryRow('Spolu bez DPH',priceText(tradeTotal))+summaryRow('Spolu s DPH',priceText(tradeTotal*1.23))+'</div>'+(tradeEstimate.missing?'<div class="notice warn" style="margin-top:9px">'+tradeEstimate.missing+' položkám chýba cena.</div>':'')+'</div>'
+      : '';
     return '<div class="card"><h2>'+esc(active.customer?.name||'Bez mena')+'</h2><div class="sub">'+esc(active.customer?.address||'')+'</div>'+
       '<div class="summary" style="margin-top:12px">'+
       summaryRow('Typ',types)+summaryRow('Plocha',(active.building?.heated_area_m2||'—')+' m²')+
@@ -823,6 +837,64 @@
     alert('Obhliadka je dokončená a synchronizovaná.');
   }
 
+  function tradeQuoteMaterialItems(){
+    return (active.materials||[]).filter(m=>m?.name).map((m,n)=>{
+      let st=m.pohoda_stock_id?stockPool().find(x=>x.id===m.pohoda_stock_id):null;
+      if(!st&&m.code)st=stockByExactCode(m.code);
+      const price=st?.sell_price_ex_vat??m.metadata?.sell_price_ex_vat??null;
+      const cost=st?.purchase_price_ex_vat??m.metadata?.purchase_price_ex_vat??null;
+      return {
+        role:m.role||('inspection_material_'+n), name:m.name, qty:Number(m.qty||0), unit:m.unit||st?.unit||'ks',
+        pohoda:st||null, pohoda_code:st?.code||m.code||null,
+        price:price==null?null:Number(price), cost:cost==null?null:Number(cost),
+        visible:false, mapping_status:st?'mapped_from_inspection':(price==null?'inspection_missing_price':'inspection_snapshot'),
+        customer_group:'Materiál podľa obhliadky', note:'Množstvo podľa obhliadky.'
+      };
+    });
+  }
+  function tradeWorkScope(type){
+    if(type==='floor_heating')return ['rozloženie systémových dosiek','uloženie vykurovacích okruhov','montáž a pripojenie rozdeľovača','tlaková skúška systému'];
+    if(type==='water_heater')return ['demontáž existujúceho ohrievača podľa potreby','osadenie nového ohrievača','napojenie vody a poistných prvkov','kontrola tesnosti a funkcie'];
+    if(type==='zti')return ['montáž vodovodných a odpadových rozvodov podľa obhliadky','lisovanie a osadenie tvaroviek','napojenie vývodov','kontrola tesnosti'];
+    return ['montážne práce podľa rozsahu obhliadky','kontrola funkcie po dokončení'];
+  }
+  async function createTradeQuote(){
+    const type=tradePrimaryType();
+    if(!type)throw new Error('Nie je zvolený typ remeselnej zákazky.');
+    ensureBaseMaterials();
+    const materials=tradeQuoteMaterialItems();
+    const labor=tradeLaborPrice();
+    const laborItem={role:'installation_service',name:tradeLabel(type)+' – práca',qty:1,unit:'súb.',pohoda:null,pohoda_code:null,price:labor,cost:null,visible:true,mapping_status:'internal_estimate',customer_group:'Montáž a práca',note:'Orientačný odhad podľa obhliadky.',work_scope:tradeWorkScope(type)};
+    const items=[...materials,laborItem];
+    const missing=items.some(i=>i.price==null);
+    const net=items.reduce((s,i)=>s+(i.price==null?0:Number(i.price||0)*Number(i.qty||0)),0);
+
+    startWizard();
+    current.inspection_id=active.remote_id;
+    current.remote_customer_id=active.customer_id;
+    current.customer={name:active.customer.name||'',phone:active.customer.phone||'',email:active.customer.email||'',address:active.customer.address||'',note:active.customer.notes||active.notes||''};
+    current.category=type; category=type;
+    current.brand='Spektra Install'; brand='Spektra Install';
+    current.system_type='service';
+    current.installation_tier='custom';
+    current.device={brand:'Spektra Install',model:tradeLabel(type),variant:'Návrh podľa obhliadky'};
+    current.items=items;
+    current.net=Math.round(net*100)/100;current.vat_pct=23;current.vat=Math.round(current.net*.23*100)/100;current.total=Math.round(current.net*1.23*100)/100;
+    current.price_complete=!missing;
+    current.status='ready';
+    current.pdf_template='technical';current.pdf_banner_mode='none';current.pdf_images_enabled=false;current.pdf_images=[];
+    current.optional_services={annual_service:false};current.subsidy={program:'none'};
+    current.building={...active.building,area_m2:num(active.building?.heated_area_m2,0),heating:active.existing_system?.heating||null};
+    current.inspection_materials=(active.materials||[]).map(m=>({...m}));
+    current.inspection_routes={...(active.routes||{})};
+    current.inspection_extra_work=[...(active.extra_work||[])];
+    current.inspection_notes=active.notes||null;
+
+    await upsertCurrent();
+    if(current.remote_id){await SpektraDB.linkInspectionQuote(active.remote_id,current.remote_id,'generated');active.status='converted';active._dirty=false;saveLocal(active)}
+    renderFinal();go('step5');
+    alert(missing?'Ponuka bola vytvorená, ale niektorým materiálovým položkám chýba cena. Doplň ich pred odoslaním.':'Orientačná cenová ponuka bola vytvorená z obhliadky.');
+  }
   async function createQuote(){
     if(!active)return;
     const missing=requiredPhotoKeys().filter(k=>!(active.photos||[]).some(p=>p.category===k));
@@ -836,7 +908,7 @@
     await saveRemote(active,'inspection_completed',true);
 
     const supported=(active.inspection_types||[]).find(x=>['heat_pump','air_conditioning','gas_boiler','biomass'].includes(x));
-    if(!supported){alert('Automatické vytvorenie ponuky je zatiaľ dostupné pre tepelné čerpadlo, klimatizáciu a kotol. Obhliadka zostala uložená.');return}
+    if(!supported){await createTradeQuote();return}
 
     startWizard();
     current.inspection_id=active.remote_id;
@@ -904,7 +976,7 @@
     openHome,startNew,edit,refresh,next,back,save,complete,createQuote,
     input:(path,el,kind,rerender)=>setFromInput(path,el,kind||'text',!!rerender),
     check:(path,el,rerender)=>setFromInput(path,el,'bool',!!rerender),
-    toggleType,toggleExtra,routeChanged,material,addMaterial,removeMaterial,searchStock,chooseStock,photo,deletePhoto
+    toggleType,toggleExtra,routeChanged,material,addMaterial,removeMaterial,searchStock,chooseStock,editTradeSetup,photo,deletePhoto
   };
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initUI);
