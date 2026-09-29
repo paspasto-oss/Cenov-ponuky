@@ -6,6 +6,18 @@
 
   const CACHE_KEY='spektra_inspections_v1';
   const ZTI_PIPE_CLIPS_PER_M=2;
+  const ZTI_LABOR_RULES={
+    base_mh:1.5,
+    water_outlet_mh:0.45,
+    waste_outlet_mh:0.35,
+    washing_siphon_mh:0.30,
+    wc_duofix_mh:1.75,
+    boiler_outlet_mh:0.50,
+    pipe16_mh_per_m:0.06,
+    pipe20_mh_per_m:0.07,
+    pipe25_mh_per_m:0.08,
+    min_mh:2
+  };
   const TYPE_OPTIONS=[
     ['heat_pump','♨','Tepelné čerpadlo'],
     ['air_conditioning','❄','Klimatizácia'],
@@ -105,7 +117,10 @@
         zti_boiler_room_outlets:0,
         zti_pipe16_m:0,
         zti_pipe20_m:0,
-        zti_pipe25_m:0
+        zti_pipe25_m:0,
+        zti_labor_mode:'auto',
+        zti_crew_size:2,
+        zti_manual_man_hours:null
       },
       checklist:{},
       notes:'',
@@ -404,6 +419,9 @@
     if(i.zti_pipe16_m==null)i.zti_pipe16_m=0;
     if(i.zti_pipe20_m==null)i.zti_pipe20_m=0;
     if(i.zti_pipe25_m==null)i.zti_pipe25_m=0;
+    if(!['auto','manual'].includes(i.zti_labor_mode))i.zti_labor_mode='auto';
+    if(i.zti_crew_size==null)i.zti_crew_size=2;
+    if(i.zti_manual_man_hours===undefined)i.zti_manual_man_hours=null;
     return i;
   }
   function tradeLabel(type=tradePrimaryType()){
@@ -501,6 +519,46 @@
     renderWizard();
   }
 
+
+  function ztiLaborEstimate(){
+    const i=ensureTradeDefaults(),z=ztiInputs();
+    const parts=[
+      {key:'base',label:'Príprava, rozmeranie a tlaková skúška',qty:1,mh:ZTI_LABOR_RULES.base_mh},
+      {key:'water',label:'Vývody vody',qty:z.water,mh:z.water*ZTI_LABOR_RULES.water_outlet_mh},
+      {key:'waste',label:'Vývody odpadu DN50',qty:z.waste,mh:z.waste*ZTI_LABOR_RULES.waste_outlet_mh},
+      {key:'siphon',label:'Práčkové sifóny',qty:z.siphon,mh:z.siphon*ZTI_LABOR_RULES.washing_siphon_mh},
+      {key:'wc',label:'Geberit Duofix',qty:z.wc,mh:z.wc*ZTI_LABOR_RULES.wc_duofix_mh},
+      {key:'boiler',label:'Vývody technická miestnosť',qty:z.boiler,mh:z.boiler*ZTI_LABOR_RULES.boiler_outlet_mh},
+      {key:'p16',label:'Potrubie 16',qty:z.p16,mh:z.p16*ZTI_LABOR_RULES.pipe16_mh_per_m},
+      {key:'p20',label:'Potrubie 20',qty:z.p20,mh:z.p20*ZTI_LABOR_RULES.pipe20_mh_per_m},
+      {key:'p25',label:'Potrubie 25',qty:z.p25,mh:z.p25*ZTI_LABOR_RULES.pipe25_mh_per_m}
+    ];
+    const hasScope=(z.water+z.waste+z.siphon+z.wc+z.boiler+z.p16+z.p20+z.p25)>0;
+    const raw=parts.reduce((s,p)=>s+Number(p.mh||0),0);
+    const manHours=hasScope?Math.max(ZTI_LABOR_RULES.min_mh,Math.ceil(raw*4)/4):0;
+    const crew=Math.max(1,Math.round(num(i.zti_crew_size,2)));
+    const durationHours=crew?Math.ceil((manHours/crew)*4)/4:manHours;
+    return {parts:parts.filter(p=>p.mh>0),raw,manHours,crew,durationHours};
+  }
+  function ztiLaborManHours(){
+    const i=ensureTradeDefaults();
+    if(i.zti_labor_mode==='manual'){
+      if(i.zti_manual_man_hours==null)return ztiLaborEstimate().manHours;
+      return Math.max(0,num(i.zti_manual_man_hours,0));
+    }
+    return ztiLaborEstimate().manHours;
+  }
+  function ztiLaborChanged(key,el,kind='number'){
+    const i=ensureTradeDefaults();
+    let v=el.value;
+    if(kind==='number')v=el.value===''?null:Number(el.value);
+    if(key==='zti_labor_mode'&&v==='manual'&&i.zti_manual_man_hours==null){
+      i.zti_manual_man_hours=ztiLaborEstimate().manHours;
+    }
+    i[key]=v;
+    active._dirty=true;saveLocal(active);renderWizard();
+  }
+
   function floorDesign(){
     const i=ensureTradeDefaults();
     const area=Math.max(0,num(active.building?.heated_area_m2,0));
@@ -513,6 +571,7 @@
     const i=ensureTradeDefaults(),type=tradePrimaryType();
     if(type==='floor_heating')return Math.round(floorDesign().area*num(i.floor_labor_rate_m2,8)*100)/100;
     if(type==='water_heater')return Math.max(0,num(i.water_heater_labor_ex_vat,i.water_heater_mode==='new_place'?225:150));
+    if(type==='zti')return Math.round(ztiLaborManHours()*num(i.labor_hour_rate_ex_vat,35)*100)/100;
     return Math.round(num(i.labor_workers,1)*num(i.labor_hours,8)*num(i.labor_hour_rate_ex_vat,35)*100)/100;
   }
   function currentMaterialEstimate(){
@@ -563,6 +622,30 @@
       '</details>';
     }).join('');
   }
+
+  function ztiLaborHtml(){
+    const i=ensureTradeDefaults(),e=ztiLaborEstimate();
+    const mode=i.zti_labor_mode||'auto';
+    const mh=ztiLaborManHours();
+    const price=tradeLaborPrice();
+    const detail=mode==='auto'
+      ? e.parts.map(p=>'<div class="srow"><span>'+esc(p.label)+'</span><b>'+Number(p.mh).toFixed(2)+' čh</b></div>').join('')
+      : '<div class="notice" style="margin-bottom:8px">Použitý je ručný odhad človekohodín. Rozsah ZTI sa ďalej počíta automaticky pre materiál.</div>';
+    return '<div class="grid2">'+
+      selectField('Výpočet práce','ztiLaborMode',mode,[['auto','Automaticky podľa rozsahu'],['manual','Ručne']],'onchange="SpektraInspections.ztiLaborChanged(\'zti_labor_mode\',this,\'text\')"')+
+      field('Sadzba bez DPH [€/čh]','ztiLaborRate',i.labor_hour_rate_ex_vat,'number','min="0" step="1" onchange="SpektraInspections.ztiLaborChanged(\'labor_hour_rate_ex_vat\',this,\'number\')"')+
+      '</div>'+
+      (mode==='auto'
+        ? '<div class="grid2">'+field('Odporúčaná posádka [os.]','ztiCrew',i.zti_crew_size,'number','min="1" max="6" step="1" onchange="SpektraInspections.ztiLaborChanged(\'zti_crew_size\',this,\'number\')"')+
+          '<div class="field"><label>Odhad času na stavbe</label><div class="notice ok">'+e.durationHours.toFixed(2)+' h pri '+e.crew+' montéroch</div></div></div>'
+        : field('Ručný odhad [človekohodiny]','ztiManualMh',i.zti_manual_man_hours??e.manHours,'number','min="0" step="0.25" onchange="SpektraInspections.ztiLaborChanged(\'zti_manual_man_hours\',this,\'number\')"'))+
+      '<div class="summary">'+detail+
+        '<div class="srow"><span>Človekohodiny</span><b>'+mh.toFixed(2)+' čh</b></div>'+
+        '<div class="srow total"><span>Práca bez DPH</span><span>'+priceText(price)+'</span></div>'+
+      '</div>'+
+      '<div class="sub" style="margin-top:8px">Automatický model je interný odhad podľa počtu vývodov, zariadení a metrov potrubia. Pred odoslaním ponuky ho môžeš prepnúť na ručný režim.</div>';
+  }
+
   function stepZtiTechnical(){
     rebuildZtiMaterials(false);
     const i=ensureTradeDefaults(),z=ztiInputs(),mat=currentMaterialEstimate();
@@ -590,13 +673,7 @@
         '<div class="summary" style="margin-top:10px"><div class="srow total"><span>Materiál spolu bez DPH</span><span>'+priceText(mat.total)+'</span></div></div>'+
         (mat.missing?'<div class="notice warn" style="margin-top:8px">'+mat.missing+' položkám sa nenašla cena v POHODE.</div>':'')+
       '</div>'+
-      '<div class="card"><h2>Práca</h2><div class="summary">'+
-        '<div class="srow"><span>Montéri</span><b>'+num(i.labor_workers,1)+'</b></div>'+
-        '<div class="srow"><span>Hodiny / montér</span><b>'+num(i.labor_hours,8)+' h</b></div>'+
-        '<div class="srow"><span>Sadzba</span><b>'+priceText(i.labor_hour_rate_ex_vat)+' / h</b></div>'+
-        '<div class="srow total"><span>Práca bez DPH</span><span>'+priceText(tradeLaborPrice())+'</span></div></div>'+
-        '<button class="btn ghost full" style="margin-top:10px" onclick="SpektraInspections.editTradeSetup()">Upraviť prácu</button>'+
-      '</div>'+
+      '<div class="card"><h2>Práca – automatický odhad</h2>'+ztiLaborHtml()+'</div>'+
       '<button class="btn primary full" onclick="SpektraInspections.next()">Pokračovať →</button>';
   }
 
@@ -726,7 +803,9 @@
       '<div class="srow"><span>Spolu bez DPH</span><b>'+priceText(net)+'</b></div>'+
       '<div class="srow total"><span>Spolu s DPH</span><span>'+priceText(gross)+'</span></div></div>'+
       (mat.missing?'<div class="notice warn" style="margin-top:9px">'+mat.missing+' položkám chýba cena. Vyber ich z POHODY alebo doplň pred odoslaním ponuky.</div>':'')+
-      '<button class="btn ghost full" style="margin-top:10px" onclick="SpektraInspections.editTradeSetup()">Upraviť odhad práce</button></div>'+
+      (tradePrimaryType()==='zti'
+        ? '<button class="btn ghost full" style="margin-top:10px" onclick="SpektraInspections.back()">← Upraviť ZTI rozsah a prácu</button></div>'
+        : '<button class="btn ghost full" style="margin-top:10px" onclick="SpektraInspections.editTradeSetup()">Upraviť odhad práce</button></div>')+
       tradeMaterialCardHtml()+
       '<div class="card"><h2>Poznámka technika</h2><textarea onchange="SpektraInspections.input(\'notes\',this)">'+esc(active.notes||'')+'</textarea></div>'+
       '<button class="btn primary full" onclick="SpektraInspections.next()">Pokračovať →</button>';
@@ -1151,7 +1230,7 @@
     openHome,startNew,edit,refresh,next,back,save,complete,createQuote,
     input:(path,el,kind,rerender)=>setFromInput(path,el,kind||'text',!!rerender),
     check:(path,el,rerender)=>setFromInput(path,el,'bool',!!rerender),
-    toggleType,toggleExtra,routeChanged,material,addMaterial,removeMaterial,searchStock,chooseStock,editTradeSetup,ztiChanged,photo,deletePhoto
+    toggleType,toggleExtra,routeChanged,material,addMaterial,removeMaterial,searchStock,chooseStock,editTradeSetup,ztiChanged,ztiLaborChanged,photo,deletePhoto
   };
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initUI);
