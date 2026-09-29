@@ -509,7 +509,15 @@
     const o=active.outdoor_unit||{};
     const e=active.electrical||{};
     const pipe=num(r.heating_m||o.route_m,5),cable=num(e.cable_m,12);
-    if(types.includes('heat_pump')){
+    if(types.includes('floor_heating')&&!equipmentInspection()){
+      const d=floorDesign();
+      const manifoldCircuits=Math.min(12,Math.max(2,d.circuits));
+      active.materials=[
+        materialFromStockCode('12051591001',Math.ceil(d.area*1.05*10)/10,'m2','floor_system_board','REHAU VARIONOVA systémová doska'),
+        materialFromStockCode('11361401500',d.pipeM,'m','floor_pipe','REHAU RAUTHERM S 17x2'),
+        materialFromStockCode('HR1103-'+manifoldCircuits,1,'ks','floor_manifold','Nerezový rozdeľovač '+manifoldCircuits+' cestný pre podlahové')
+      ];
+    }else if(types.includes('heat_pump')){
       active.materials=[
         {role:'copper_pipe_d28',name:'Cu potrubie 28 mm',qty:2*pipe,original_qty:2*pipe,unit:'m',source:'calculated'},
         {role:'pipe_insulation_13x28',name:'Izolácia potrubia 28 mm',qty:2*pipe,original_qty:2*pipe,unit:'m',source:'calculated'},
@@ -523,6 +531,8 @@
         {role:'pvc_trunking',name:'PVC lišta',qty:num(r.trunking_m,ac),original_qty:num(r.trunking_m,ac),unit:'m',source:'calculated'},
         {role:'power_cable',name:'Napájací / komunikačný kábel',qty:ac,original_qty:ac,unit:'m',source:'calculated'}
       ];
+    }else if(isTradeInspection()){
+      active.materials=[];
     }else{
       active.materials=[{name:'Montážny materiál podľa obhliadky',qty:1,original_qty:1,unit:'súb.',source:'manual'}];
     }
