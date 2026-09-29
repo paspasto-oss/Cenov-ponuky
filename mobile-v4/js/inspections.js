@@ -771,15 +771,15 @@
   function materialRows(){
     return (active.materials||[]).map((m,i)=>{
       const meta=m.metadata||{};
-      const linked=!!m.pohoda_stock_id;
+      const linked=!!m.pohoda_stock_id,macro=!!meta.zti_macro;
       const details=linked
-        ? 'POHODA'+(m.code?' · '+m.code:'')+(meta.plu?' · PLU '+meta.plu:'')+' · '+priceText(meta.sell_price_ex_vat)+' bez DPH'+(meta.quantity_available!=null?' · sklad '+meta.quantity_available+' '+(m.unit||'ks'):'')
+        ? (macro?'ZTI · '+(meta.zti_macro_label||'automaticky')+' · ':'')+'POHODA'+(m.code?' · '+m.code:'')+(meta.plu?' · PLU '+meta.plu:'')+' · '+priceText(meta.sell_price_ex_vat)+' bez DPH'+(meta.quantity_available!=null?' · sklad '+meta.quantity_available+' '+(m.unit||'ks'):'')
         : (m.source==='manual'?'Ručná položka – ak sa nenájde v POHODE, ponuka môže zostať bez ceny':'Množstvo vypočítané z obhliadky');
       return '<div class="inspMaterial">'+
-        '<div class="inspMaterialMain"><input value="'+esc(m.name||'')+'" '+(linked?'readonly':'')+' onchange="SpektraInspections.material('+i+',\'name\',this.value)"><div class="inspMaterialMeta '+(linked?'linked':'')+'">'+esc(details)+'</div></div>'+
-        '<input type="number" step="0.5" min="0" value="'+esc(m.qty??0)+'" onchange="SpektraInspections.material('+i+',\'qty\',Number(this.value))">'+
-        '<select onchange="SpektraInspections.material('+i+',\'unit\',this.value)">'+[...new Set(['ks','m','súb.','l','bal',m.unit].filter(Boolean))].map(u=>'<option '+(m.unit===u?'selected':'')+'>'+u+'</option>').join('')+'</select>'+
-        '<button type="button" onclick="SpektraInspections.removeMaterial('+i+')">×</button></div>';
+        '<div class="inspMaterialMain"><input value="'+esc(m.name||'')+'" '+((linked||macro)?'readonly':'')+' onchange="SpektraInspections.material('+i+',\'name\',this.value)"><div class="inspMaterialMeta '+(linked?'linked':'')+'">'+esc(details)+'</div></div>'+
+        '<input type="number" step="0.5" min="0" value="'+esc(m.qty??0)+'" '+(macro?'readonly':'')+' onchange="SpektraInspections.material('+i+',\'qty\',Number(this.value))">'+
+        '<select '+(macro?'disabled':'')+' onchange="SpektraInspections.material('+i+',\'unit\',this.value)">'+[...new Set(['ks','m','súb.','l','bal',m.unit].filter(Boolean))].map(u=>'<option '+(m.unit===u?'selected':'')+'>'+u+'</option>').join('')+'</select>'+
+        (macro?'<button type="button" disabled title="Mení sa cez ZTI vstupy">↻</button>':'<button type="button" onclick="SpektraInspections.removeMaterial('+i+')">×</button>')+'</div>';
     }).join('');
   }
   function material(index,key,value){
@@ -1012,10 +1012,24 @@
       };
     });
   }
+
+  function ztiScopeSummary(){
+    const z=ztiInputs(),out=[];
+    if(z.water)out.push(z.water+'× vývod voda 16×1/2');
+    if(z.waste)out.push(z.waste+'× vývod odpad DN50');
+    if(z.siphon)out.push(z.siphon+'× práčkový sifón');
+    if(z.wc)out.push(z.wc+'× WC Geberit Duofix');
+    if(z.boiler)out.push(z.boiler+'× vývod technická miestnosť 25×3/4');
+    if(z.p16)out.push(z.p16+' m RAUTITAN 16 + TUBEX 10×18');
+    if(z.p20)out.push(z.p20+' m RAUTITAN 20 + TUBEX 10×22');
+    if(z.p25)out.push(z.p25+' m RAUTITAN 25 + TUBEX 10×28');
+    return out;
+  }
+
   function tradeWorkScope(type){
     if(type==='floor_heating')return ['rozloženie systémových dosiek','uloženie vykurovacích okruhov','montáž a pripojenie rozdeľovača','tlaková skúška systému'];
     if(type==='water_heater')return ['demontáž existujúceho ohrievača podľa potreby','osadenie nového ohrievača','napojenie vody a poistných prvkov','kontrola tesnosti a funkcie'];
-    if(type==='zti')return ['montáž vodovodných a odpadových rozvodov podľa obhliadky','lisovanie a osadenie tvaroviek','napojenie vývodov','kontrola tesnosti'];
+    if(type==='zti')return [...ztiScopeSummary(),'montáž vodovodných a odpadových rozvodov podľa obhliadky','lisovanie a osadenie tvaroviek','napojenie vývodov','kontrola tesnosti'];
     return ['montážne práce podľa rozsahu obhliadky','kontrola funkcie po dokončení'];
   }
   async function createTradeQuote(){
@@ -1046,6 +1060,7 @@
     current.optional_services={annual_service:false};current.subsidy={program:'none'};
     current.building={...active.building,area_m2:num(active.building?.heated_area_m2,0),heating:active.existing_system?.heating||null};
     current.inspection_materials=(active.materials||[]).map(m=>({...m}));
+    current.inspection_installation={...(active.installation||{})};
     current.inspection_routes={...(active.routes||{})};
     current.inspection_extra_work=[...(active.extra_work||[])];
     current.inspection_notes=active.notes||null;
