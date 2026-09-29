@@ -311,7 +311,7 @@
       </div>
     </div>
     <div id="finalSummary" class="card"></div>
-    <div class="card">
+    <div id="warrantyCard" class="card">
       <h2>Súhlas so zárukou</h2>
       <div class="sub">Zákazník potvrdí podmienku ročného servisu počas 5 rokov vlastným podpisom.</div>
       <button type="button" class="btn primary full" style="margin-top:10px" onclick="openWarrantySignature()">✍ Podpis zákazníka</button>
@@ -633,7 +633,16 @@ function renderHome(){
  }));
 }
 function labelStatus(x){return x==='ready'?'Na schválenie':x==='sent'?'Odoslaná':x==='approved'?'Schválená':'Rozpracovaná'}
-function labelCat(x){return x==='heat_pump'?'Tepelné čerpadlo':x==='air_conditioning'?'Klimatizácia':x==='boiler'?'Kotol':'Iné'}
+function labelCat(x){return x==='heat_pump'?'Tepelné čerpadlo':x==='air_conditioning'?'Klimatizácia':x==='boiler'?'Kotol':x==='floor_heating'?'Podlahové kúrenie':x==='water_heater'?'Bojler / TÚV':x==='zti'?'ZTI':x==='recovery'?'Rekuperácia':'Iné'}
+function isTradeQuote(q=current){return !!q && (q.system_type==='service'||['zti','floor_heating','water_heater','recovery','other'].includes(q.category))}
+function customerMaterialBundleName(){
+  if(current.category==='floor_heating')return 'Materiál podlahového kúrenia podľa obhliadky';
+  if(current.category==='water_heater')return 'Bojler a montážne príslušenstvo podľa obhliadky';
+  if(current.category==='zti')return 'Vodoinštalačný a odpadový materiál podľa obhliadky';
+  if(current.category==='recovery')return 'Vzduchotechnický materiál podľa obhliadky';
+  if(current.category==='air_conditioning'&&current.ac_mode==='multi')return 'Inštalačný materiál multisplit – do 5 m / vnútornú jednotku';
+  return 'Inštalačný materiál a príslušenstvo do 5 m';
+}
 function startWizard(){current={id:'q_'+Date.now(),quote_no:'NÁVRH-'+String(Date.now()).slice(-6),_server_quote_no:false,_dirty:true,status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_template:'presentation',pdf_banner_mode:'auto',pdf_banner_url:null,pdf_banner_path:null,pdf_images_enabled:false,pdf_images_user_disabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;boilerType='gas';acMode='single';multiCount=2;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
 function nextBuilding(){let name=s(document.getElementById('cName').value),phone=s(document.getElementById('cPhone').value),addr=s(document.getElementById('cAddress').value);if(!name||!phone||!addr){alert('Vyplň meno, telefón a adresu realizácie.');return}current.customer={name,phone,email:s(document.getElementById('cEmail').value),address:addr,note:s(document.getElementById('cNote').value)};go('step2')}
 function toggleLoss(){let known=document.getElementById('hasLoss').value==='yes';document.getElementById('lossKnown').classList.toggle('hidden',!known);document.getElementById('lossEstimate').classList.toggle('hidden',known)}
@@ -2154,7 +2163,9 @@ function annualServiceText(){
 }
 function renderFinal(){
  syncPdfTemplateUI();
- renderWarrantySignatureStatus();
+ const tradeQuote=isTradeQuote(current);
+ const warrantyCard=document.getElementById('warrantyCard');if(warrantyCard)warrantyCard.classList.toggle('hidden',tradeQuote);
+ if(!tradeQuote)renderWarrantySignatureStatus();
  const install=current.items.find(i=>i.role==='installation_service'||i.role==='installation');
  const flush=current.items.find(i=>i.role==='heating_system_flush_cleaner_inhibitor');
  const scope=install?.work_scope?.length?'<div style="margin-top:12px"><b>Montáž zahŕňa:</b><ul style="margin:7px 0 0 18px;padding:0">'+install.work_scope.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>':'';
@@ -2163,7 +2174,7 @@ function renderFinal(){
  const annual=service&&current.optional_services?.annual_service!==false
    ? '<div class="srow" style="margin-top:10px"><span>'+esc(service.label)+'</span><b>'+esc(service.price)+'</b></div><div class="sub">Účtuje sa pri vykonaní servisu a nezvyšuje cenu montáže.</div>'
    : '';
- const warranty='<div class="sub" style="margin-top:10px"><b>'+esc(SPEKTRA_WARRANTY)+'</b></div>'+warrantyConsentHtml();
+ const warranty=tradeQuote?'':'<div class="sub" style="margin-top:10px"><b>'+esc(SPEKTRA_WARRANTY)+'</b></div>'+warrantyConsentHtml();
  const subsidy=calculateSubsidy();
  const subsidyHtml=subsidy.program==='green'
    ? '<div class="srow" style="margin-top:10px"><span>Orientačná dotácia Zelená domácnostiam</span><b>− '+eur(subsidy.estimated_amount)+'</b></div><div class="srow"><span>Orientačne po dotácii</span><b>'+eur(subsidy.estimated_after_subsidy)+'</b></div>'
@@ -2228,6 +2239,13 @@ function openQuote(id){
     acMode=current.ac_mode||current.device?.ac_mode||'single';
     multiCount=current.multisplit_count||current.device?.multisplit_count||2;
     recommendation=current.device&&Object.keys(current.device).length?{...current.device}:null;
+    if(isTradeQuote(current)){
+      current.optional_services=current.optional_services||{};
+      current.optional_services.annual_service=false;
+      renderFinal();
+      go('step5');
+      return;
+    }
 
     const repairedInstallation=ensureHeatPumpInstallationItem();
     if(repairedInstallation)recalcQuoteTotalsFromItems();
@@ -2348,7 +2366,7 @@ function offerHtmlTechnical(){
   if(materialItems.length){
     customerRows.push({
       role:'customer_material_bundle',
-      name:current.category==='air_conditioning'&&current.ac_mode==='multi'?'Inštalačný materiál multisplit – do 5 m / vnútornú jednotku':'Inštalačný materiál a príslušenstvo do 5 m',
+      name:customerMaterialBundleName(),
       qty:1,
       unit:'súb.',
       price:materialTotal
@@ -2558,9 +2576,7 @@ function offerHtmlPresentation(){
   if(deviceItem)rows.push(deviceItem);
   if(materialItems.length)rows.push({
     role:'customer_material_bundle',
-    name:current.category==='air_conditioning'&&current.ac_mode==='multi'
-      ?'Inštalačný materiál multisplit – do 5 m / vnútornú jednotku'
-      :'Inštalačný materiál a príslušenstvo do 5 m',
+    name:customerMaterialBundleName(),
     qty:1,unit:'súb.',price:materialTotal
   });
   if(installationItem)rows.push(installationItem);
