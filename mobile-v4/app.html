@@ -498,18 +498,18 @@ async function loadConfig(){
   try{
     const r=await fetch('data/device-catalog.json?v=20260927-functionalcheck2',{cache:'no-store'});
     if(!r.ok) throw new Error('device-catalog '+r.status);
-    const j=await r.json();deviceCatalog=j.devices||[];
-  }catch(e){deviceCatalog=fallbackDevices;configOk=false;console.error('Device catalog load failed:',e)}
+    const j=await r.json();staticDeviceCatalog=j.devices||[];
+  }catch(e){staticDeviceCatalog=fallbackDevices;configOk=false;console.error('Device catalog load failed:',e)}
   try{
     const r=await fetch('data/bundle-recipes.json?v=20260928-pricefix1',{cache:'no-store'});
     if(!r.ok) throw new Error('bundle-recipes '+r.status);
     const j=await r.json();bundleRecipes=j.bundles||[];
   }catch(e){bundleRecipes=[];configOk=false;console.error('Bundle recipes load failed:',e)}
-  if(!deviceCatalog.length)deviceCatalog=fallbackDevices;
+  if(!staticDeviceCatalog.length)staticDeviceCatalog=fallbackDevices;
+  refreshDeviceCatalogFromStocks();
   const state=document.getElementById('catalogState');
-  if(!configOk) state.textContent='Konfigurácia: núdzový režim';
-  else if(stocks.length) state.textContent='Katalóg POHODA: '+stocks.length.toLocaleString('sk-SK')+' zásob';
-  else state.textContent='POHODA zásoby: treba nahrať';
+  if(!configOk&&!stocks.length) state.textContent='Konfigurácia: núdzový režim';
+  else updateCatalogStateText();
   const authCard=document.getElementById('mainAuthCard');
   if(authCard) authCard.classList.toggle('hidden',SpektraDB.isAuthenticated());
 }
@@ -522,7 +522,7 @@ async function mainLogin(){
     document.getElementById('mainAuthCard').classList.add('hidden');
     try{
       const online=await SpektraDB.listStocks();
-      if(online.length){stocks=online;rebuildStockIndexes();if(!window.SPEKTRA_STOCKS_FROM_CACHE)await SpektraStockDB.replaceAll(online.map(x=>({...x,suppliers:x.supplier_name?[x.supplier_name]:[]})));document.getElementById('catalogState').textContent='Katalóg POHODA: '+stocks.length.toLocaleString('sk-SK')+' zásob';}
+      if(online.length){stocks=online;rebuildStockIndexes();refreshDeviceCatalogFromStocks();if(!window.SPEKTRA_STOCKS_FROM_CACHE)await SpektraStockDB.replaceAll(online.map(x=>({...x,suppliers:x.supplier_name?[x.supplier_name]:[]})));updateCatalogStateText();}
     }catch(e){console.error(e)}
     try{
       const banners=await SpektraDB.listPdfBanners();
