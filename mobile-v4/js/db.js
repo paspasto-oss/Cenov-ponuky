@@ -498,7 +498,12 @@ window.SpektraDB = (() => {
         pohoda_code:i.pohoda?.code||i.pohoda_code||null,name:i.name,qty:i.qty||1,unit:i.unit||'ks',
         purchase_price_ex_vat:i.cost,sell_price_ex_vat:i.price,mapping_status:i.mapping_status||null,
         visible_to_customer:!!i.visible,customer_group:i.customer_group||null,
-        metadata:{note:i.note||'',work_scope:i.work_scope||[]}
+        metadata:{
+          note:i.note||'',
+          work_scope:i.work_scope||[],
+          price_override:i.price_override===true,
+          cost_override:i.cost_override===true
+        }
       }));
       const {error}=await client.from('quote_items').insert(payload);
       if(error) throw error;
