@@ -285,6 +285,20 @@
       <div class="summary" style="margin-top:9px"><div class="srow"><span>Spolu bez DPH</span><b id="netPrice">—</b></div><div class="srow"><span>DPH 23 %</span><b id="vatPrice">—</b></div><div class="srow total"><span>Spolu s DPH</span><span id="grossPrice">—</span></div></div>
       <div id="priceWarning" class="notice warn hidden" style="margin-top:9px">Cena je neúplná. Chýba cena zariadenia alebo niektorých skladových položiek. Najprv otvor <b>Zásoby</b> a nahraj aktuálny export z POHODY; potom sa ceny a väzby doplnia podľa kódov.</div>
     </div>
+    <details id="internalProfitPanel" class="card" open>
+      <summary style="cursor:pointer;font-weight:900;font-size:17px;color:#173247">🔒 Interné – zisk ponuky</summary>
+      <div class="sub" style="margin:8px 0 10px">Len pre internú kontrolu. Do PDF ani správy zákazníkovi sa tieto údaje nevkladajú.</div>
+      <div class="priceBox" style="grid-template-columns:repeat(3,1fr)">
+        <div class="pbox"><small>Predaj bez DPH</small><strong id="profitSales">—</strong></div>
+        <div class="pbox"><small>Známy nákup bez DPH</small><strong id="profitCost">—</strong></div>
+        <div class="pbox"><small>Hrubý zisk</small><strong id="profitGross">—</strong></div>
+      </div>
+      <div class="priceBox" style="margin-top:8px">
+        <div class="pbox"><small>Marža</small><strong id="profitMargin">—</strong></div>
+        <div class="pbox"><small>Prirážka</small><strong id="profitMarkup">—</strong></div>
+      </div>
+      <div id="profitCostWarning" class="notice warn hidden" style="margin-top:9px"></div>
+    </details>
     <div class="grid2"><button class="btn ghost" onclick="saveDraft()">Uložiť rozpracovanú</button><button class="btn primary" onclick="finishQuote()">Pokračovať na PDF / zdieľanie →</button></div>
   </section>
 
@@ -1647,6 +1661,7 @@ function recalcQuoteTotalsFromItems(){
   current.vat=net*vatPct/100;
   current.total=net*(1+vatPct/100);
   current.price_complete=!missing;
+  if(document.getElementById('internalProfitPanel'))renderInternalProfit();
 }
 function syncInstallationTierUI(){
   const tier=current?.installation_tier||'standard';
@@ -2032,6 +2047,67 @@ function setSubsidyProgram(program){
   upsertCurrent();
 }
 
+function quoteProfitStats(){
+  const items=Array.isArray(current?.items)?current.items:[];
+  let sales=0,knownCost=0;
+  const missingCost=[];
+  for(const i of items){
+    const qty=Number(i.qty||0);
+    const price=i.price==null?null:Number(i.price);
+    const cost=i.cost==null?null:Number(i.cost);
+    if(price!=null&&Number.isFinite(price))sales+=price*qty;
+    if(cost!=null&&Number.isFinite(cost)){
+      knownCost+=cost*qty;
+    }else if(qty>0&&price!=null&&Number(price)!==0&&i.mapping_status!=='included_in_installation'){
+      missingCost.push(i);
+    }
+  }
+  const gross=sales-knownCost;
+  const margin=sales>0?gross/sales*100:null;
+  const markup=knownCost>0?gross/knownCost*100:null;
+  return {sales,knownCost,gross,margin,markup,missingCost};
+}
+function pct(v){
+  return v==null||!Number.isFinite(Number(v))?'—':new Intl.NumberFormat('sk-SK',{minimumFractionDigits:1,maximumFractionDigits:1}).format(Number(v))+' %';
+}
+function renderInternalProfit(){
+  const stats=quoteProfitStats();
+  const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};
+  set('profitSales',eur(stats.sales));
+  set('profitCost',eur(stats.knownCost));
+  set('profitGross',eur(stats.gross));
+  set('profitMargin',pct(stats.margin));
+  set('profitMarkup',pct(stats.markup));
+  const warning=document.getElementById('profitCostWarning');
+  if(warning){
+    warning.classList.toggle('hidden',!stats.missingCost.length);
+    if(stats.missingCost.length){
+      warning.innerHTML='<b>Pozor:</b> pri '+stats.missingCost.length+' položkách chýba nákupný náklad. Zobrazený zisk je preto vyšší než skutočný. Chýba: <b>'+
+        stats.missingCost.slice(0,5).map(i=>esc(customerText(i.name))).join(', ')+'</b>'+
+        (stats.missingCost.length>5?' a ďalších '+(stats.missingCost.length-5)+'.':'.');
+    }
+  }
+  current.internal_profit={
+    sales_ex_vat:stats.sales,
+    known_cost_ex_vat:stats.knownCost,
+    gross_profit_ex_vat:stats.gross,
+    margin_pct:stats.margin,
+    markup_pct:stats.markup,
+    missing_cost_count:stats.missingCost.length
+  };
+}
+async function setQuoteItemPrice(index,value){
+  if(!current?.items?.[index])return;
+  const raw=String(value??'').trim().replace(',','.');
+  current.items[index].price=raw===''?null:Number(raw);
+  if(current.items[index].price!=null&&!Number.isFinite(current.items[index].price))current.items[index].price=null;
+  current.updated=Date.now();
+  current._dirty=true;
+  recalcQuoteTotalsFromItems();
+  renderRecommendation();
+  try{await upsertCurrent()}catch(e){console.warn('Quote price save failed',e)}
+}
+
 function renderRecommendation(){
  syncInstallationTierUI();
  syncOptionalUI();
@@ -2064,7 +2140,7 @@ function renderRecommendation(){
  }
  if(altCount)altCount.textContent=alt.length?'('+alt.length+')':'';
  if(altList)altList.innerHTML=alt.map(x=>'<div class="row" onclick="pickAlternative(\''+x.id+'\')"><div><b>'+esc(x.model+' '+(x.variant||''))+'</b><small>'+((x.power_kw||'—')+' kW')+'</small></div><span>Vybrať ›</span></div>').join('');
- document.getElementById('bomItems').innerHTML=current.items.map(i=>{
+ document.getElementById('bomItems').innerHTML=current.items.map((i,index)=>{
    let link='';
    if(i.pohoda) link=' · POHODA: '+esc(i.pohoda.code||i.pohoda.plu||'namapované');
    else if(i.mapping_status==='included_in_installation') link=' · zahrnuté v cene montáže';
@@ -2072,7 +2148,11 @@ function renderRecommendation(){
    else if(i.pohoda_code) link=' · POHODA kód: '+esc(i.pohoda_code)+' · karta/cena chýba';
    else if(i.price!=null) link=' · interná cena';
    else link=' · bez POHODA kódu';
-   return '<div class="item"><div><b>'+esc(customerText(i.name))+'</b><small>'+i.qty+' '+esc(i.unit)+link+'</small></div><div>'+eur(i.price)+'</div></div>'
+   const purchase=i.cost==null?'—':eur(Number(i.cost));
+   return '<div class="item" style="align-items:center">'+
+     '<div style="flex:1;min-width:0"><b>'+esc(customerText(i.name))+'</b><small>'+i.qty+' '+esc(i.unit)+link+'</small><small style="margin-top:4px">Nákup bez DPH: <b>'+purchase+'</b></small></div>'+
+     '<div style="width:118px;min-width:118px"><label style="display:block;font-size:10px;font-weight:800;color:#607787;margin-bottom:3px">Predaj bez DPH</label><input type="number" step="0.01" min="0" value="'+(i.price==null?'':Number(i.price))+'" style="padding:8px 9px;font-size:14px;text-align:right" onchange="setQuoteItemPrice('+index+',this.value)"></div>'+
+   '</div>'
  }).join('');
  let net=0,missing=false;current.items.forEach(i=>{if(i.price==null)missing=true;else net+=(+i.price||0)*(+i.qty||0)});current.net=net;current.vat_pct=23;current.vat=net*.23;current.total=net*1.23;
  let dev=current.items[0]?.price,install=current.items.slice(1).reduce((a,i)=>a+(i.price==null?0:(+i.price||0)*(+i.qty||0)),0);document.getElementById('devicePrice').textContent=eur(dev);document.getElementById('installPrice').textContent=missing?eur(install)+' (známe položky)':eur(install);document.getElementById('netPrice').textContent=missing?'Neúplná cena':eur(net);document.getElementById('vatPrice').textContent=missing?'—':eur(current.vat);document.getElementById('grossPrice').textContent=missing?'—':eur(current.total);const warning=document.getElementById('priceWarning');
@@ -2084,6 +2164,7 @@ function renderRecommendation(){
    }
  }
  current.price_complete=!missing;
+ renderInternalProfit();
  syncSubsidyUI();
 }
 async function refreshQuoteFromCatalog(button=null){
