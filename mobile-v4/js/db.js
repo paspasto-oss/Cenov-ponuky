@@ -357,7 +357,9 @@ window.SpektraDB = (() => {
   async function listQuotes() {
     if (!client || !user) return [];
     const { data, error } = await client.from('quotes')
-      .select('*, customers(*), quote_items(*)').order('updated_at',{ascending:false});
+      .select('*, customers(*), quote_items(*)')
+      .order('created_at',{ascending:false})
+      .limit(1000);
     if (error) throw error;
     return data || [];
   }
@@ -515,11 +517,11 @@ window.SpektraDB = (() => {
   // Additive module: existing quote behaviour remains unchanged.
   // ------------------------------------------------------------
 
-  async function listInspections(limit=100) {
+  async function listInspections(limit=1000) {
     if (!client || !user) return [];
     const { data, error } = await client.from('inspections')
       .select('*, customers(id,name,phone,email,address,notes), inspection_materials(*), inspection_photos(*), inspection_quotes(quote_id,relation_type,created_at)')
-      .order('updated_at',{ascending:false})
+      .order('created_at',{ascending:false})
       .limit(limit);
     if (error) throw error;
 
