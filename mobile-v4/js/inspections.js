@@ -300,6 +300,7 @@
       const sync=x._dirty?' · čaká na sync':'';
       return '<div class="row" style="cursor:pointer" onclick="SpektraInspections.edit(\''+esc(x.local_id)+'\')">'+
         '<div style="flex:1;min-width:0"><b>'+esc(x.customer?.name||'Bez mena')+'</b><small>'+esc(x.customer?.address||'')+' · '+esc(type)+sync+'</small></div>'+
+        '<button type="button" class="btn ghost small" style="padding:6px 9px;min-width:auto" onclick="event.stopPropagation();SpektraInspections.openPdf(\''+esc(x.local_id)+'\')">PDF</button>'+
         '<span class="inspStatus '+esc(x.status)+'">'+esc(statusLabel(x.status))+'</span>'+
       '</div>';
     }).join('');
@@ -1305,9 +1306,263 @@
       '<div class="sendgrid">'+
         '<button class="btn ghost" onclick="SpektraInspections.save()">Uložiť rozpracovanú</button>'+
         '<button class="btn green" onclick="SpektraInspections.complete()">✓ Dokončiť obhliadku</button>'+
+        '<button class="btn primary" onclick="SpektraInspections.openPdf()">PDF / Tlač</button>'+
         '<button class="btn primary" onclick="SpektraInspections.createQuote()">Vytvoriť cenovú ponuku →</button>'+
         '<button class="btn ghost" onclick="SpektraInspections.openHome()">Späť na obhliadky</button>'+
       '</div>';
+  }
+
+
+  function inspectionPdfSafe(v){return esc(v==null?'':v)}
+  function inspectionDateText(i){
+    const raw=i?.inspected_at||i?.updated_at||i?.created_at||null;
+    const d=raw?new Date(raw):new Date();
+    return Number.isNaN(d.getTime())?'—':d.toLocaleString('sk-SK',{dateStyle:'medium',timeStyle:'short'});
+  }
+  function buildingTypeLabel(v){
+    return v==='family_house'?'Rodinný dom':v==='apartment'?'Byt':v==='commercial'?'Prevádzka':v==='other'?'Iné':(v||'—');
+  }
+  function buildingConditionLabel(v){
+    return v==='new'?'Novostavba':v==='renovation'?'Rekonštrukcia':v==='existing'?'Existujúci objekt':(v||'—');
+  }
+  function heatingLabel(v){
+    return v==='underfloor'?'Podlahové vykurovanie':v==='radiators'?'Radiátory':v==='high_temp'?'Vysokoteplotné radiátory':(v||'—');
+  }
+  function yesNo(v){return v===true?'Áno':v===false?'Nie':'—'}
+  function inspectionMaterialPrice(m){
+    let st=m?.pohoda_stock_id?stockPool().find(x=>x.id===m.pohoda_stock_id):null;
+    if(!st&&m?.code)st=stockByExactCode(m.code);
+    const p=st?.sell_price_ex_vat??m?.metadata?.sell_price_ex_vat;
+    return p==null?null:Number(p);
+  }
+  function inspectionMaterialTotal(i){
+    return (i?.materials||[]).reduce((sum,m)=>{
+      const p=inspectionMaterialPrice(m);
+      return sum+(p==null?0:p*Number(m.qty||0));
+    },0);
+  }
+  function inspectionZtiLabor(i){
+    const inst=i?.installation||{},b=i?.building||{};
+    const z={
+      water:num(inst.zti_water_outlets,0),waste:num(inst.zti_waste_outlets,0),siphon:num(inst.zti_washing_siphons,0),
+      wc:num(inst.zti_wc_duofix,0),boiler:num(inst.zti_boiler_room_outlets,0),frost:num(inst.zti_frost_valves,0),
+      main:num(inst.zti_main_water_shutoffs,0),p16:num(inst.zti_pipe16_m,0),p20:num(inst.zti_pipe20_m,0),p25:num(inst.zti_pipe25_m,0)
+    };
+    const raw=ZTI_LABOR_RULES.base_mh+
+      z.water*ZTI_LABOR_RULES.water_outlet_mh+z.waste*ZTI_LABOR_RULES.waste_outlet_mh+
+      z.siphon*ZTI_LABOR_RULES.washing_siphon_mh+z.wc*ZTI_LABOR_RULES.wc_duofix_mh+
+      z.boiler*ZTI_LABOR_RULES.boiler_outlet_mh+z.frost*ZTI_LABOR_RULES.frost_valve_mh+
+      z.main*ZTI_LABOR_RULES.main_water_shutoff_mh+z.p16*ZTI_LABOR_RULES.pipe16_mh_per_m+
+      z.p20*ZTI_LABOR_RULES.pipe20_mh_per_m+z.p25*ZTI_LABOR_RULES.pipe25_mh_per_m;
+    const hasScope=(z.water+z.waste+z.siphon+z.wc+z.boiler+z.frost+z.main+z.p16+z.p20+z.p25)>0;
+    const autoMh=hasScope?Math.max(ZTI_LABOR_RULES.min_mh,Math.ceil(raw*4)/4):0;
+    const mh=inst.zti_labor_mode==='manual'&&inst.zti_manual_man_hours!=null?Math.max(0,num(inst.zti_manual_man_hours,0)):autoMh;
+    const rate=b.condition==='new'?num(inst.zti_rate_newbuild_ex_vat,35):num(inst.zti_rate_renovation_ex_vat,40);
+    const crew=Math.max(1,num(inst.zti_crew_size,2));
+    return {mh,rate,price:mh*rate,crew,duration:crew?Math.ceil((mh/crew)*4)/4:mh};
+  }
+  function inspectionLaborInfo(i){
+    const types=i?.inspection_types||[],inst=i?.installation||{},b=i?.building||{};
+    if(types.includes('zti')&&!types.some(x=>['heat_pump','air_conditioning','gas_boiler','biomass'].includes(x))){
+      return inspectionZtiLabor(i);
+    }
+    if(types.includes('floor_heating')){
+      const area=num(b.heated_area_m2,0),rate=num(inst.floor_labor_rate_m2,8);
+      return {mh:null,rate,price:area*rate,crew:null,duration:null,label:rate+' €/m²'};
+    }
+    if(types.includes('water_heater')){
+      const price=num(inst.water_heater_labor_ex_vat,inst.water_heater_mode==='new_place'?225:150);
+      return {mh:null,rate:null,price,crew:null,duration:null,label:'paušál'};
+    }
+    return null;
+  }
+  function inspectionTechnicalRows(i){
+    const b=i?.building||{},e=i?.existing_system||{},h=i?.heat_loss||{},o=i?.outdoor_unit||{},p=i?.plant_room||{},el=i?.electrical||{},inst=i?.installation||{};
+    const types=i?.inspection_types||[];
+    const rows=[
+      ['Typ objektu',buildingTypeLabel(b.type)],
+      ['Stav objektu',buildingConditionLabel(b.condition)],
+      ['Vykurovaná plocha',b.heated_area_m2!=null?b.heated_area_m2+' m²':null],
+      ['Podlažia',b.floors],
+      ['Zateplenie',b.insulated==null?null:(yesNo(b.insulated)+(b.insulated&&b.insulation_mm?' · '+b.insulation_mm+' mm':''))],
+      ['Okná',b.windows==='triple'?'3-sklo':b.windows==='double'?'2-sklo':b.windows==='old'?'Staršie':b.windows]
+    ];
+    if(types.includes('zti')){
+      rows.push(
+        ['Vývody voda 16×1/2',num(inst.zti_water_outlets,0)+' ks'],
+        ['Vývody odpad DN50',num(inst.zti_waste_outlets,0)+' ks'],
+        ['Práčkový sifón',num(inst.zti_washing_siphons,0)+' ks'],
+        ['WC Geberit Duofix',num(inst.zti_wc_duofix,0)+' ks'],
+        ['Vývod technická miestnosť',num(inst.zti_boiler_room_outlets,0)+' ks'],
+        ['Nezamŕzavý ventil',num(inst.zti_frost_valves,0)+' ks'],
+        ['Hlavný uzáver vody',num(inst.zti_main_water_shutoffs,0)+' súb.'],
+        ['RAUTITAN 16 + TUBEX',num(inst.zti_pipe16_m,0)+' m'],
+        ['RAUTITAN 20 + TUBEX',num(inst.zti_pipe20_m,0)+' m'],
+        ['RAUTITAN 25 + TUBEX',num(inst.zti_pipe25_m,0)+' m']
+      );
+    }else if(types.includes('floor_heating')){
+      const dArea=num(b.heated_area_m2,0),spacing=num(inst.floor_spacing_cm,15);
+      const pipeM=Math.ceil(dArea*(100/Math.max(5,spacing))*1.05);
+      rows.push(['Plocha podlahovky',dArea+' m²'],['Rozstup rúry',spacing+' cm'],['Orientačná metráž rúry',pipeM+' m'],['Odhad okruhov',Math.max(1,Math.ceil(pipeM/95))]);
+    }else if(types.includes('water_heater')){
+      rows.push(['Rozsah výmeny',inst.water_heater_mode==='new_place'?'Nové miesto / úprava rozvodov':'Jednoduchá výmena na rovnakom mieste']);
+    }else{
+      rows.push(
+        ['Existujúci zdroj',e.source],
+        ['Odovzdávanie tepla',heatingLabel(e.heating)],
+        ['Teplota vody',e.water_temp_c!=null?e.water_temp_c+' °C':null],
+        ['Návrhový výkon',h.design_kw!=null?h.design_kw+' kW':null],
+        ['Odporúčaná trieda',h.recommended_kw!=null?h.recommended_kw+' kW':null],
+        ['Navrhované zariadenie',i?.proposed_device?.name||null],
+        ['Umiestnenie zariadenia',o.placement],
+        ['Trasa potrubia',o.route_m!=null?o.route_m+' m':null],
+        ['Zásobník TÚV',p.dhw_l?String(p.dhw_l)+' l':null],
+        ['Elektrický prívod',el.phases?el.phases+'F':null],
+        ['Hlavný istič',el.main_breaker_a?el.main_breaker_a+' A':null]
+      );
+    }
+    const extras=(i?.extra_work||[]).map(k=>EXTRA_WORK.find(x=>x[0]===k)?.[1]||k);
+    if(extras.length)rows.push(['Práce navyše',extras.join(', ')]);
+    return rows.filter(x=>x[1]!==null&&x[1]!==undefined&&String(x[1]).trim()!=='');
+  }
+  function inspectionPdfTerms(){
+    return [
+      'Protokol obhliadky je technický záznam zo zisteného stavu na mieste; sám osebe nie je objednávkou ani konečnou cenovou ponukou.',
+      'Množstvá a ceny materiálu sú orientačné podľa údajov z obhliadky a aktuálne dostupných cien POHODA v čase vytvorenia protokolu. Rozhodujúca je následná schválená cenová ponuka.',
+      'Skryté konštrukcie, zakryté rozvody a podmienky, ktoré nebolo možné pri obhliadke overiť, môžu po odkrytí vyžadovať zmenu rozsahu alebo materiálu.',
+      'Fotodokumentácia tvorí súčasť technického záznamu obhliadky a slúži na prípravu ponuky a realizácie.',
+      'Práce a materiál mimo zaznamenaného rozsahu sa pred realizáciou alebo počas realizácie odsúhlasia samostatne.'
+    ];
+  }
+  function inspectionPdfHeader(title,subtitle=''){
+    return '<div style="display:flex;justify-content:space-between;gap:10mm;border-bottom:2px solid #00539B;padding-bottom:5mm;margin-bottom:6mm">'+
+      '<div><div style="font-size:18px;font-weight:900;color:#173247">SPEKTRA INSTALL</div><div style="font-size:8.5px;color:#60717d;margin-top:2px">Spektra Install s.r.o. · Hollého 210, 015 01 Rajec<br>IČO: 53690036 · IČ DPH: SK2121464047</div></div>'+
+      '<div style="text-align:right"><div style="font-size:16px;font-weight:900;color:#00539B">'+inspectionPdfSafe(title)+'</div>'+(subtitle?'<div style="font-size:8.5px;color:#60717d;margin-top:2px">'+inspectionPdfSafe(subtitle)+'</div>':'')+'</div>'+
+    '</div>';
+  }
+  function inspectionPdfFooter(page,total){
+    return '<div style="position:absolute;left:14mm;right:14mm;bottom:8mm;border-top:1px solid #d4dfe5;padding-top:2.5mm;display:flex;justify-content:space-between;font-size:7px;color:#71828e"><span>Spektra Install s.r.o. · Technický protokol obhliadky</span><span>Strana '+page+' / '+total+'</span></div>';
+  }
+  function inspectionPdfPage(content,page,total){
+    return '<div class="inspectionPdfPage" style="position:relative;width:210mm;height:297mm;box-sizing:border-box;background:#fff;padding:12mm 14mm 15mm;font-family:Arial,sans-serif;color:#173247;overflow:hidden">'+content+inspectionPdfFooter(page,total)+'</div>';
+  }
+  function inspectionPdfMaterialRows(i){
+    return (i?.materials||[]).filter(m=>m?.name).map(m=>{
+      const price=inspectionMaterialPrice(m),amount=price==null?null:price*Number(m.qty||0);
+      return {
+        name:m.name,code:m.code||'',qty:Number(m.qty||0),unit:m.unit||'ks',price,amount
+      };
+    });
+  }
+  function inspectionPdfPages(i){
+    const c=i?.customer||{},types=(i?.inspection_types||[]).map(typeLabel).join(', ')||'Obhliadka';
+    const tech=inspectionTechnicalRows(i);
+    const labor=inspectionLaborInfo(i),materialTotal=inspectionMaterialTotal(i);
+    const workPrice=labor?.price??null;
+    const gross=(materialTotal+(workPrice||0))*1.23;
+    const pages=[];
+    const overview=
+      inspectionPdfHeader('PROTOKOL OBHLIADKY',types)+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-bottom:6mm">'+
+        '<div style="border:1px solid #d6e1e7;border-radius:3mm;padding:4mm"><div style="font-size:8px;color:#6b7d89;text-transform:uppercase">Zákazník</div><div style="font-size:13px;font-weight:800;margin-top:2mm">'+inspectionPdfSafe(c.name||'Bez mena')+'</div><div style="font-size:9px;line-height:1.5;margin-top:2mm">'+inspectionPdfSafe(c.address||i?.site_address||'')+(c.phone?'<br>'+inspectionPdfSafe(c.phone):'')+(c.email?'<br>'+inspectionPdfSafe(c.email):'')+'</div></div>'+
+        '<div style="border:1px solid #d6e1e7;border-radius:3mm;padding:4mm"><div style="font-size:8px;color:#6b7d89;text-transform:uppercase">Obhliadka</div><div style="font-size:10px;line-height:1.55;margin-top:2mm"><b>Dátum:</b> '+inspectionPdfSafe(inspectionDateText(i))+'<br><b>Stav:</b> '+inspectionPdfSafe(statusLabel(i?.status))+'<br><b>Typ:</b> '+inspectionPdfSafe(types)+'</div></div>'+
+      '</div>'+
+      '<div style="font-size:11px;font-weight:900;color:#00539B;margin:0 0 3mm">Zistenia a podmienky</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:2.5mm 5mm;margin-bottom:6mm">'+tech.map(r=>'<div style="border-bottom:1px solid #e4ecef;padding:1.5mm 0;font-size:8.5px"><span style="color:#687985">'+inspectionPdfSafe(r[0])+'</span><br><b>'+inspectionPdfSafe(r[1])+'</b></div>').join('')+'</div>'+
+      (i?.notes?'<div style="font-size:11px;font-weight:900;color:#00539B;margin:0 0 2mm">Poznámka technika</div><div style="border:1px solid #d6e1e7;border-radius:2mm;padding:3mm;font-size:8.5px;line-height:1.45">'+inspectionPdfSafe(i.notes)+'</div>':'')+
+      ((materialTotal||workPrice!=null)?'<div style="margin-top:5mm;background:#eef6fa;border-radius:3mm;padding:4mm"><div style="font-size:9px;font-weight:800;margin-bottom:2mm">Orientačný cenový súhrn bez DPH</div><div style="display:flex;justify-content:space-between;font-size:9px"><span>Materiál</span><b>'+priceText(materialTotal)+'</b></div>'+(workPrice!=null?'<div style="display:flex;justify-content:space-between;font-size:9px;margin-top:1.5mm"><span>Práca</span><b>'+priceText(workPrice)+'</b></div>':'')+'<div style="display:flex;justify-content:space-between;font-size:11px;margin-top:2mm;padding-top:2mm;border-top:1px solid #b9d0dc"><span>Orientačne s DPH</span><b>'+priceText(gross)+'</b></div></div>':'');
+    pages.push({kind:'overview',html:overview});
+
+    const materials=inspectionPdfMaterialRows(i),perPage=18;
+    if(materials.length){
+      for(let start=0;start<materials.length;start+=perPage){
+        const chunk=materials.slice(start,start+perPage);
+        const table='<table style="width:100%;border-collapse:collapse;font-size:8px"><thead><tr style="background:#eef6fa"><th style="text-align:left;padding:2.5mm">Položka</th><th style="text-align:left;padding:2.5mm">Kód</th><th style="text-align:right;padding:2.5mm">Množstvo</th><th style="text-align:right;padding:2.5mm">€/MJ</th><th style="text-align:right;padding:2.5mm">Spolu</th></tr></thead><tbody>'+
+          chunk.map(m=>'<tr><td style="padding:2.2mm;border-bottom:1px solid #e4ecef;font-weight:700">'+inspectionPdfSafe(m.name)+'</td><td style="padding:2.2mm;border-bottom:1px solid #e4ecef;color:#667985">'+inspectionPdfSafe(m.code)+'</td><td style="padding:2.2mm;border-bottom:1px solid #e4ecef;text-align:right">'+inspectionPdfSafe(m.qty+' '+m.unit)+'</td><td style="padding:2.2mm;border-bottom:1px solid #e4ecef;text-align:right">'+(m.price==null?'—':inspectionPdfSafe(priceText(m.price)))+'</td><td style="padding:2.2mm;border-bottom:1px solid #e4ecef;text-align:right;font-weight:700">'+(m.amount==null?'—':inspectionPdfSafe(priceText(m.amount)))+'</td></tr>').join('')+
+          '</tbody></table>';
+        pages.push({kind:'materials',html:inspectionPdfHeader('MATERIÁL Z OBHLIADKY',inspectionPdfSafe(c.name||''))+
+          '<div style="font-size:8.5px;color:#60717d;margin-bottom:4mm">Položky '+(start+1)+'–'+Math.min(start+perPage,materials.length)+' z '+materials.length+' · ceny bez DPH</div>'+table+
+          (start+perPage>=materials.length?'<div style="display:flex;justify-content:flex-end;margin-top:5mm"><div style="min-width:70mm;background:#eef6fa;border-radius:2mm;padding:3mm;font-size:10px"><span>Materiál spolu bez DPH</span><b style="float:right">'+priceText(materialTotal)+'</b></div></div>':'')});
+      }
+    }
+
+    const terms=inspectionPdfTerms();
+    pages.push({kind:'terms',html:inspectionPdfHeader('PODMIENKY A POZNÁMKY',inspectionPdfSafe(c.name||''))+
+      '<div style="font-size:10px;font-weight:900;color:#00539B;margin-bottom:4mm">Podmienky technického protokolu</div>'+
+      terms.map((t,n)=>'<div style="display:flex;gap:4mm;margin-bottom:4mm"><div style="width:7mm;height:7mm;border-radius:50%;background:#00539B;color:#fff;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;flex:0 0 auto">'+(n+1)+'</div><div style="font-size:9px;line-height:1.5">'+inspectionPdfSafe(t)+'</div></div>').join('')+
+      '<div style="margin-top:7mm;border:1px solid #d6e1e7;border-radius:3mm;padding:4mm"><div style="font-size:9px;font-weight:800;margin-bottom:2mm">Fotodokumentácia</div><div style="font-size:8.5px;line-height:1.5">K protokolu je priložených '+(i?.photos||[]).length+' fotografií. Povinné fotografie pre tento typ obhliadky: '+inspectionPdfSafe((()=>{const old=active;try{active=i;return requiredPhotoKeys().map(photoLabel).join(', ')}finally{active=old}})())+'.</div></div>'});
+
+    const photos=(i?.photos||[]).filter(p=>p?.signed_url);
+    for(let start=0;start<photos.length;start+=4){
+      const chunk=photos.slice(start,start+4);
+      pages.push({kind:'photos',html:inspectionPdfHeader('FOTODOKUMENTÁCIA',inspectionPdfSafe(c.name||''))+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6mm">'+chunk.map(p=>
+          '<div style="border:1px solid #d6e1e7;border-radius:3mm;padding:2.5mm;break-inside:avoid"><div style="height:91mm;background:#f4f7f8;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:2mm"><img crossorigin="anonymous" src="'+inspectionPdfSafe(p.signed_url)+'" style="width:100%;height:100%;object-fit:contain"></div><div style="font-size:8px;font-weight:800;margin-top:2mm">'+inspectionPdfSafe(photoLabel(p.category))+'</div>'+(p.caption?'<div style="font-size:7.5px;color:#657985;margin-top:1mm">'+inspectionPdfSafe(p.caption)+'</div>':'')+'</div>'
+        ).join('')+'</div>'});
+    }
+    return pages;
+  }
+  async function createInspectionPdfFile(i){
+    if(!window.html2canvas)throw new Error('Renderovanie PDF sa nenačítalo.');
+    if(!window.jspdf?.jsPDF)throw new Error('PDF knižnica sa nenačítala.');
+    if(!i)throw new Error('Chýba obhliadka.');
+    const pages=inspectionPdfPages(i);
+    const holder=document.createElement('div');
+    holder.style.position='fixed';holder.style.left='0';holder.style.top='0';holder.style.zIndex='-2147483000';holder.style.pointerEvents='none';holder.style.background='#fff';
+    holder.innerHTML=pages.map((p,n)=>inspectionPdfPage(p.html,n+1,pages.length)).join('');
+    document.body.appendChild(holder);
+    try{
+      const nodes=[...holder.querySelectorAll('.inspectionPdfPage')];
+      if(typeof window.inlineImagesForPdf==='function'){
+        for(const page of nodes)await window.inlineImagesForPdf(page);
+      }
+      const imgs=[...holder.querySelectorAll('img')];
+      await Promise.all(imgs.map(img=>new Promise(resolve=>{
+        if(img.complete&&img.naturalWidth>0){resolve();return}
+        const done=()=>resolve();
+        img.addEventListener('load',done,{once:true});img.addEventListener('error',done,{once:true});setTimeout(done,3500);
+      })));
+      const {jsPDF}=window.jspdf;
+      const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+      for(let n=0;n<nodes.length;n++){
+        const page=nodes[n];
+        const canvas=await window.html2canvas(page,{
+          scale:2.1,useCORS:false,allowTaint:true,backgroundColor:'#ffffff',logging:false,imageTimeout:0,
+          scrollX:0,scrollY:0,width:page.scrollWidth,height:page.scrollHeight,windowWidth:page.scrollWidth,windowHeight:page.scrollHeight
+        });
+        if(!canvas.width||!canvas.height)throw new Error('Nepodarilo sa vyrenderovať stranu '+(n+1)+'.');
+        if(n>0)pdf.addPage('a4','portrait');
+        pdf.addImage(canvas.toDataURL('image/jpeg',0.93),'JPEG',0,0,210,297,undefined,'FAST');
+      }
+      const safeName=String(i?.customer?.name||'zakaznik').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9_-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,50)||'zakaznik';
+      const blob=pdf.output('blob');
+      return new File([blob],'obhliadka-'+safeName+'.pdf',{type:'application/pdf'});
+    }finally{
+      holder.remove();
+    }
+  }
+  async function openInspectionPdf(localId=null){
+    const i=localId?rows.find(x=>x.local_id===localId):active;
+    if(!i){alert('Obhliadka sa nenašla.');return}
+    const preview=window.open('about:blank','_blank');
+    if(preview){
+      preview.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Pripravujem PDF obhliadky…</title></head><body style="font-family:Arial;padding:30px">Pripravujem PDF obhliadky…</body></html>');
+      preview.document.close();
+    }
+    try{
+      const file=await createInspectionPdfFile(i);
+      const url=URL.createObjectURL(file);
+      if(preview){
+        preview.location.replace(url);
+        setTimeout(()=>URL.revokeObjectURL(url),180000);
+      }else{
+        const a=document.createElement('a');a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
+      }
+    }catch(e){
+      console.error('Inspection PDF failed',e);
+      if(preview)preview.close();
+      alert('PDF obhliadky sa nepodarilo vytvoriť: '+(e.message||String(e)));
+    }
   }
 
   async function complete(){
@@ -1477,7 +1732,7 @@
   }
 
   window.SpektraInspections={
-    openHome,startNew,edit,refresh,next,back,save,complete,createQuote,
+    openHome,startNew,edit,refresh,next,back,save,complete,createQuote,openPdf:openInspectionPdf,
     input:(path,el,kind,rerender)=>setFromInput(path,el,kind||'text',!!rerender),
     check:(path,el,rerender)=>setFromInput(path,el,'bool',!!rerender),
     toggleType,toggleExtra,routeChanged,material,addMaterial,removeMaterial,searchStock,chooseStock,materialAutocomplete,chooseMaterialAutocomplete,editTradeSetup,ztiChanged,ztiLaborChanged,photo,deletePhoto
