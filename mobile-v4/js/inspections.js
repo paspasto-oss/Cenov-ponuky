@@ -136,7 +136,8 @@
       notes:'',
       materials:[],
       photos:[],
-      inspected_at:null
+      inspected_at:null,
+      created_at:nowIso()
     };
   }
 
@@ -171,8 +172,9 @@
       photos:(r.inspection_photos||[]).map(p=>({...p})),
       quotes:r.inspection_quotes||[],
       inspected_at:r.inspected_at||null,
+      created_at:r.created_at||null,
       updated_at:r.updated_at||null,
-      updated_local:Date.parse(r.updated_at)||Date.now()
+      updated_local:Date.parse(r.updated_at)||Date.parse(r.created_at)||Date.now()
     };
   }
 
@@ -238,7 +240,12 @@
           '<button class="big" onclick="SpektraInspections.refresh()"><span>⟳</span><b>Synchronizovať</b><small>Mobil ↔ PC práca ↔ PC doma</small></button></div>'+
         '</div>'+
         '<div class="stats"><div class="stat"><small>Spolu</small><strong id="inspAll">0</strong></div><div class="stat"><small>Rozpracované</small><strong id="inspDraft">0</strong></div><div class="stat"><small>Dokončené</small><strong id="inspDone">0</strong></div><div class="stat"><small>Ponuka</small><strong id="inspConverted">0</strong></div></div>'+
-        '<div class="card" style="margin-top:10px"><h2>Posledné obhliadky</h2><div id="inspectionList" class="list"></div></div>'+
+        '<div class="card" style="margin-top:10px">'+
+          '<div class="row" style="margin-bottom:9px"><div><h2 style="margin:0">Databáza obhliadok</h2><small id="inspectionFilterCount">Zobrazené 0 z 0</small></div><button class="btn ghost small" type="button" onclick="SpektraInspections.resetFilters()">Zrušiť filtre</button></div>'+
+          '<div class="grid2"><div class="field"><label>Meno / firma</label><input id="inspectionFilterName" placeholder="napr. Novák" oninput="SpektraInspections.renderList()"></div><div class="field"><label>Miesto / adresa</label><input id="inspectionFilterPlace" placeholder="napr. Rajec" oninput="SpektraInspections.renderList()"></div></div>'+
+          '<div class="grid2"><div class="field"><label>Dátum od</label><input id="inspectionFilterFrom" type="date" onchange="SpektraInspections.renderList()"></div><div class="field"><label>Dátum do</label><input id="inspectionFilterTo" type="date" onchange="SpektraInspections.renderList()"></div></div>'+
+          '<div id="inspectionList" class="list"></div>'+
+        '</div>'+
       '</section>'+
       '<section id="inspectionWizard" class="screen">'+
         '<div class="topline"><button class="btn ghost small" onclick="SpektraInspections.back()">← Späť</button><h1 id="inspWizardTitle">Obhliadka</h1></div>'+
@@ -287,6 +294,34 @@
     }finally{busy=false}
   }
 
+  function inspectionCreatedTs(x){
+    return Date.parse(x?.created_at||'')||Date.parse(x?.inspected_at||'')||Date.parse(x?.updated_at||'')||Number(x?.updated_local||0)||0;
+  }
+  function inspectionDateBoundary(value,end=false){
+    if(!value)return null;
+    const d=new Date(value+(end?'T23:59:59.999':'T00:00:00'));
+    return Number.isNaN(d.getTime())?null:d.getTime();
+  }
+  function filteredInspectionRows(){
+    const name=fold(document.getElementById('inspectionFilterName')?.value||'');
+    const place=fold(document.getElementById('inspectionFilterPlace')?.value||'');
+    const from=inspectionDateBoundary(document.getElementById('inspectionFilterFrom')?.value||'',false);
+    const to=inspectionDateBoundary(document.getElementById('inspectionFilterTo')?.value||'',true);
+    return rows.filter(x=>{
+      const xName=fold(x.customer?.name||x.site_contact_name||'');
+      const xPlace=fold(x.customer?.address||x.site_address||'');
+      const ts=inspectionCreatedTs(x);
+      if(name&&!xName.includes(name))return false;
+      if(place&&!xPlace.includes(place))return false;
+      if(from!=null&&ts<from)return false;
+      if(to!=null&&ts>to)return false;
+      return true;
+    }).sort((a,b)=>inspectionCreatedTs(b)-inspectionCreatedTs(a));
+  }
+  function resetInspectionFilters(){
+    ['inspectionFilterName','inspectionFilterPlace','inspectionFilterFrom','inspectionFilterTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+    renderList();
+  }
   function renderList(){
     const all=document.getElementById('inspAll');if(!all)return;
     all.textContent=rows.length;
@@ -294,12 +329,18 @@
     document.getElementById('inspDone').textContent=rows.filter(x=>['completed','approved'].includes(x.status)).length;
     document.getElementById('inspConverted').textContent=rows.filter(x=>x.status==='converted').length;
     const box=document.getElementById('inspectionList');
-    if(!rows.length){box.innerHTML='<div class="sub" style="padding:18px;text-align:center">Zatiaľ bez obhliadok.</div>';return}
-    box.innerHTML=rows.slice(0,30).map(x=>{
+    if(!box)return;
+    if(!rows.length){box.innerHTML='<div class="sub" style="padding:18px;text-align:center">Zatiaľ bez obhliadok.</div>';const fc=document.getElementById('inspectionFilterCount');if(fc)fc.textContent='Zobrazené 0 z 0';return}
+    const filtered=filteredInspectionRows();
+    const fc=document.getElementById('inspectionFilterCount');if(fc)fc.textContent='Zobrazené '+filtered.length+' z '+rows.length;
+    if(!filtered.length){box.innerHTML='<div class="sub" style="padding:18px;text-align:center">Filtru nezodpovedá žiadna obhliadka.</div>';return}
+    box.innerHTML=filtered.map(x=>{
       const type=(x.inspection_types||[]).map(typeLabel).join(', ')||'Obhliadka';
       const sync=x._dirty?' · čaká na sync':'';
+      const ts=inspectionCreatedTs(x);
+      const date=ts?new Date(ts).toLocaleDateString('sk-SK'):'—';
       return '<div class="row" style="cursor:pointer" onclick="SpektraInspections.edit(\''+esc(x.local_id)+'\')">'+
-        '<div style="flex:1;min-width:0"><b>'+esc(x.customer?.name||'Bez mena')+'</b><small>'+esc(x.customer?.address||'')+' · '+esc(type)+sync+'</small></div>'+
+        '<div style="flex:1;min-width:0"><b>'+esc(x.customer?.name||'Bez mena')+'</b><small>'+esc(date)+' · '+esc(x.customer?.address||'Bez adresy')+'<br>'+esc(type)+sync+'</small></div>'+
         '<button type="button" class="btn ghost small" style="padding:6px 9px;min-width:auto" onclick="event.stopPropagation();SpektraInspections.openPdf(\''+esc(x.local_id)+'\')">PDF</button>'+
         '<span class="inspStatus '+esc(x.status)+'">'+esc(statusLabel(x.status))+'</span>'+
       '</div>';
@@ -1732,7 +1773,7 @@
   }
 
   window.SpektraInspections={
-    openHome,startNew,edit,refresh,next,back,save,complete,createQuote,openPdf:openInspectionPdf,
+    openHome,startNew,edit,refresh,next,back,save,complete,createQuote,openPdf:openInspectionPdf,renderList,resetFilters:resetInspectionFilters,
     input:(path,el,kind,rerender)=>setFromInput(path,el,kind||'text',!!rerender),
     check:(path,el,rerender)=>setFromInput(path,el,'bool',!!rerender),
     toggleType,toggleExtra,routeChanged,material,addMaterial,removeMaterial,searchStock,chooseStock,materialAutocomplete,chooseMaterialAutocomplete,editTradeSetup,ztiChanged,ztiLaborChanged,photo,deletePhoto
