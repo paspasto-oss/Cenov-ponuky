@@ -60,7 +60,18 @@
       <div class="stat"><small>Odoslané</small><strong id="stSent">0</strong></div>
       <div class="stat"><small>Schválené</small><strong id="stApproved">0</strong></div>
     </div>
-    <div class="card" style="margin-top:10px"><h2>Posledné ponuky</h2><div id="quoteList" class="list"></div></div>
+    <div class="card" style="margin-top:10px">
+      <div class="row" style="margin-bottom:9px"><div><h2 style="margin:0">Databáza ponúk</h2><small id="quoteFilterCount">Zobrazené 0 z 0</small></div><button class="btn ghost small" type="button" onclick="resetQuoteFilters()">Zrušiť filtre</button></div>
+      <div class="grid2">
+        <div class="field"><label>Meno / firma</label><input id="quoteFilterName" placeholder="napr. Novák" oninput="renderHome()"></div>
+        <div class="field"><label>Miesto / adresa</label><input id="quoteFilterPlace" placeholder="napr. Rajec" oninput="renderHome()"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Dátum od</label><input id="quoteFilterFrom" type="date" onchange="renderHome()"></div>
+        <div class="field"><label>Dátum do</label><input id="quoteFilterTo" type="date" onchange="renderHome()"></div>
+      </div>
+      <div id="quoteList" class="list"></div>
+    </div>
   </section>
 
   <section id="step1" class="screen">
@@ -613,13 +624,46 @@ async function syncQuotes(pushLocal=true,silent=false){
   }finally{quoteSyncBusy=false}
 }
 
+function quoteCreatedTs(q){
+  return Number(q?.created||q?.updated||0)||0;
+}
+function localDateBoundary(value,end=false){
+  if(!value)return null;
+  const d=new Date(value+(end?'T23:59:59.999':'T00:00:00'));
+  return Number.isNaN(d.getTime())?null:d.getTime();
+}
+function getFilteredQuotes(){
+  const name=norm(document.getElementById('quoteFilterName')?.value||'');
+  const place=norm(document.getElementById('quoteFilterPlace')?.value||'');
+  const from=localDateBoundary(document.getElementById('quoteFilterFrom')?.value||'',false);
+  const to=localDateBoundary(document.getElementById('quoteFilterTo')?.value||'',true);
+  return quotes.filter(q=>{
+    const qName=norm(q.customer?.name||'');
+    const qPlace=norm(q.customer?.address||'');
+    const ts=quoteCreatedTs(q);
+    if(name&&!qName.includes(name))return false;
+    if(place&&!qPlace.includes(place))return false;
+    if(from!=null&&ts<from)return false;
+    if(to!=null&&ts>to)return false;
+    return true;
+  }).sort((a,b)=>quoteCreatedTs(b)-quoteCreatedTs(a));
+}
+function resetQuoteFilters(){
+  ['quoteFilterName','quoteFilterPlace','quoteFilterFrom','quoteFilterTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  renderHome();
+}
 function renderHome(){
  document.getElementById('stAll').textContent=quotes.length;document.getElementById('stDraft').textContent=quotes.filter(q=>q.status==='draft'||q.status==='ready').length;document.getElementById('stSent').textContent=quotes.filter(q=>q.status==='sent').length;document.getElementById('stApproved').textContent=quotes.filter(q=>q.status==='approved').length;
- const box=document.getElementById('quoteList');if(!quotes.length){box.innerHTML='<div class="sub" style="padding:18px;text-align:center">Zatiaľ bez uložených ponúk.</div>';return}
- box.innerHTML=quotes.slice().sort((a,b)=>(b.updated||0)-(a.updated||0)).slice(0,20).map(q=>{
+ const box=document.getElementById('quoteList');if(!box)return;
+ if(!quotes.length){box.innerHTML='<div class="sub" style="padding:18px;text-align:center">Zatiaľ bez uložených ponúk.</div>';const fc=document.getElementById('quoteFilterCount');if(fc)fc.textContent='Zobrazené 0 z 0';return}
+ const filtered=getFilteredQuotes();
+ const fc=document.getElementById('quoteFilterCount');if(fc)fc.textContent='Zobrazené '+filtered.length+' z '+quotes.length;
+ if(!filtered.length){box.innerHTML='<div class="sub" style="padding:18px;text-align:center">Filtru nezodpovedá žiadna ponuka.</div>';return}
+ box.innerHTML=filtered.map(q=>{
    const ref=esc(q.quote_no||q.id||'');
+   const date=quoteCreatedTs(q)?new Date(quoteCreatedTs(q)).toLocaleDateString('sk-SK'):'—';
    return '<div class="row" data-quote-ref="'+ref+'" style="cursor:pointer">'+
-     '<div style="flex:1;min-width:0"><b>'+esc(q.customer?.name||'Bez mena')+'</b><small>'+esc(q.quote_no||'')+' · '+esc(labelCat(q.category))+' · '+esc(q.brand||'')+(q._sync_error?' · ⚠ sync':'')+'</small></div>'+
+     '<div style="flex:1;min-width:0"><b>'+esc(q.customer?.name||'Bez mena')+'</b><small>'+esc(date)+' · '+esc(q.customer?.address||'Bez adresy')+'<br>'+esc(q.quote_no||'')+' · '+esc(labelCat(q.category))+' · '+esc(q.brand||'')+(q._sync_error?' · ⚠ sync':'')+'</small></div>'+
      '<div style="display:flex;align-items:center;gap:7px"><span class="badge '+q.status+'">'+labelStatus(q.status)+'</span><button class="btn small quoteEditBtn" type="button" data-quote-ref="'+ref+'">Upraviť</button></div>'+
    '</div>';
  }).join('');
