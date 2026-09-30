@@ -400,7 +400,7 @@ function rebuildStockIndexes(){
     putPreferred(stockByPluMap,plu,st);
     putPreferred(stockByNameMap,name,st);
     putPreferred(stockByCodeMap,code,st);
-    if(name.includes('klimatiz')||name.includes('split')||name.includes('multisplit')||name.includes('vnutorna')||name.includes('vonkajsia'))acStockPool.push(st);
+    if((name.includes('klimatiz')||name.includes('split')||name.includes('multisplit')||name.includes('vnutorna')||name.includes('vonkajsia'))&&!stockHeatPumpCandidate(st))acStockPool.push(st);
   }
 }
 
