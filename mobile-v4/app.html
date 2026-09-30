@@ -904,7 +904,9 @@ function stockBoilerCandidate(st){
   if(accessory||n.includes('a klimatizacia'))return false;
   if(n.includes('biopel'))return true;
   if(/^maga\b/.test(code)&&n.includes('kotol'))return true;
-  if(n.includes('ecotec')||n.includes('ecocompact')||n.includes('eloblock'))return true;
+  const vaillantGasModel=/\b(?:vu|vuw|vui|vcc|vsc)\s*\d/i.test(n)&&(n.includes('ecotec')||n.includes('ecocompact'));
+  const vaillantElectric=/\beloblock\s+ve\s*\d/i.test(n);
+  if(vaillantGasModel||vaillantElectric)return true;
   return n.includes('plynovy kotol')||n.includes('kotol elektricky')||n.includes('kotol na pelety')||
     n.includes('peletovy kotol')||n.includes('automaticky kotol')||n.includes('kombinovany kotol')||
     (/^kotol\b/.test(n)&&!n.includes('pre kotol'));
