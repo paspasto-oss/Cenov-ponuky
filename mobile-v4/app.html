@@ -899,11 +899,12 @@ function stockBoilerCandidate(st){
   if(!st||st.active===false||Number(st.sell_price_ex_vat)<=0)return false;
   const n=norm(st.name),code=norm(st.code);
   if(!n)return false;
-  const accessory=['montaz kotla','uvedenie kotla','dymovod','komin','rozsirujuca sada','pripojovacia sada','redukcia dymovodu','za kotol','regulator']
+  const accessory=['montaz kotla','uvedenie kotla','dymovod','komin','rozsirujuca sada','pripojovacia sada','redukcia dymovodu','za kotol']
     .some(x=>n.includes(norm(x)));
   if(accessory||n.includes('a klimatizacia'))return false;
   if(n.includes('biopel'))return true;
   if(/^maga\b/.test(code)&&n.includes('kotol'))return true;
+  if(n.includes('ecotec')||n.includes('ecocompact')||n.includes('eloblock'))return true;
   return n.includes('plynovy kotol')||n.includes('kotol elektricky')||n.includes('kotol na pelety')||
     n.includes('peletovy kotol')||n.includes('automaticky kotol')||n.includes('kombinovany kotol')||
     (/^kotol\b/.test(n)&&!n.includes('pre kotol'));
@@ -915,6 +916,7 @@ function stockBoilerType(st){
      n.includes('drevo')||n.includes('uhlie')||n.includes('kombinovan'))return 'pellet';
   if(n.includes('plynov')||n.includes('ecotec')||n.includes('condens')||n.includes('ecocompact'))return 'gas';
   const b=stockDeviceBrand(st);
+  if(b==='MAGA')return 'pellet';
   if(['Vaillant','Protherm','Bosch'].includes(b))return 'gas';
   return null;
 }
