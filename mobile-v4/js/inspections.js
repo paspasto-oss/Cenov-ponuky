@@ -965,14 +965,62 @@
   function removeMaterial(i){active.materials.splice(i,1);active._dirty=true;saveLocal(active);renderWizard()}
 
 
+  const MATERIAL_SEARCH_SYNONYMS={
+    vent:['ventil','kohut','kohút'],
+    koh:['kohut','kohút','ventil'],
+    geber:['geberit','duofix'],
+    duof:['duofix','geberit'],
+    raut:['rehau','rautitan','rautherm'],
+    rehau:['rehau','rautitan','rautherm'],
+    sif:['sifon','sifón'],
+    objim:['objimka','objímka'],
+    tkus:['t-kus','t kus','tee'],
+    vsuv:['vsuvka'],
+    sroben:['srobenie','šróbenie','skrutkovanie'],
+    skrut:['skrutkovanie','srobenie','šróbenie'],
+    gul:['gulovy','guľový','kohut','kohút'],
+    filter:['filter','filtracna','filtračná'],
+    vloz:['vlozka','vložka'],
+    tubex:['tubex','izolacia','izolácia'],
+    izol:['izolacia','izolácia','tubex'],
+    odpad:['odpad','ht','htem','htb'],
+    ht:['ht','htem','htb','odpad'],
+    pe:['pe','polyetylen','polyetylén'],
+    reduk:['redukcia','redukčný','redukcný','tlakovy','tlakový'],
+    tlak:['tlakovy','tlakový','redukčný','redukcny'],
+    cerp:['cerpadlo','čerpadlo','pumpa'],
+    rozdel:['rozdelovac','rozdeľovač'],
+    klima:['klimatizacia','klimatizácia','split'],
+    kond:['kondenzat','kondenzát'],
+    kabel:['kabel','kábel','cyky','jyty'],
+    lista:['lista','lišta'],
+    poist:['poistny','poistný'],
+    expanz:['expanzna','expanzná'],
+    zasob:['zasobnik','zásobník'],
+    bojler:['bojler','ohrievac','ohrievač','zasobnik','zásobník']
+  };
+  function synonymAlternatives(token){
+    const t=fold(token);
+    const out=new Set([t]);
+    if(t.length>=3){
+      for(const [key,vals] of Object.entries(MATERIAL_SEARCH_SYNONYMS)){
+        if(key.startsWith(t)||t.startsWith(key)){
+          vals.forEach(v=>out.add(fold(v)));
+        }
+      }
+    }
+    return [...out];
+  }
+
   function localStockMatches(query,limit=8){
     const q=fold(query);
     if(q.length<2)return [];
     const tokens=q.split(/\s+/).filter(Boolean);
+    const tokenAlternatives=tokens.map(synonymAlternatives);
     return stockPool().filter(st=>{
       if(st.active===false)return false;
       const hay=fold([st.name,st.code,st.plu,st.ean,st.manufacturer,st.stock_group].filter(Boolean).join(' '));
-      return tokens.every(t=>hay.includes(t));
+      return tokenAlternatives.every(alts=>alts.some(t=>hay.includes(t)));
     }).sort((a,b)=>{
       const exactA=[a.code,a.plu,a.ean].some(v=>fold(v)===q)?1:0;
       const exactB=[b.code,b.plu,b.ean].some(v=>fold(v)===q)?1:0;
