@@ -130,7 +130,7 @@
       <div class="choiceGrid">
         <button id="boilerGas" class="choice on" onclick="selectBoilerType('gas')"><span>🔥</span><b>PLYNOVÝ</b></button>
         <button id="boilerElectric" class="choice" onclick="selectBoilerType('electric')"><span>⚡</span><b>ELEKTRICKÝ</b></button>
-        <button id="boilerPellet" class="choice" onclick="selectBoilerType('pellet')"><span>●</span><b>PELETOVÝ</b></button>
+        <button id="boilerPellet" class="choice" onclick="selectBoilerType('pellet')"><span>●</span><b>BIOMASA / PELETY</b></button>
       </div>
     </div>
     <div class="card"><h2>Vyber značku</h2><div id="brandChoices" class="choiceGrid"></div></div>
@@ -1243,6 +1243,7 @@ function findStockForDevice(d){
  return candidates[0]||null
 }
 function systemType(d){
+  if(d?.system_type)return d.system_type;
   const cat=catalogCategory(d)||current?.category||category;
   if(cat==='air_conditioning')return (d.ac_mode||current?.ac_mode||acMode)==='multi'?'multi_split_ac':'single_split_ac';
   let m=norm((d.model||'')+' '+(d.variant||''));
@@ -1257,7 +1258,6 @@ function makeRecommendation(){
  let required=calcRequiredKw();
  let target=category==='heat_pump'?(required?nextStepKw(required):null):required;
  let devices=category==='air_conditioning'?(acMode==='multi'?acMultiOutdoorCandidates(brand,multiCount):acStockCandidates(brand)):deviceCatalog.filter(d=>catalogCategory(d)===category&&d.brand===brand);
- if(category==='heat_pump'&&brand==='Midea')devices=devices.filter(d=>String(d.id||'').startsWith('midea-nature-'));
  if(category==='boiler')devices=devices.filter(d=>(d.boiler_type||'gas')===boilerType);
  if(category==='air_conditioning'){
    current.ac_mode=acMode;
@@ -2048,10 +2048,9 @@ function renderRecommendation(){
  const recImage=d.image_url?'<div style="width:116px;min-width:116px;height:92px;background:#fff;border:1px solid #d6e4ec;border-radius:10px;padding:5px;display:flex;align-items:center;justify-content:center"><img src="'+esc(d.image_url)+'" alt="" style="max-width:100%;max-height:100%;object-fit:contain"></div>':'';
  document.getElementById('recommendation').innerHTML='<div style="display:flex;gap:12px;align-items:center">'+recImage+'<div class="title" style="flex:1"><div><h3>'+esc(d.brand+' '+d.model)+'</h3><div class="sub">'+esc(d.variant||'')+(current.system_type?' · '+esc(current.system_type):'')+'</div></div><div class="kw">'+(d.power_kw||target||'—')+' kW</div></div></div>';
  let alt=(category==='air_conditioning'?(acMode==='multi'?acMultiOutdoorCandidates(brand,multiCount):acStockCandidates(brand)):deviceCatalog.filter(x=>catalogCategory(x)===category&&x.brand===brand));
- if(category==='heat_pump'&&brand==='Midea')alt=alt.filter(x=>String(x.id||'').startsWith('midea-nature-'));
  alt=alt.filter(x=>x.id!==d.id&& (category!=='boiler'||(x.boiler_type||'gas')===boilerType)).sort((a,b)=>(a.power_kw||999)-(b.power_kw||999));
  if(category==='air_conditioning'&&acMode!=='multi')alt=balancedAcAlternatives(alt,brand,16);
- else alt=alt.slice(0,12);
+ else if(category==='air_conditioning')alt=alt.slice(0,12);
  const altDetails=document.getElementById('alternativesDetails');
  const altCount=document.getElementById('alternativesCount');
  const altList=document.getElementById('alternatives');
@@ -2094,8 +2093,6 @@ async function refreshQuoteFromCatalog(button=null){
       if(!freshStocks.length)throw new Error('Online katalóg POHODA je prázdny.');
       stocks=freshStocks;
       rebuildStockIndexes();
-      const state=document.getElementById('catalogState');
-      if(state)state.textContent='Katalóg POHODA: '+stocks.length.toLocaleString('sk-SK')+' zásob';
     }else if(!stocks.length){
       stocks=await (SpektraStockDB.getAllLiteOrFull?SpektraStockDB.getAllLiteOrFull():SpektraStockDB.getAll()).catch(()=>[]);
       rebuildStockIndexes();
@@ -2108,7 +2105,7 @@ async function refreshQuoteFromCatalog(button=null){
       ]);
       if(dc.ok){
         const j=await dc.json();
-        if(Array.isArray(j.devices)&&j.devices.length)deviceCatalog=j.devices;
+        if(Array.isArray(j.devices)&&j.devices.length)staticDeviceCatalog=j.devices;
       }
       if(br.ok){
         const j=await br.json();
@@ -2117,6 +2114,8 @@ async function refreshQuoteFromCatalog(button=null){
     }catch(e){
       console.warn('Static catalog refresh failed',e);
     }
+    refreshDeviceCatalogFromStocks();
+    updateCatalogStateText();
 
     const currentBrand=current.brand||brand||current.device?.brand||'';
     const mode=current.ac_mode||acMode||'single';
@@ -2124,10 +2123,6 @@ async function refreshQuoteFromCatalog(button=null){
     let candidates=current.category==='air_conditioning'
       ? (mode==='multi'?acMultiOutdoorCandidates(currentBrand,count):acStockCandidates(currentBrand))
       : deviceCatalog.filter(x=>catalogCategory(x)===(current.category||category)&&x.brand===currentBrand&&x.active!==false);
-
-    if(current.category==='heat_pump'&&currentBrand==='Midea'){
-      candidates=candidates.filter(x=>String(x.id||'').startsWith('midea-nature-'));
-    }
 
     let fresh=null;
     if(current.device?.id)fresh=candidates.find(x=>x.id===current.device.id)||null;
