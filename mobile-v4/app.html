@@ -568,7 +568,9 @@ function remoteQuoteToLocal(r){
       cost:i.purchase_price_ex_vat==null?null:Number(i.purchase_price_ex_vat),
       mapping_status:i.mapping_status||null,visible:!!i.visible_to_customer,
       customer_group:i.customer_group||null,note:i.metadata?.note||'',
-      work_scope:Array.isArray(i.metadata?.work_scope)?i.metadata.work_scope:[]
+      work_scope:Array.isArray(i.metadata?.work_scope)?i.metadata.work_scope:[],
+      price_override:i.metadata?.price_override===true,
+      cost_override:i.metadata?.cost_override===true
     };
   });
   return {
