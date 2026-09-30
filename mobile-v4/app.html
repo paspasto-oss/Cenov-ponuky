@@ -368,6 +368,7 @@
 const QUOTES_KEY='spektra_quotes_v4';
 let quotes=JSON.parse(localStorage.getItem(QUOTES_KEY)||'[]');
 let stocks=[];
+let staticDeviceCatalog=[];
 let deviceCatalog=[];
 let bundleRecipes=[];
 let current=null, category='heat_pump', brand='', recommendation=null, boilerType='gas', acMode='single', multiCount=2;
@@ -857,6 +858,205 @@ function acMultiIndoorStock(selectedBrand){
     _catalog_device:preferredCatalog
   };
 }
+
+function stockDeviceBrand(st){
+  const n=norm(st?.name),code=norm(st?.code),m=norm(st?.manufacturer);
+  const has=(...terms)=>terms.some(t=>n.includes(norm(t))||code.includes(norm(t))||m===norm(t));
+  if(has('vaillant','arotherm','ecotec','eloblock','ecocompact'))return 'Vaillant';
+  if(has('protherm','geniaair','gepard','panther','tiger condens'))return 'Protherm';
+  if(has('panasonic','aquarea'))return 'Panasonic';
+  if(has('hyundai')||/^hp(?:mo|si|sa)-/i.test(String(st?.code||'')))return 'Hyundai';
+  if(has('midea','m-thermal')||/^cmid/i.test(String(st?.code||'')))return 'Midea';
+  if(has('aux ai therma')||/^achp-/i.test(String(st?.code||'')))return 'AUX';
+  if(has('daikin','altherma'))return 'Daikin';
+  if(has('kaisai'))return 'Kaisai';
+  if(has('mitsubishi','zubadan','ecodan'))return 'Mitsubishi Electric';
+  if(has('opop','biopel'))return 'OPOP';
+  if(has('atmos'))return 'ATMOS';
+  if(has('attack'))return 'ATTACK';
+  if(has('bosch'))return 'Bosch';
+  if(has('benekov'))return 'BENEKOV';
+  if(has('centrometal'))return 'Centrometal';
+  if(has('thermona'))return 'THERMONA';
+  if(has('rojek','rojcek','rojček'))return 'ROJEK';
+  if(/^maga\b/i.test(String(st?.code||'')))return 'MAGA';
+  const first=String(st?.name||'').trim().split(/\s+/)[0]||'';
+  if(first&&!/^(tepelné|tepelne|kotol|automatický|automaticky)$/i.test(first))return first.replace(/[,:;]+$/,'');
+  return 'Iné';
+}
+function stockHeatPumpCandidate(st){
+  if(!st||st.active===false||Number(st.sell_price_ex_vat)<=0)return false;
+  const n=norm(st.name),code=String(st.code||'').toUpperCase();
+  if(!n||n.includes('klimatizacia'))return false;
+  if(n.includes('hydromodul')||n.includes('vonk. jed')||n.includes('vonkajsia jednotka')||n.includes('vnutorna jednotka'))return false;
+  if(n.includes('prislusenstvo')||n.includes('regulator'))return false;
+  return n.includes('tepelne cerpadlo')||n.includes('heat pump')||n.includes('m-thermal')||
+    n.includes('aquarea')||n.includes('arotherm')||n.includes('geniaair')||n.includes('altherma')||
+    n.includes('ai therma')||n.includes('zubadan')||n.includes('ecodan')||
+    /^HPMO-|^HPSI-|^HPSA-/.test(code);
+}
+function stockBoilerCandidate(st){
+  if(!st||st.active===false||Number(st.sell_price_ex_vat)<=0)return false;
+  const n=norm(st.name),code=norm(st.code);
+  if(!n)return false;
+  const accessory=['montaz kotla','uvedenie kotla','dymovod','komin','rozsirujuca sada','pripojovacia sada','redukcia dymovodu','za kotol','regulator']
+    .some(x=>n.includes(norm(x)));
+  if(accessory||n.includes('a klimatizacia'))return false;
+  if(n.includes('biopel'))return true;
+  if(/^maga\b/.test(code)&&n.includes('kotol'))return true;
+  return n.includes('plynovy kotol')||n.includes('kotol elektricky')||n.includes('kotol na pelety')||
+    n.includes('peletovy kotol')||n.includes('automaticky kotol')||n.includes('kombinovany kotol')||
+    (/^kotol\b/.test(n)&&!n.includes('pre kotol'));
+}
+function stockBoilerType(st){
+  const n=norm(st?.name);
+  if(n.includes('elektrick'))return 'electric';
+  if(n.includes('pelet')||n.includes('pellet')||n.includes('biopel')||n.includes('biomass')||
+     n.includes('drevo')||n.includes('uhlie')||n.includes('kombinovan'))return 'pellet';
+  if(n.includes('plynov')||n.includes('ecotec')||n.includes('condens')||n.includes('ecocompact'))return 'gas';
+  const b=stockDeviceBrand(st);
+  if(['Vaillant','Protherm','Bosch'].includes(b))return 'gas';
+  return null;
+}
+function stockDevicePowerKw(st,cat){
+  let text=(String(st?.name||'')+' '+String(st?.code||'')).replace(/,/g,'.');
+  text=text.replace(/\([^)]*(?:spirala|špirála|backup heater|elektricky dohrev|elektrický dohrev)[^)]*\)/gi,' ');
+  const code=String(st?.code||'').toUpperCase();
+  let m;
+  if(cat==='heat_pump'){
+    if((m=code.match(/^HPMO-(\d{2})-/)))return Number(m[1]);
+    if((m=code.match(/HPSO-(\d{2})-/)))return Number(m[1]);
+    if((m=code.match(/^M(?:HC|HA)-V(\d{1,2})W/i)))return Number(m[1]);
+    if((m=code.match(/^MHS-SVC(\d{2})/i)))return Number(m[1]);
+    if((m=code.match(/^ACHP-H(\d{2})/i)))return Number(m[1]);
+    if((m=code.match(/KHA-(\d{1,2})/i)))return Number(m[1]);
+    const vwl=text.match(/\bVWL\s*(\d{2,3})\s*\//i);
+    if(vwl){const raw=Number(vwl[1]);if(raw>=30&&raw<=199)return raw/10;}
+  }
+  const range=text.match(/(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*kW/i);
+  if(range)return Number(range[2]);
+  const vals=[...text.matchAll(/(\d+(?:\.\d+)?)\s*kW/gi)].map(x=>Number(x[1])).filter(v=>Number.isFinite(v)&&v>0&&v<=250);
+  if(!vals.length)return null;
+  return cat==='heat_pump'?vals[vals.length-1]:vals[0];
+}
+function stockDevicePhase(st){
+  const n=norm(String(st?.name||'')+' '+String(st?.code||''));
+  if(/\b400\s*v\b/.test(n)||/\b3\s*f(?:azy|azis|azy)?\b/.test(n)||n.includes('3 faz'))return '3f';
+  if(/\b230\s*v\b/.test(n)||/\b1\s*f\b/.test(n))return '1f';
+  return null;
+}
+function stockDeviceRefrigerant(st){
+  const u=String(st?.name||'').toUpperCase();
+  const m=u.match(/\bR\s*-?\s*(290|32|410A|407C|134A|454B|452B|744)\b/);
+  return m?'R'+m[1]:null;
+}
+function stockHeatPumpSystemType(st){
+  const n=norm(st?.name),code=String(st?.code||'').toUpperCase();
+  if(n.includes('split')||/^HPSI-|^HPSA-|^MHA-/.test(code)||n.includes('hydrosplit'))return 'split';
+  if(n.includes('monoblok')||n.includes('monoblock')||/^HPMO-|^MHC-|^MHS-/.test(code)||
+     n.includes('m-thermal nature')||n.includes('m-thermal mars')||n.includes('arotherm plus')||n.includes('geniaair mono'))return 'monoblock';
+  return null;
+}
+function stockBoilerDhwMode(st){
+  const n=norm(st?.name);
+  if(n.includes('integrovany zasobnik')||/\bkkz\d*/i.test(String(st?.name||'')))return 'integrated';
+  if(n.includes('prietokovy ohrev')||/\bvuw\b/i.test(String(st?.name||''))||/\bkkv\b/i.test(String(st?.name||''))||/\bmkv\b/i.test(String(st?.name||'')))return 'instant';
+  if(n.includes('zasobnik'))return 'integrated';
+  return 'none';
+}
+function cleanStockDeviceModel(st,brand,cat){
+  let out=String(st?.name||'').replace(/\s+/g,' ').trim();
+  out=out.replace(/\s+\d+[,.]\d+\s*€.*$/,'').trim();
+  if(brand&&brand!=='Iné'){
+    const re=new RegExp('^'+brand.replace(/[.*+?^$()|[\]\\{}]/g,'\\function renderBrands(){')+'\\s+','i');
+    out=out.replace(re,'');
+  }
+  if(cat==='heat_pump')out=out.replace(/^tepelné?\s+čerpadlo\s+/i,'').replace(/^tepelne\s+cerpadlo\s+/i,'');
+  return out.trim()||String(st?.name||'Zariadenie');
+}
+function stockDeviceVariant(st,cat,power,phase,refrigerant){
+  const parts=[];
+  if(power!=null)parts.push(String(power).replace('.',',')+' kW');
+  if(phase)parts.push(phase);
+  if(refrigerant)parts.push(refrigerant);
+  if(cat==='boiler'){
+    const n=norm(st?.name);
+    if(n.includes('prietokovy ohrev'))parts.push('prietokový ohrev TV');
+    else if(n.includes('zasobnik'))parts.push('so zásobníkom');
+  }
+  return parts.join(' · ');
+}
+function stockToDevice(st){
+  const cat=stockHeatPumpCandidate(st)?'heat_pump':stockBoilerCandidate(st)?'boiler':null;
+  if(!cat)return null;
+  const boilerType=cat==='boiler'?stockBoilerType(st):null;
+  if(cat==='boiler'&&!boilerType)return null;
+  const brand=stockDeviceBrand(st),power=stockDevicePowerKw(st,cat),phase=stockDevicePhase(st);
+  const refrigerant=cat==='heat_pump'?stockDeviceRefrigerant(st):null;
+  const model=cleanStockDeviceModel(st,brand,cat);
+  return {
+    id:'pohoda-device-'+String(st.id||st.code||st.plu||model).replace(/[^a-zA-Z0-9_-]/g,'-'),
+    category:cat==='heat_pump'?'tepelne_cerpadlo':'kotol',
+    brand,model,variant:stockDeviceVariant(st,cat,power,phase,refrigerant),power_kw:power,refrigerant,phase,
+    boiler_type:boilerType,dhw_mode:cat==='boiler'?stockBoilerDhwMode(st):undefined,
+    system_type:cat==='heat_pump'?stockHeatPumpSystemType(st):undefined,
+    pohoda_stock_id:st.id||null,pohoda_code:st.code||null,pohoda_plu:st.plu||null,
+    purchase_price_ex_vat:st.purchase_price_ex_vat==null?null:Number(st.purchase_price_ex_vat),
+    sell_price_ex_vat:st.sell_price_ex_vat==null?null:Number(st.sell_price_ex_vat),
+    quantity_available:st.quantity_available==null?null:Number(st.quantity_available),
+    image_url:st.image_url||null,supplier:st.supplier_name||null,active:true,source:'pohoda_stock'
+  };
+}
+function buildPohodaDeviceCatalog(){
+  const byName=new Map();
+  for(const st of stocks){
+    const d=stockToDevice(st);
+    if(!d)continue;
+    const key=[catalogCategory(d),d.boiler_type||'',norm(d.brand),norm(d.model)].join('|');
+    const previous=byName.get(key);
+    if(!previous||stockChoiceScore(st)>previous._stockScore)byName.set(key,{...d,_stockScore:stockChoiceScore(st)});
+  }
+  return [...byName.values()].map(d=>{const x={...d};delete x._stockScore;return x})
+    .sort((a,b)=>catalogCategory(a).localeCompare(catalogCategory(b),'sk')||
+      String(a.boiler_type||'').localeCompare(String(b.boiler_type||''),'sk')||
+      String(a.brand||'').localeCompare(String(b.brand||''),'sk')||
+      (Number(a.power_kw)||999)-(Number(b.power_kw)||999)||
+      String(a.model||'').localeCompare(String(b.model||''),'sk'));
+}
+function mergeRuntimeDeviceCatalog(staticList){
+  const dynamic=buildPohodaDeviceCatalog();
+  const dynamicGroups=new Set(dynamic.map(d=>[catalogCategory(d),d.boiler_type||'',norm(d.brand)].join('|')));
+  const exact=new Set(dynamic.flatMap(d=>[
+    d.pohoda_code?'code:'+norm(d.pohoda_code):null,
+    d.pohoda_plu?'plu:'+norm(d.pohoda_plu):null
+  ].filter(Boolean)));
+  const fallback=(staticList||[]).filter(d=>{
+    const cat=catalogCategory(d);
+    if(cat!=='heat_pump'&&cat!=='boiler')return true;
+    if(d.pohoda_code&&exact.has('code:'+norm(d.pohoda_code)))return false;
+    if(d.pohoda_plu&&exact.has('plu:'+norm(d.pohoda_plu)))return false;
+    return !dynamicGroups.has([cat,d.boiler_type||'',norm(d.brand)].join('|'));
+  });
+  return [...dynamic,...fallback];
+}
+function refreshDeviceCatalogFromStocks(){
+  deviceCatalog=mergeRuntimeDeviceCatalog(staticDeviceCatalog.length?staticDeviceCatalog:fallbackDevices);
+  return deviceCatalog;
+}
+function deviceCatalogCounts(){
+  return {
+    heat_pump:deviceCatalog.filter(d=>catalogCategory(d)==='heat_pump'&&d.active!==false).length,
+    boiler:deviceCatalog.filter(d=>catalogCategory(d)==='boiler'&&d.active!==false).length
+  };
+}
+function updateCatalogStateText(){
+  const state=document.getElementById('catalogState');
+  if(!state)return;
+  if(!stocks.length){state.textContent='POHODA zásoby: treba nahrať';return}
+  const counts=deviceCatalogCounts();
+  state.textContent='Katalóg POHODA: '+stocks.length.toLocaleString('sk-SK')+' zásob · TČ '+counts.heat_pump+' · kotly '+counts.boiler;
+}
+
 function renderBrands(){
   let brands=[];
   if(category==='air_conditioning'&&acMode==='multi'){
