@@ -985,7 +985,7 @@
             ? '<div class="notice ok" style="margin-bottom:10px"><b>DRAŽICE OKC 200 NTRR</b> · 200 l · 2 výmenníky · stacionárny · kód 1107908101. Do cenovej ponuky sa prenesie ako samostatná položka.</div>'
             : '')
         : selectField('Zásobník TÚV','ipDhw',p.dhw_l||0,[['0','Bez nového'],['120','120 l'],['200','200 l'],['300','300 l']],'onchange="SpektraInspections.input(\'plant_room.dhw_l\',this,\'number\')"'))+
-      '<div class="grid2">'+selectField('Miesto','ipSpace',p.space||'ok',[['ok','Bez problémov'],['tight','Tesné'],['rebuild','Treba úpravu']],'onchange="SpektraInspections.input(\'plant_room.space\',this)"')+
+      '<div class="grid2">'+selectField('Miesto','ipSpace',p.space||'ok',[['ok','Bez problémov'],['tight','Tesné'],['rebuild','Treba úpravu']],'onchange="SpektraInspections.input(\'plant_room.space\',this)"')+'</div>'+
       '<div class="grid2">'+selectField('Prívod','iePhases',e.phases||3,[['1','1 fáza'],['3','3 fázy']],'onchange="SpektraInspections.input(\'electrical.phases\',this,\'number\')"')+field('Hlavný istič [A]','ieBreaker',e.main_breaker_a||25,'number','min="10" onchange="SpektraInspections.input(\'electrical.main_breaker_a\',this,\'number\')"')+'</div>'+
       '<label class="row" style="cursor:pointer"><span><b>Voľné miesto v rozvádzači</b></span><input type="checkbox" '+(e.panel_space?'checked':'')+' style="width:23px;height:23px" onchange="SpektraInspections.check(\'electrical.panel_space\',this)"></label>'+
       field('Dĺžka nového prívodu [m]','ieCable',e.cable_m||12,'number','min="0" step="0.5" onchange="SpektraInspections.input(\'electrical.cable_m\',this,\'number\')"')+
