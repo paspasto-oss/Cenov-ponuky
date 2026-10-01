@@ -944,6 +944,7 @@ function stockDevicePowerKw(st,cat){
   const code=String(st?.code||'').toUpperCase();
   let m;
   if(cat==='heat_pump'){
+    if((m=code.match(/W[DX]G(09|12|16|20|25|30)ME[58]/)))return Number(m[1]);
     if((m=code.match(/^HPMO-(\d{2})-/)))return Number(m[1]);
     if((m=code.match(/HPSO-(\d{2})-/)))return Number(m[1]);
     if((m=code.match(/^M(?:HC|HA)-V(\d{1,2})W/i)))return Number(m[1]);
@@ -960,7 +961,10 @@ function stockDevicePowerKw(st,cat){
   return cat==='heat_pump'?vals[vals.length-1]:vals[0];
 }
 function stockDevicePhase(st){
-  const n=norm(String(st?.name||'')+' '+String(st?.code||''));
+  const raw=String(st?.code||'').toUpperCase();
+  const n=norm(String(st?.name||'')+' '+raw);
+  if(/W[DX]G\d{2}ME8/.test(raw))return '3f';
+  if(/W[DX]G\d{2}ME5/.test(raw))return '1f';
   if(/\b400\s*v\b/.test(n)||/\b3\s*f(?:azy|azis|azy)?\b/.test(n)||n.includes('3 faz'))return '3f';
   if(/\b230\s*v\b/.test(n)||/\b1\s*f\b/.test(n))return '1f';
   return null;
@@ -977,6 +981,34 @@ function stockHeatPumpSystemType(st){
      n.includes('m-thermal nature')||n.includes('m-thermal mars')||n.includes('arotherm plus')||n.includes('geniaair mono'))return 'monoblock';
   return null;
 }
+const PANASONIC_PRODUCT_IMAGE_BASE='https://rrakzoicawqbcpnzavet.supabase.co/storage/v1/object/public/product-images/';
+function panasonicMGenPreferredImage(st){
+  const code=String(st?.code||'');
+  const name=norm(st?.name||'');
+  if(!code||!name.includes('panasonic')||!name.includes('aquarea m-gen'))return st?.image_url||null;
+  let ref=null;
+
+  // All in One – choose the image belonging to the actual tank family.
+  if(/^WH-ADC0916M3E51/.test(code))ref='PAN_6292aca0ac1968d1983ecf24.png';            // 120 L
+  else if(/^WH-ADC0916M3E52/.test(code)&&code.includes('WDG'))ref='PAN_2f21e3c99f9f843b5bde7e43.png'; // 185 L HP
+  else if(/^WH-ADC0916M3E53/.test(code)&&code.includes('WDG'))ref='PAN_641e327f9071a11afa4550ec.png'; // 260 L HP
+  else if(/^WH-ADC/.test(code)&&/M(?:3E52|9E82)/.test(code)&&code.includes('WXG'))ref='PAN_a843b973d3783a50022ddb48.png'; // 185 L T-CAP
+  else if(/^WH-ADC/.test(code)&&/M(?:3E53|9E83)/.test(code)&&code.includes('WXG'))ref='PAN_5629a38e36e08894c0863ce0.png'; // 260 L T-CAP
+
+  // Bi-bloc / hydrosplit – wall hydromodule + outdoor unit.
+  else if(/^WH-SDC/.test(code))ref='PAN_f404c991b870dab9485285a7.png';
+
+  // Stand-alone outdoor unit with control module.
+  else if(/^WH-CME8L/.test(code))ref='PAN_a486b600784519945aef9060.png';
+  else if(/^WH-CME/.test(code))ref='PAN_49a42c785874299e76045cda.png';
+
+  // Stand-alone outdoor unit with remote controller.
+  else if(/^CZ-RTW2/.test(code)&&/WXG(?:20|25|30)ME8/.test(code))ref='PAN_7cefe70829a3aeea335a70b5.png';
+  else if(/^CZ-RTW2/.test(code)&&code!=='CZ-RTW2TAW1CWH-WXG12ME8')ref='PAN_02858da51ccc0b6ce8fcbe2c.png';
+
+  return ref?PANASONIC_PRODUCT_IMAGE_BASE+encodeURIComponent(code)+'/'+ref:(st?.image_url||null);
+}
+
 function stockBoilerDhwMode(st){
   const n=norm(st?.name);
   if(n.includes('integrovany zasobnik')||/\bkkz\d*/i.test(String(st?.name||'')))return 'integrated';
@@ -988,8 +1020,8 @@ function cleanStockDeviceModel(st,brand,cat){
   let out=String(st?.name||'').replace(/\s+/g,' ').trim();
   out=out.replace(/\s+\d+[,.]\d+\s*€.*$/,'').trim();
   if(brand&&brand!=='Iné'){
-    const re=new RegExp('^'+brand.replace(/[.*+?^$()|[\]\\{}]/g,'\\function renderBrands(){')+'\\s+','i');
-    out=out.replace(re,'');
+    const prefix=String(brand).toLowerCase()+' ';
+    if(out.toLowerCase().startsWith(prefix))out=out.slice(brand.length+1);
   }
   if(cat==='heat_pump')out=out.replace(/^tepelné?\s+čerpadlo\s+/i,'').replace(/^tepelne\s+cerpadlo\s+/i,'');
   return out.trim()||String(st?.name||'Zariadenie');
@@ -1024,7 +1056,7 @@ function stockToDevice(st){
     purchase_price_ex_vat:st.purchase_price_ex_vat==null?null:Number(st.purchase_price_ex_vat),
     sell_price_ex_vat:st.sell_price_ex_vat==null?null:Number(st.sell_price_ex_vat),
     quantity_available:st.quantity_available==null?null:Number(st.quantity_available),
-    image_url:st.image_url||null,supplier:st.supplier_name||null,active:true,source:'pohoda_stock'
+    image_url:panasonicMGenPreferredImage(st)||st.image_url||null,supplier:st.supplier_name||null,active:true,source:'pohoda_stock'
   };
 }
 function buildPohodaDeviceCatalog(){
