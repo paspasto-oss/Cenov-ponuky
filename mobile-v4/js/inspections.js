@@ -103,7 +103,7 @@
       heat_loss:{known:false,known_kw:null,specific_loss_w_m2:60,reserve_pct:10,base_kw:null,design_kw:null,recommended_kw:null},
       proposed_device:{name:'',power_kw:null},
       outdoor_unit:{placement:'ground',route_m:5,vertical_m:0,drilling:true,wall_cm:40},
-      plant_room:{dhw_l:200,space:'ok'},
+      plant_room:{dhw_solution:'external',dhw_l:200,dhw_model:'DRAŽICE OKC 200 NTRR',space:'ok'},
       electrical:{phases:3,main_breaker_a:25,panel_space:true,cable_m:12},
       routes:{heating_m:5,refrigerant_m:5,condensate_m:5,trunking_m:5},
       extra_work:[],
@@ -939,6 +939,31 @@
       '<div class="card"><h2>Poznámka technika</h2><textarea onchange="SpektraInspections.input(\'notes\',this)">'+esc(active.notes||'')+'</textarea></div>'+
       '<button class="btn primary full" onclick="SpektraInspections.next()">Pokračovať →</button>';
   }
+  function inspectionDhwSolution(){
+    const p=active?.plant_room||{};
+    if(['external','integrated','none'].includes(p.dhw_solution))return p.dhw_solution;
+    return num(p.dhw_l)>0?'external':'none';
+  }
+  function dhwSolutionLabel(v){
+    return v==='external'?'Externý zásobník 200 l – DRAŽICE OKC 200 NTRR':
+      v==='integrated'?'AiO – integrovaný zásobník TÚV':'Bez prípravy TÚV';
+  }
+  function dhwSolutionChanged(el){
+    active.plant_room=active.plant_room||{};
+    const value=el.value;
+    active.plant_room.dhw_solution=value;
+    if(value==='external'){
+      active.plant_room.dhw_l=200;
+      active.plant_room.dhw_model='DRAŽICE OKC 200 NTRR';
+      active.plant_room.dhw_code='1107908101';
+    }else{
+      active.plant_room.dhw_l=0;
+      active.plant_room.dhw_model=value==='integrated'?'AiO – integrovaný zásobník':null;
+      active.plant_room.dhw_code=null;
+    }
+    active._dirty=true;saveLocal(active);renderWizard();
+  }
+
   function stepInstallation(){
     if(isTradeInspection())return stepTradeInstallation();
     ensureBaseMaterials();
@@ -950,8 +975,17 @@
       (o.drilling?field('Hrúbka steny [cm]','ioWall',o.wall_cm||40,'number','min="5" onchange="SpektraInspections.input(\'outdoor_unit.wall_cm\',this,\'number\')"'):'')+
       '</div>'+
       '<div class="card"><h2>Kotolňa / elektro</h2>'+
-      '<div class="grid2">'+selectField('Zásobník TÚV','ipDhw',p.dhw_l||200,[['0','Bez nového'],['120','120 l'],['200','200 l'],['300','300 l']],'onchange="SpektraInspections.input(\'plant_room.dhw_l\',this,\'number\')"')+
-      selectField('Miesto','ipSpace',p.space||'ok',[['ok','Bez problémov'],['tight','Tesné'],['rebuild','Treba úpravu']],'onchange="SpektraInspections.input(\'plant_room.space\',this)"')+'</div>'+
+      ((active.inspection_types||[]).includes('heat_pump')
+        ? selectField('Riešenie TÚV','ipDhwSolution',inspectionDhwSolution(),[
+            ['external','Externý zásobník 200 l – DRAŽICE OKC 200 NTRR'],
+            ['integrated','AiO – integrovaný zásobník TÚV'],
+            ['none','Bez prípravy TÚV']
+          ],'onchange="SpektraInspections.dhwSolutionChanged(this)"')+
+          (inspectionDhwSolution()==='external'
+            ? '<div class="notice ok" style="margin-bottom:10px"><b>DRAŽICE OKC 200 NTRR</b> · 200 l · 2 výmenníky · stacionárny · kód 1107908101. Do cenovej ponuky sa prenesie ako samostatná položka.</div>'
+            : '')
+        : selectField('Zásobník TÚV','ipDhw',p.dhw_l||0,[['0','Bez nového'],['120','120 l'],['200','200 l'],['300','300 l']],'onchange="SpektraInspections.input(\'plant_room.dhw_l\',this,\'number\')"'))+
+      '<div class="grid2">'+selectField('Miesto','ipSpace',p.space||'ok',[['ok','Bez problémov'],['tight','Tesné'],['rebuild','Treba úpravu']],'onchange="SpektraInspections.input(\'plant_room.space\',this)"')+'</div>'+
       '<div class="grid2">'+selectField('Prívod','iePhases',e.phases||3,[['1','1 fáza'],['3','3 fázy']],'onchange="SpektraInspections.input(\'electrical.phases\',this,\'number\')"')+field('Hlavný istič [A]','ieBreaker',e.main_breaker_a||25,'number','min="10" onchange="SpektraInspections.input(\'electrical.main_breaker_a\',this,\'number\')"')+'</div>'+
       '<label class="row" style="cursor:pointer"><span><b>Voľné miesto v rozvádzači</b></span><input type="checkbox" '+(e.panel_space?'checked':'')+' style="width:23px;height:23px" onchange="SpektraInspections.check(\'electrical.panel_space\',this)"></label>'+
       field('Dĺžka nového prívodu [m]','ieCable',e.cable_m||12,'number','min="0" step="0.5" onchange="SpektraInspections.input(\'electrical.cable_m\',this,\'number\')"')+
@@ -1457,7 +1491,9 @@
         ['Navrhované zariadenie',i?.proposed_device?.name||null],
         ['Umiestnenie zariadenia',o.placement],
         ['Trasa potrubia',o.route_m!=null?o.route_m+' m':null],
-        ['Zásobník TÚV',p.dhw_l?String(p.dhw_l)+' l':null],
+        ...(types.includes('heat_pump')
+          ? [['Riešenie TÚV',dhwSolutionLabel((['external','integrated','none'].includes(p.dhw_solution)?p.dhw_solution:(p.dhw_l?'external':'none')))]]
+          : [['Zásobník TÚV',p.dhw_l?String(p.dhw_l)+' l':null]]),
         ['Elektrický prívod',el.phases?el.phases+'F':null],
         ['Hlavný istič',el.main_breaker_a?el.main_breaker_a+' A':null]
       );
@@ -1714,13 +1750,18 @@
       note:active.customer.notes||active.notes||''
     };
     const h=active.heat_loss||{},b=active.building||{},e=active.existing_system||{};
+    const dhwSolution=(active.inspection_types||[]).includes('heat_pump')
+      ? inspectionDhwSolution()
+      : (num(active.plant_room?.dhw_l)>0?'external':'none');
     current.building={
       known_loss:!!h.known,
       heat_loss_kw:h.known?num(h.known_kw):null,
       area_m2:h.known?null:num(b.heated_area_m2),
       w_per_m2:num(h.specific_loss_w_m2,60),
       heating:e.heating||'underfloor',
-      with_external_dhw_tank:num(active.plant_room?.dhw_l)>0
+      dhw_solution:dhwSolution,
+      with_external_dhw_tank:dhwSolution==='external',
+      external_dhw_tank_code:dhwSolution==='external'?'1107908101':null
     };
     category=supported==='heat_pump'?'heat_pump':supported==='air_conditioning'?'air_conditioning':'boiler';
     current.category=category;
@@ -1741,7 +1782,7 @@
     const vals={
       cName:current.customer.name,cPhone:current.customer.phone,cEmail:current.customer.email,cAddress:current.customer.address,cNote:current.customer.note,
       hasLoss:current.building.known_loss?'yes':'no',heatLoss:current.building.heat_loss_kw||'',area:current.building.area_m2||'',
-      buildingClass:String(current.building.w_per_m2||60),heating:current.building.heating||'underfloor',dhwMode:current.building.with_external_dhw_tank?'external':'none'
+      buildingClass:String(current.building.w_per_m2||60),heating:current.building.heating||'underfloor',dhwMode:current.building.dhw_solution||'none'
     };
     Object.entries(vals).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.value=v});
     toggleLoss();
@@ -1776,7 +1817,7 @@
     openHome,startNew,edit,refresh,next,back,save,complete,createQuote,openPdf:openInspectionPdf,renderList,resetFilters:resetInspectionFilters,
     input:(path,el,kind,rerender)=>setFromInput(path,el,kind||'text',!!rerender),
     check:(path,el,rerender)=>setFromInput(path,el,'bool',!!rerender),
-    toggleType,toggleExtra,routeChanged,material,addMaterial,removeMaterial,searchStock,chooseStock,materialAutocomplete,chooseMaterialAutocomplete,editTradeSetup,ztiChanged,ztiLaborChanged,photo,deletePhoto
+    toggleType,toggleExtra,routeChanged,material,addMaterial,removeMaterial,searchStock,chooseStock,materialAutocomplete,chooseMaterialAutocomplete,editTradeSetup,ztiChanged,ztiLaborChanged,dhwSolutionChanged,photo,deletePhoto
   };
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initUI);
