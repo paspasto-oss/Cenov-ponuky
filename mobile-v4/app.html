@@ -727,17 +727,15 @@ function inferDhwSolution(building=current?.building,device=current?.device||rec
   if(heatPumpHasIntegratedDhw(device))return 'integrated';
   return 'none';
 }
+function dhwSolutionText(mode=inferDhwSolution()){
+  return mode==='integrated'?'AiO – integrovaný zásobník TÚV':
+    mode==='external'?'externý DRAŽICE OKC 200 NTRR, 200 l':'bez prípravy TÚV';
+}
 function filterHeatPumpDhwDevices(devices){
   if((current?.category||category)!=='heat_pump')return devices;
   const mode=inferDhwSolution();
-  if(mode==='integrated'){
-    const integrated=devices.filter(heatPumpHasIntegratedDhw);
-    return integrated.length?integrated:devices;
-  }
-  if(mode==='external'||mode==='none'){
-    const separate=devices.filter(d=>!heatPumpHasIntegratedDhw(d));
-    return separate.length?separate:devices;
-  }
+  if(mode==='integrated')return devices.filter(heatPumpHasIntegratedDhw);
+  if(mode==='external'||mode==='none')return devices.filter(d=>!heatPumpHasIntegratedDhw(d));
   return devices;
 }
 
@@ -1359,7 +1357,9 @@ function makeRecommendation(){
    recommendation=withPower.find(d=>d.power_kw>=target)||withPower[withPower.length-1]||devices[0]||null;
  }else recommendation=devices[0]||null;
  if(!recommendation){
-   alert('Pre značku '+brand+' sa nepodarilo načítať žiadne zariadenie s cenou. Skontroluj ONLINE stav a katalóg POHODA.');
+   alert(category==='heat_pump'
+     ? 'Pre značku '+brand+' sa nenašlo zariadenie pre riešenie TÚV: '+dhwSolutionText()+'. Zmeň riešenie TÚV alebo značku.'
+     : 'Pre značku '+brand+' sa nepodarilo načítať žiadne zariadenie s cenou. Skontroluj ONLINE stav a katalóg POHODA.');
    return;
  }
  current.required_kw=required;current.target_kw=target;buildBOM();renderRecommendation();go('step4')
@@ -2244,7 +2244,8 @@ function renderRecommendation(){
               : 'Klimatizácie sa načítajú z POHODY; ak karta ešte nie je v POHODE, použije sa aktuálny katalóg výrobcu. Predvolene je zvolená trieda okolo 3,5 kW; nižšie môžeš vybrať inú výkonovú alternatívu.'))
        : 'Pre túto kategóriu sa výkon vyberie podľa konkrétneho modelu a priestoru.';
  const recImage=d.image_url?'<div style="width:116px;min-width:116px;height:92px;background:#fff;border:1px solid #d6e4ec;border-radius:10px;padding:5px;display:flex;align-items:center;justify-content:center"><img src="'+esc(d.image_url)+'" alt="" style="max-width:100%;max-height:100%;object-fit:contain"></div>':'';
- document.getElementById('recommendation').innerHTML='<div style="display:flex;gap:12px;align-items:center">'+recImage+'<div class="title" style="flex:1"><div><h3>'+esc(d.brand+' '+d.model)+'</h3><div class="sub">'+esc(d.variant||'')+(current.system_type?' · '+esc(current.system_type):'')+'</div></div><div class="kw">'+(d.power_kw||target||'—')+' kW</div></div></div>';
+ const dhwSub=category==='heat_pump'?' · TÚV: '+dhwSolutionText():'';
+ document.getElementById('recommendation').innerHTML='<div style="display:flex;gap:12px;align-items:center">'+recImage+'<div class="title" style="flex:1"><div><h3>'+esc(d.brand+' '+d.model)+'</h3><div class="sub">'+esc(d.variant||'')+(current.system_type?' · '+esc(current.system_type):'')+esc(dhwSub)+'</div></div><div class="kw">'+(d.power_kw||target||'—')+' kW</div></div></div>';
  let alt=(category==='air_conditioning'?(acMode==='multi'?acMultiOutdoorCandidates(brand,multiCount):acStockCandidates(brand)):deviceCatalog.filter(x=>catalogCategory(x)===category&&x.brand===brand));
  if(category==='heat_pump')alt=filterHeatPumpDhwDevices(alt);
  alt=alt.filter(x=>x.id!==d.id&& (category!=='boiler'||(x.boiler_type||'gas')===boilerType)).sort((a,b)=>(a.power_kw||999)-(b.power_kw||999));
