@@ -2972,7 +2972,12 @@ function offerHtmlTechnical(){
 
   const subsidy=calculateSubsidy();
   const subsidyBlock=subsidy.program==='green'
-    ? ''
+    ? '<div style="margin-top:14px;padding:10px 12px;background:#eef8f1;border:1px solid #9bc9a8">'+
+        '<div style="font-weight:700;margin-bottom:5px;color:#176b35">Zelená domácnostiam</div>'+
+        '<div>Orientačná výška poukážky: <b>− '+eur(subsidy.estimated_amount)+'</b></div>'+
+        (subsidy.estimated_after_subsidy!=null?'<div style="margin-top:3px">Orientačná cena po dotácii: <b>'+eur(subsidy.estimated_after_subsidy)+'</b></div>':'')+
+        '<div style="font-size:8.5px;color:#555;margin-top:5px">Orientačný výpočet: 400 €/kW, najviac 4 000 € a zároveň najviac 50 % oprávnených výdavkov. Skutočná hodnota poukážky závisí od podmienok programu a oprávnenosti zariadenia.</div>'+
+      '</div>'
     : subsidy.program==='obnov'
       ? '<div style="margin-top:14px;padding:10px 12px;background:#f6f6f6;border:1px solid #d7d7d7">'+
           '<div style="font-weight:700;margin-bottom:5px">Obnov dom mini+</div>'+
@@ -3187,7 +3192,7 @@ function offerHtmlPresentation(){
 
   const sub=calculateSubsidy();
   const subsidyBox=sub.program==='green'
-    ? '<div style="display:flex;gap:9px;align-items:flex-start"><div style="width:10mm;height:10mm;border:1px solid #8fb8cf;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#00539B;font-size:14px">✓</div><div><div style="font-weight:900;color:#00539B;font-size:12px">Individuálne riešenie</div><div style="font-size:8.4px;margin-top:3px;line-height:1.4">Ponuka je pripravená podľa zvoleného zariadenia a rozsahu montáže.</div></div></div>'
+    ? '<div style="display:flex;gap:9px;align-items:flex-start"><div style="width:10mm;height:10mm;border:1px solid #75b589;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#176b35;font-size:14px">€</div><div><div style="font-weight:900;color:#176b35;font-size:12px">Zelená domácnostiam</div><div style="font-size:8.4px;margin-top:3px;line-height:1.4">Orientačná poukážka <b>− '+eur(sub.estimated_amount)+'</b>'+(sub.estimated_after_subsidy!=null?' · cena po dotácii <b>'+eur(sub.estimated_after_subsidy)+'</b>':'')+'.</div><div style="font-size:7.6px;color:#596d7c;margin-top:3px;line-height:1.35">400 €/kW, max. 4 000 € a zároveň max. 50 % oprávnených výdavkov. Výsledná suma závisí od podmienok programu a oprávnenosti zariadenia.</div></div></div>'
     : sub.program==='obnov'
       ? '<div style="display:flex;gap:9px;align-items:flex-start"><div style="width:10mm;height:10mm;border:1px solid #8fb8cf;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#00539B;font-size:15px">⌂</div><div><div style="font-weight:900;color:#00539B;font-size:12px">Obnov dom mini+</div><div style="font-size:8.4px;margin-top:3px;line-height:1.4">Možnosť príspevku na obnovu rodinného domu až <b>11 000 €</b>. Konkrétna výška závisí od podmienok výzvy.</div></div></div>'
       : '<div style="display:flex;gap:9px;align-items:flex-start"><div style="width:10mm;height:10mm;border:1px solid #8fb8cf;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#00539B;font-size:14px">✓</div><div><div style="font-weight:900;color:#00539B;font-size:12px">Individuálne riešenie</div><div style="font-size:8.4px;margin-top:3px;line-height:1.4">Ponuka je pripravená podľa zvoleného zariadenia a rozsahu montáže.</div></div></div>';
