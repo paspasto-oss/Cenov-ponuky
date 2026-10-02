@@ -100,11 +100,17 @@
         <div class="field"><label>Stav budovy</label><select id="buildingClass"><option value="45">Novostavba / veľmi dobre zateplený</option><option value="60" selected>Zateplený dom</option><option value="95">Starší / slabšie zateplený</option><option value="125">Nezateplený / vysoká strata</option></select></div></div>
       </div>
       <div class="field"><label>Vykurovací systém</label><select id="heating"><option value="underfloor">Podlahové vykurovanie</option><option value="radiators">Radiátory</option><option value="high_temp">Vysokoteplotné radiátory / náročné podmienky</option></select></div>
-      <div class="field" id="dhwField"><label>Príprava TÚV</label><select id="dhwMode">
-        <option value="external" selected>Externý zásobník 200 l – DRAŽICE OKC 200 NTRR</option>
+      <div class="field" id="dhwField"><label>Príprava TÚV</label><select id="dhwMode" onchange="syncDhwModeSelection()">
+        <option value="external" selected>Externý zásobník TÚV – vybrať z POHODY</option>
         <option value="integrated">AiO – integrovaný zásobník TÚV</option>
         <option value="none">Bez prípravy TÚV</option>
-      </select></div>
+      </select>
+      <div id="externalDhwTankPicker" style="margin-top:10px">
+        <label>Externý zásobník Dražice NTRR</label>
+        <select id="externalDhwTankCode" onchange="syncExternalDhwTankSelection()"></select>
+        <div id="externalDhwTankPreview" class="notice" style="margin-top:8px"></div>
+      </div>
+      </div>
     </div>
     <button class="btn primary full" onclick="nextCategory()">Pokračovať →</button>
   </section>
@@ -715,6 +721,75 @@ const EXTERNAL_DHW_TANK_200={
   unit:'ks',
   fallback_sell_price_ex_vat:740.66
 };
+function externalDhwTankLiters(stock){
+  const text=String(stock?.name||'').replace(/,/g,'.');
+  const matches=[...text.matchAll(/(?:OKC\s*)?(\d{2,3})\s*(?:l|lit)/gi)].map(m=>Number(m[1])).filter(v=>v>=80&&v<=1000);
+  return matches[0]||9999;
+}
+function externalDhwTankCandidates(){
+  const rows=(stocks||[]).filter(st=>{
+    const n=norm((st?.name||'')+' '+(st?.manufacturer||'')+' '+(st?.supplier_name||''));
+    return n.includes('drazice') && n.includes('ntrr');
+  }).sort((a,b)=>externalDhwTankLiters(a)-externalDhwTankLiters(b)||String(a.name||'').localeCompare(String(b.name||''),'sk'));
+  if(rows.length)return rows;
+  return [{
+    code:EXTERNAL_DHW_TANK_200.code,
+    name:EXTERNAL_DHW_TANK_200.name,
+    unit:EXTERNAL_DHW_TANK_200.unit,
+    sell_price_ex_vat:EXTERNAL_DHW_TANK_200.fallback_sell_price_ex_vat,
+    purchase_price_ex_vat:null,
+    _fallback:true
+  }];
+}
+function selectedExternalDhwTank(){
+  const code=current?.building?.external_dhw_tank_code||document.getElementById('externalDhwTankCode')?.value||EXTERNAL_DHW_TANK_200.code;
+  return externalDhwTankCandidates().find(st=>String(st.code||'')===String(code))||
+    stockByCodeMap.get(norm(code))||
+    externalDhwTankCandidates()[0]||null;
+}
+function renderExternalDhwTankPicker(){
+  const mode=document.getElementById('dhwMode')?.value||inferDhwSolution();
+  const wrap=document.getElementById('externalDhwTankPicker');
+  const select=document.getElementById('externalDhwTankCode');
+  const preview=document.getElementById('externalDhwTankPreview');
+  if(!wrap||!select||!preview)return;
+  wrap.classList.toggle('hidden',mode!=='external');
+  if(mode!=='external')return;
+  const candidates=externalDhwTankCandidates();
+  let selected=current?.building?.external_dhw_tank_code||select.value||EXTERNAL_DHW_TANK_200.code;
+  if(!candidates.some(x=>String(x.code||'')===String(selected)))selected=String(candidates[0]?.code||EXTERNAL_DHW_TANK_200.code);
+  select.innerHTML=candidates.map(st=>{
+    const price=st.sell_price_ex_vat==null?'cena z POHODY chýba':eur(Number(st.sell_price_ex_vat));
+    return '<option value="'+esc(st.code||'')+'" '+(String(st.code||'')===String(selected)?'selected':'')+'>'+esc(customerText(st.name||'Dražice NTRR'))+' · '+price+'</option>';
+  }).join('');
+  const st=candidates.find(x=>String(x.code||'')===String(selected))||candidates[0];
+  if(current){
+    current.building=current.building||{};
+    current.building.external_dhw_tank_code=st?.code||EXTERNAL_DHW_TANK_200.code;
+  }
+  const img=stockImageUrls(st)[0]||'';
+  const imageHtml=img?'<img src="'+esc(img)+'" alt="" style="width:92px;height:92px;object-fit:contain;background:#fff;border:1px solid #d6e4ec;border-radius:9px;padding:5px;flex:none">':'';
+  preview.innerHTML='<div style="display:flex;gap:10px;align-items:center">'+imageHtml+'<div><b>'+esc(customerText(st?.name||EXTERNAL_DHW_TANK_200.name))+'</b><br><span class="sub">POHODA kód: '+esc(st?.code||EXTERNAL_DHW_TANK_200.code)+(st?.sell_price_ex_vat!=null?' · predaj bez DPH '+eur(Number(st.sell_price_ex_vat)):'')+'</span>'+(img?'':'<br><span class="sub">Obrázok na karte POHODA zatiaľ nie je priradený.</span>')+'</div></div>';
+}
+function syncDhwModeSelection(){
+  if(current){
+    current.building=current.building||{};
+    const mode=document.getElementById('dhwMode')?.value||'none';
+    current.building.dhw_solution=mode;
+    current.building.with_external_dhw_tank=mode==='external';
+    current.building.external_dhw_tank_code=mode==='external'?(document.getElementById('externalDhwTankCode')?.value||current.building.external_dhw_tank_code||EXTERNAL_DHW_TANK_200.code):null;
+  }
+  renderExternalDhwTankPicker();
+}
+function syncExternalDhwTankSelection(){
+  if(!current)return;
+  current.building=current.building||{};
+  current.building.external_dhw_tank_code=document.getElementById('externalDhwTankCode')?.value||EXTERNAL_DHW_TANK_200.code;
+  current.building.dhw_solution='external';
+  current.building.with_external_dhw_tank=true;
+  renderExternalDhwTankPicker();
+  upsertCurrent();
+}
 function heatPumpHasIntegratedDhw(d){
   const text=norm([d?.model,d?.variant,d?.pohoda_code].filter(Boolean).join(' '));
   return text.includes(' aio ')||text.startsWith('aio ')||text.includes('all in one')||
@@ -741,9 +816,9 @@ function filterHeatPumpDhwDevices(devices){
 }
 
 function startWizard(){current={id:'q_'+Date.now(),quote_no:'NÁVRH-'+String(Date.now()).slice(-6),_server_quote_no:false,_dirty:true,status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_template:'presentation',pdf_banner_mode:'auto',pdf_banner_url:null,pdf_banner_path:null,pdf_images_enabled:false,pdf_images_user_disabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;boilerType='gas';acMode='single';multiCount=2;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
-function nextBuilding(){let name=s(document.getElementById('cName').value),phone=s(document.getElementById('cPhone').value),addr=s(document.getElementById('cAddress').value);if(!name||!phone||!addr){alert('Vyplň meno, telefón a adresu realizácie.');return}current.customer={name,phone,email:s(document.getElementById('cEmail').value),address:addr,note:s(document.getElementById('cNote').value)};go('step2')}
+function nextBuilding(){let name=s(document.getElementById('cName').value),phone=s(document.getElementById('cPhone').value),addr=s(document.getElementById('cAddress').value);if(!name||!phone||!addr){alert('Vyplň meno, telefón a adresu realizácie.');return}current.customer={name,phone,email:s(document.getElementById('cEmail').value),address:addr,note:s(document.getElementById('cNote').value)};renderExternalDhwTankPicker();go('step2')}
 function toggleLoss(){let known=document.getElementById('hasLoss').value==='yes';document.getElementById('lossKnown').classList.toggle('hidden',!known);document.getElementById('lossEstimate').classList.toggle('hidden',known)}
-function nextCategory(){let known=document.getElementById('hasLoss').value==='yes',loss=+document.getElementById('heatLoss').value||0,area=+document.getElementById('area').value||0;if(known&&loss<=0){alert('Zadaj tepelnú stratu.');return}if(!known&&area<=0){alert('Zadaj vykurovanú plochu.');return}const dhwSolution=current.category==='air_conditioning'?'none':document.getElementById('dhwMode').value;current.building={known_loss:known,heat_loss_kw:known?loss:null,area_m2:known?null:area,w_per_m2:+document.getElementById('buildingClass').value,heating:document.getElementById('heating').value,dhw_solution:dhwSolution,with_external_dhw_tank:dhwSolution==='external',external_dhw_tank_code:dhwSolution==='external'?EXTERNAL_DHW_TANK_200.code:null};renderChoices();go('step3')}
+function nextCategory(){let known=document.getElementById('hasLoss').value==='yes',loss=+document.getElementById('heatLoss').value||0,area=+document.getElementById('area').value||0;if(known&&loss<=0){alert('Zadaj tepelnú stratu.');return}if(!known&&area<=0){alert('Zadaj vykurovanú plochu.');return}const dhwSolution=current.category==='air_conditioning'?'none':document.getElementById('dhwMode').value;const externalTankCode=dhwSolution==='external'?(document.getElementById('externalDhwTankCode')?.value||EXTERNAL_DHW_TANK_200.code):null;current.building={known_loss:known,heat_loss_kw:known?loss:null,area_m2:known?null:area,w_per_m2:+document.getElementById('buildingClass').value,heating:document.getElementById('heating').value,dhw_solution:dhwSolution,with_external_dhw_tank:dhwSolution==='external',external_dhw_tank_code:externalTankCode};renderChoices();go('step3')}
 function backToTypeBrand(){
   if(current){
     category=current.category||category||'heat_pump';
@@ -1129,6 +1204,7 @@ function mergeRuntimeDeviceCatalog(staticList){
 }
 function refreshDeviceCatalogFromStocks(){
   deviceCatalog=mergeRuntimeDeviceCatalog(staticDeviceCatalog.length?staticDeviceCatalog:fallbackDevices);
+  renderExternalDhwTankPicker();
   return deviceCatalog;
 }
 function deviceCatalogCounts(){
@@ -1556,27 +1632,24 @@ function buildBOM(){
    items.push({role:'installation',name:category==='air_conditioning'?'Montáž klimatizácie do 5 m':'Montáž a uvedenie do prevádzky',qty:1,unit:'súb.',pohoda:null,price:category==='heat_pump'?600:null,cost:null,visible:true,mapping_status:'service'});
  }
  if((current?.category||category)==='heat_pump'&&inferDhwSolution()==='external'){
-   const tankRecipe={
-     role:'dhw_storage_tank_200',
-     pohoda_code:EXTERNAL_DHW_TANK_200.code,
-     expected_name:EXTERNAL_DHW_TANK_200.name,
-     qty:1,unit:'ks'
-   };
-   const tankStock=stockByRecipe(tankRecipe);
+   const selectedTank=selectedExternalDhwTank();
+   const selectedCode=selectedTank?.code||current?.building?.external_dhw_tank_code||EXTERNAL_DHW_TANK_200.code;
+   const tankStock=stockByCodeMap.get(norm(selectedCode))||(!selectedTank?null:selectedTank._fallback?null:selectedTank);
    const tankCost=tankStock?.purchase_price_ex_vat!=null&&Number(tankStock.purchase_price_ex_vat)>0?Number(tankStock.purchase_price_ex_vat):null;
+   const fallbackPrice=String(selectedCode)===String(EXTERNAL_DHW_TANK_200.code)?EXTERNAL_DHW_TANK_200.fallback_sell_price_ex_vat:null;
    items.push({
-     role:'dhw_storage_tank_200',
-     name:tankStock?.name||EXTERNAL_DHW_TANK_200.name,
+     role:'dhw_storage_tank',
+     name:tankStock?.name||selectedTank?.name||EXTERNAL_DHW_TANK_200.name,
      qty:1,
-     unit:tankStock?.unit||'ks',
+     unit:tankStock?.unit||selectedTank?.unit||'ks',
      pohoda:tankStock,
-     pohoda_code:tankStock?.code||EXTERNAL_DHW_TANK_200.code,
+     pohoda_code:selectedCode,
      mapping_status:tankStock?'mapped':'fallback_waiting_for_pohoda',
-     price:tankStock?.sell_price_ex_vat!=null?Number(tankStock.sell_price_ex_vat):EXTERNAL_DHW_TANK_200.fallback_sell_price_ex_vat,
+     price:tankStock?.sell_price_ex_vat!=null?Number(tankStock.sell_price_ex_vat):fallbackPrice,
      cost:tankCost,
      visible:true,
      customer_group:'Externý zásobník TÚV',
-     note:tankStock?'DRAŽICE OKC 200 NTRR – externý zásobník TÚV.':'Karta POHODA 1107908101 zatiaľ chýba; použitá dočasná referenčná predajná cena.'
+     note:tankStock?'Dražice NTRR – externý zásobník TÚV podľa výberu z POHODY.':'Vybraný zásobník nie je dostupný v aktuálnom katalógu POHODA.'
    });
  }
  if((current?.category||category)==='air_conditioning'&&current?.ac_mode==='multi'){
@@ -2697,6 +2770,7 @@ function hydrateQuoteForm(){
   current.building.with_external_dhw_tank=dhwSolution==='external';
   if(dhwSolution==='external'&&!current.building.external_dhw_tank_code)current.building.external_dhw_tank_code=EXTERNAL_DHW_TANK_200.code;
   setVal('dhwMode',dhwSolution);
+  renderExternalDhwTankPicker();
   toggleLoss();
 }
 
