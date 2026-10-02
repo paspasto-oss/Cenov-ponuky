@@ -179,11 +179,13 @@
       </div>
       <div id="quoteImageStatus" class="sub" style="margin-top:8px">Obrázky produktov z POHODY a vlastné obrázky sa do PDF vložia iba po zaškrtnutí.</div>
     </div>
-    <div class="card">
-      <h2>Položky na pozadí</h2>
-      <div class="sub" style="margin-bottom:9px">Tieto položky sa použijú pre POHODU. Zákazník ich v PDF môže vidieť zoskupené.</div>
+    <details class="card" id="bomDetails">
+      <summary style="cursor:pointer;font-weight:900;font-size:17px;color:#173247;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <span>Položky na pozadí</span><span style="font-size:13px;color:#607787">Rozbaliť ▾</span>
+      </summary>
+      <div class="sub" style="margin:9px 0">Tieto položky sa použijú pre POHODU. Zákazník ich v PDF môže vidieť zoskupené.</div>
       <div id="bomItems" class="items"></div>
-    </div>
+    </details>
     <div id="installationTierCard" class="card">
       <h2>Typ montáže</h2>
       <div class="choiceGrid" style="grid-template-columns:1fr 1fr">
