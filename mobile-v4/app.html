@@ -799,9 +799,14 @@ function syncExternalDhwTankSelection(){
   upsertCurrent();
 }
 function heatPumpHasIntegratedDhw(d){
-  const text=norm([d?.model,d?.variant,d?.pohoda_code].filter(Boolean).join(' '));
+  const text=norm([d?.brand,d?.model,d?.variant,d?.pohoda_code].filter(Boolean).join(' '));
+  const vaillantIntegrated=
+    (text.includes('vaillant')||text.includes('arotherm')) &&
+    (text.includes('unitower')||text.includes('stacionarny modul'));
   return text.includes(' aio ')||text.startsWith('aio ')||text.includes('all in one')||
     text.includes('all-in-one')||text.includes('integrovany zasobnik')||
+    text.includes('integrovanym zasobnikom')||text.includes('so zasobnikom')||
+    vaillantIntegrated||
     /^WH-ADC/i.test(String(d?.pohoda_code||''));
 }
 function inferDhwSolution(building=current?.building,device=current?.device||recommendation){
@@ -1235,6 +1240,7 @@ function renderBrands(){
     brands=multisplitBrandsForCount(multiCount);
   }else{
     let pool=deviceCatalog.filter(d=>catalogCategory(d)===category);
+    if(category==='heat_pump')pool=filterHeatPumpDhwDevices(pool);
     if(category==='boiler')pool=pool.filter(d=>(d.boiler_type||'gas')===boilerType);
     brands=[...new Set(pool.map(d=>d.brand).filter(Boolean))];
   }
