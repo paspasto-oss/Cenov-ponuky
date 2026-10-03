@@ -2972,6 +2972,8 @@ function offerHtmlTechnical(){
       desc='Kompletný inštalačný materiál podľa rozsahu uvedeného nižšie v ponuke.';
     }else if(i===installationItem){
       desc='Montáž, pripojenie a uvedenie zariadenia do prevádzky podľa uvedeného rozsahu montáže.';
+    }else if(i.role==='heating_system_flush_cleaner_inhibitor'){
+      desc='Preplach vykurovacieho systému vrátane čistiaceho prípravku a inhibítora korózie.';
     }else{
       desc=i.note||i.customer_group||'';
     }
@@ -3200,6 +3202,8 @@ function offerHtmlPresentation(){
       desc='Kompletný montážny a pripojovací materiál podľa rozsahu uvedeného nižšie.';
     }else if(i===installationItem){
       desc='Profesionálna montáž, pripojenie, kontrola a uvedenie zariadenia do prevádzky.';
+    }else if(i.role==='heating_system_flush_cleaner_inhibitor'){
+      desc='Preplach vykurovacieho systému vrátane čistiaceho prípravku a inhibítora korózie.';
     }else{
       desc=i.note||i.customer_group||'';
     }
