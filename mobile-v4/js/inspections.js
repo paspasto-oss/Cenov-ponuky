@@ -959,19 +959,41 @@
     active._dirty=true;saveLocal(active);renderWizard();
   }
 
+  function inspectionStockRole(){
+    if(tradePrimaryType()!=='other')return null;
+    const el=document.getElementById('inspStockRole');
+    return el?.value==='installation_material'?'installation_material':'device';
+  }
+  function otherMaterialBreakdown(){
+    let device=0,installation=0,other=0,missing=0;
+    for(const m of (active.materials||[])){
+      let st=m.pohoda_stock_id?stockPool().find(x=>x.id===m.pohoda_stock_id):null;
+      if(!st&&m.code)st=stockByExactCode(m.code);
+      const p=st?.sell_price_ex_vat??m.metadata?.sell_price_ex_vat;
+      if(p==null){missing++;continue}
+      const amount=Number(p||0)*Number(m.qty||0);
+      if(m.role==='device')device+=amount;
+      else if(m.role==='installation_material')installation+=amount;
+      else other+=amount;
+    }
+    return {device:Math.round(device*100)/100,installation:Math.round(installation*100)/100,other:Math.round(other*100)/100,missing};
+  }
   function tradeMaterialCardHtml(){
     const other=tradePrimaryType()==='other';
-    return '<div class="card"><h2>'+(other?'Katalóg POHODA – zariadenie a materiál':'Materiál z obhliadky')+'</h2>'+
-      '<div class="inspStockSearch"><div class="field" style="margin-bottom:0"><label>Hľadať v POHODE</label><input id="inspStockSearchInput" placeholder="'+(other?'napr. Midea ohrievač, bojler, čerpadlo…':'Názov, kód, PLU, výrobca…')+'" autocomplete="off" oninput="SpektraInspections.searchStock(this.value)"></div>'+
-      '<div id="inspStockResults" class="inspStockResults"></div><div class="inspStockHint">'+(other?'Vyber hlavné zariadenie aj potrebný materiál. Cena a karta sa prenesú z POHODY do cenovej ponuky.':'Vybraná karta sa prenesie do ponuky s aktuálnou cenou z POHODY.')+'</div></div>'+
+    return '<div class="card"><h2>'+(other?'Katalóg POHODA – zariadenie a inštalačný materiál':'Materiál z obhliadky')+'</h2>'+
+      (other?selectField('Pridávam do ponuky','inspStockRole','device',[['device','Hlavné zariadenie / výrobok'],['installation_material','Inštalačný materiál']],''):'')+
+      '<div class="inspStockSearch"><div class="field" style="margin-bottom:0"><label>Hľadať v POHODE</label><input id="inspStockSearchInput" placeholder="'+(other?'napr. Midea ohrievač, ventil, flexi hadica, poistný ventil…':'Názov, kód, PLU, výrobca…')+'" autocomplete="off" oninput="SpektraInspections.searchStock(this.value)"></div>'+
+      '<div id="inspStockResults" class="inspStockResults"></div><div class="inspStockHint">'+(other?'Najprv vyber typ položky vyššie. Zariadenie aj inštalačný materiál sa prenesú do ponuky s aktuálnou cenou z POHODY.':'Vybraná karta sa prenesie do ponuky s aktuálnou cenou z POHODY.')+'</div></div>'+
       '<div id="inspMaterials">'+materialRows()+'</div><button class="btn ghost small" onclick="SpektraInspections.addMaterial()">+ Pridať ručne</button></div>';
   }
   function stepTradeInstallation(){
     ensureBaseMaterials();
     const mat=currentMaterialEstimate(),labor=tradeLaborPrice(),net=mat.total+labor,gross=net*1.23;
-    const type=tradePrimaryType();
+    const type=tradePrimaryType(),otherBreakdown=type==='other'?otherMaterialBreakdown():null;
     return '<div class="card"><h2>'+(type==='other'?esc(tradeLabel(type))+' – orientačná cena':'Orientačný návrh ceny')+'</h2><div class="summary">'+
-      '<div class="srow"><span>Materiál z POHODY</span><b>'+priceText(mat.total)+'</b></div>'+
+      (type==='other'
+        ? '<div class="srow"><span>Zariadenie / výrobok</span><b>'+priceText(otherBreakdown.device+otherBreakdown.other)+'</b></div><div class="srow"><span>Inštalačný materiál</span><b>'+priceText(otherBreakdown.installation)+'</b></div>'
+        : '<div class="srow"><span>Materiál z POHODY</span><b>'+priceText(mat.total)+'</b></div>')+
       '<div class="srow"><span>Práca</span><b>'+priceText(labor)+'</b></div>'+
       '<div class="srow"><span>Spolu bez DPH</span><b>'+priceText(net)+'</b></div>'+
       '<div class="srow total"><span>Spolu s DPH</span><span>'+priceText(gross)+'</span></div></div>'+
@@ -1058,9 +1080,10 @@
     return (active.materials||[]).map((m,i)=>{
       const meta=m.metadata||{};
       const linked=!!m.pohoda_stock_id,macro=!!meta.zti_macro;
+      const roleLabel=tradePrimaryType()==='other'?(m.role==='device'?'ZARIADENIE · ':m.role==='installation_material'?'INŠTALAČNÝ MATERIÁL · ':''):'';
       const details=linked
-        ? (macro?'ZTI · '+(meta.zti_macro_label||'automaticky')+' · ':'')+'POHODA'+(m.code?' · '+m.code:'')+(meta.plu?' · PLU '+meta.plu:'')+' · '+priceText(meta.sell_price_ex_vat)+' bez DPH'+(meta.quantity_available!=null?' · sklad '+meta.quantity_available+' '+(m.unit||'ks'):'')
-        : (m.source==='manual'?'Ručná položka – ak sa nenájde v POHODE, ponuka môže zostať bez ceny':'Množstvo vypočítané z obhliadky');
+        ? roleLabel+(macro?'ZTI · '+(meta.zti_macro_label||'automaticky')+' · ':'')+'POHODA'+(m.code?' · '+m.code:'')+(meta.plu?' · PLU '+meta.plu:'')+' · '+priceText(meta.sell_price_ex_vat)+' bez DPH'+(meta.quantity_available!=null?' · sklad '+meta.quantity_available+' '+(m.unit||'ks'):'')
+        : roleLabel+(m.source==='manual'?'Ručná položka – ak sa nenájde v POHODE, ponuka môže zostať bez ceny':'Množstvo vypočítané z obhliadky');
       const nameInput=(linked||macro)
         ? '<input value="'+esc(m.name||'')+'" readonly>'
         : '<div class="inspManualAuto"><input value="'+esc(m.name||'')+'" autocomplete="off" placeholder="Začni písať názov alebo kód…" oninput="SpektraInspections.materialAutocomplete('+i+',this.value)" onfocus="SpektraInspections.materialAutocomplete('+i+',this.value)"><div id="inspManualSuggestions-'+i+'" class="inspManualSuggestions"></div></div>';
@@ -1077,7 +1100,7 @@
     active._dirty=true;saveLocal(active);
   }
   function addMaterial(){
-    active.materials.push({name:'',qty:1,unit:'ks',source:'manual',metadata:{}});
+    active.materials.push({name:'',qty:1,unit:'ks',role:inspectionStockRole(),source:'manual',metadata:{}});
     const index=active.materials.length-1;
     active._dirty=true;saveLocal(active);renderWizard();
     setTimeout(()=>document.querySelector('#inspManualSuggestions-'+index)?.previousElementSibling?.focus(),0);
@@ -1283,7 +1306,8 @@
     const st=stockSearchResults[index];
     if(!st||!active)return;
     active.materials=active.materials||[];
-    const existing=active.materials.find(m=>m.pohoda_stock_id===st.id);
+    const role=inspectionStockRole();
+    const existing=active.materials.find(m=>m.pohoda_stock_id===st.id&&(tradePrimaryType()!=='other'||(m.role||null)===(role||null)));
     if(existing){
       existing.qty=Number(existing.qty||0)+1;
       existing.metadata={...(existing.metadata||{}),
@@ -1295,7 +1319,7 @@
     }else{
       active.materials.push({
         pohoda_stock_id:st.id,
-        role:null,
+        role:role,
         code:st.code||null,
         name:st.name||'POHODA položka',
         qty:1,
@@ -1722,7 +1746,8 @@
         pohoda:st||null, pohoda_code:st?.code||m.code||null,
         price:price==null?null:Number(price), cost:cost==null?null:Number(cost),
         visible:tradePrimaryType()==='other', mapping_status:st?'mapped_from_inspection':(price==null?'inspection_missing_price':'inspection_snapshot'),
-        customer_group:'Materiál podľa obhliadky', note:'Množstvo podľa obhliadky.'
+        customer_group:m.role==='device'?'Zariadenie':m.role==='installation_material'?'Inštalačný materiál':'Materiál podľa obhliadky',
+        note:m.role==='installation_material'?'Inštalačný materiál podľa obhliadky.':'Množstvo podľa obhliadky.'
       };
     });
   }
