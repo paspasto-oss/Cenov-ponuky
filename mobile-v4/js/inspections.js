@@ -198,7 +198,8 @@
       '.inspStockSearch{margin:0 0 10px}.inspStockResults{display:flex;flex-direction:column;gap:6px;margin-top:7px}.inspStockResult{width:100%;border:1px solid #a9cadb;background:#f7fbfd;color:#173247;border-radius:11px;padding:10px;text-align:left}.inspStockResult b{display:block;font-size:13px}.inspStockResult small{display:block;color:#607787;margin-top:3px}.inspStockResult .price{font-weight:900;color:#00539B}.inspStockHint{font-size:11px;color:#607787;margin-top:6px}'+
       '.inspManualAuto{position:relative}.inspManualSuggestions{position:absolute;left:0;right:0;top:100%;z-index:50;background:#fff;border:1px solid #86b8d1;border-radius:10px;box-shadow:0 8px 24px rgba(15,61,84,.18);max-height:300px;overflow:auto;margin-top:3px}.inspManualSuggestions:empty{display:none}.inspManualSuggestion{display:block;width:100%;border:0;border-bottom:1px solid #e2edf2;background:#fff;padding:9px 10px;text-align:left;color:#173247}.inspManualSuggestion:last-child{border-bottom:0}.inspManualSuggestion:hover,.inspManualSuggestion:focus{background:#eef7fb}.inspManualSuggestion b{display:block;font-size:12px}.inspManualSuggestion small{display:block;font-size:10px;color:#607787;margin-top:2px}.inspManualSuggestion .price{font-weight:900;color:#00539B}'+
       '.inspStatus{font-size:11px;padding:5px 8px;border-radius:999px;background:#d7e1e7;color:#425766}.inspStatus.completed,.inspStatus.converted{background:#d9efe5;color:#24684f}.inspStatus.in_progress{background:#fff0ca;color:#755c18}'+
-      '@media(max-width:720px){.inspMaterial{grid-template-columns:minmax(0,1fr) 62px 58px 32px}.inspPhotoGrid{grid-template-columns:1fr 1fr}}';
+      '#inspectionWizard{padding-bottom:86px}.inspBackBar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(63px + env(safe-area-inset-bottom));z-index:48;width:min(920px,calc(100% - 18px));padding:7px;background:rgba(255,255,255,.96);border:1px solid #9fc6da;border-radius:14px;box-shadow:0 8px 28px rgba(15,61,84,.18);backdrop-filter:blur(8px)}.inspBackBar .btn{width:100%;min-height:46px;font-size:15px;font-weight:900}'+
+      '@media(max-width:720px){.inspMaterial{grid-template-columns:minmax(0,1fr) 62px 58px 32px}.inspPhotoGrid{grid-template-columns:1fr 1fr}.inspBackBar{bottom:calc(62px + env(safe-area-inset-bottom));width:calc(100% - 12px);border-radius:12px;padding:6px}#inspectionWizard{padding-bottom:92px}}';
     document.head.appendChild(style);
   }
 
@@ -251,9 +252,10 @@
         '</div>'+
       '</section>'+
       '<section id="inspectionWizard" class="screen">'+
-        '<div class="topline"><button class="btn ghost small" onclick="SpektraInspections.back()">← Späť</button><h1 id="inspWizardTitle">Obhliadka</h1></div>'+
+        '<div class="topline"><h1 id="inspWizardTitle">Obhliadka</h1></div>'+
         '<div id="inspProgress" class="inspectionProgress"></div>'+
         '<div id="inspWizardBody"></div>'+
+        '<div class="inspBackBar"><button class="btn ghost" type="button" onclick="SpektraInspections.back()">← Späť / upraviť predchádzajúci krok</button></div>'+
       '</section>'
     );
   }
