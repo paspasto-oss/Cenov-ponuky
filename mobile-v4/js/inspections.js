@@ -112,6 +112,9 @@
         labor_hour_rate_ex_vat:35,
         labor_workers:1,
         labor_hours:8,
+        labor_man_hours:8,
+        custom_job_name:'',
+        custom_install_new:true,
         floor_labor_rate_m2:8,
         floor_spacing_cm:15,
         water_heater_mode:'same_place',
@@ -460,6 +463,9 @@
     if(i.labor_hour_rate_ex_vat==null)i.labor_hour_rate_ex_vat=35;
     if(i.labor_workers==null)i.labor_workers=1;
     if(i.labor_hours==null)i.labor_hours=8;
+    if(i.labor_man_hours==null)i.labor_man_hours=Math.max(0,num(i.labor_workers,1)*num(i.labor_hours,8));
+    if(i.custom_job_name==null)i.custom_job_name='';
+    if(i.custom_install_new==null)i.custom_install_new=true;
     if(i.floor_labor_rate_m2==null)i.floor_labor_rate_m2=8;
     if(i.floor_spacing_cm==null)i.floor_spacing_cm=15;
     if(i.water_heater_mode==null)i.water_heater_mode='same_place';
@@ -482,6 +488,10 @@
     return i;
   }
   function tradeLabel(type=tradePrimaryType()){
+    if(type==='other'){
+      const custom=String(active?.installation?.custom_job_name||'').trim();
+      return custom||'Iné / montážne práce';
+    }
     return type==='floor_heating'?'Podlahové kúrenie':type==='water_heater'?'Výmena bojlera / ohrievača TÚV':type==='zti'?'ZTI / vodoinštalačné práce':type==='recovery'?'Rekuperácia / vzduchotechnické práce':'Montážne práce';
   }
   function stockByExactCode(code){
@@ -652,7 +662,16 @@
     if(type==='floor_heating')return Math.round(floorDesign().area*num(i.floor_labor_rate_m2,8)*100)/100;
     if(type==='water_heater')return Math.max(0,num(i.water_heater_labor_ex_vat,i.water_heater_mode==='new_place'?225:150));
     if(type==='zti')return Math.round(ztiLaborManHours()*ztiHourlyRate()*100)/100;
+    if(type==='other')return Math.round(Math.max(0,num(i.labor_man_hours,num(i.labor_workers,1)*num(i.labor_hours,8)))*Math.max(0,num(i.labor_hour_rate_ex_vat,35))*100)/100;
     return Math.round(num(i.labor_workers,1)*num(i.labor_hours,8)*num(i.labor_hour_rate_ex_vat,35)*100)/100;
+  }
+  function otherLaborInfo(){
+    const i=ensureTradeDefaults();
+    const mh=Math.max(0,num(i.labor_man_hours,num(i.labor_workers,1)*num(i.labor_hours,8)));
+    const crew=Math.max(1,Math.round(num(i.labor_workers,1)));
+    const rate=Math.max(0,num(i.labor_hour_rate_ex_vat,35));
+    const duration=crew?Math.ceil((mh/crew)*4)/4:mh;
+    return {mh,crew,rate,duration,price:Math.round(mh*rate*100)/100};
   }
   function currentMaterialEstimate(){
     let total=0,missing=0;
@@ -793,9 +812,32 @@
     }
     active._dirty=true;saveLocal(active);renderWizard();
   }
+  function stepOtherTechnical(){
+    const i=ensureTradeDefaults(),labor=otherLaborInfo();
+    const extraHtml=EXTRA_WORK.map(x=>'<label class="row" style="cursor:pointer"><span>'+esc(x[1])+'</span><input type="checkbox" '+((active.extra_work||[]).includes(x[0])?'checked':'')+' style="width:22px;height:22px" onchange="SpektraInspections.toggleExtra(\''+x[0]+'\')"></label>').join('');
+    return '<div class="card"><h2>Iné – univerzálna zákazka</h2>'+
+      field('Názov zákazky','otherJobName',i.custom_job_name||'','text','placeholder="napr. Výmena bojlera" onchange="SpektraInspections.input(\'installation.custom_job_name\',this,\'text\',true)"')+
+      '<div class="grid2">'+
+        field('Človekohodiny spolu [čh]','otherManHours',labor.mh,'number','min="0" step="0.25" onchange="SpektraInspections.input(\'installation.labor_man_hours\',this,\'number\',true)"')+
+        field('Počet montérov [os.]','otherWorkers',labor.crew,'number','min="1" max="8" step="1" onchange="SpektraInspections.input(\'installation.labor_workers\',this,\'number\',true)"')+
+      '</div>'+
+      field('Sadzba práce bez DPH [€/čh]','otherRate',labor.rate,'number','min="0" step="1" onchange="SpektraInspections.input(\'installation.labor_hour_rate_ex_vat\',this,\'number\',true)"')+
+      '<label class="row" style="cursor:pointer;margin-top:8px"><span><b>Montáž / osadenie novej položky</b><small>Napr. nový bojler, ohrievač, čerpadlo alebo iné zariadenie vybrané z katalógu</small></span><input type="checkbox" '+(i.custom_install_new!==false?'checked':'')+' style="width:22px;height:22px" onchange="SpektraInspections.check(\'installation.custom_install_new\',this,true)"></label>'+
+      '<div class="summary" style="margin-top:10px">'+
+        '<div class="srow"><span>Človekohodiny</span><b>'+labor.mh.toFixed(2)+' čh</b></div>'+
+        '<div class="srow"><span>Odhad času na stavbe</span><b>'+labor.duration.toFixed(2)+' h / '+labor.crew+' montér'+(labor.crew===1?'':'i')+'</b></div>'+
+        '<div class="srow"><span>Sadzba</span><b>'+priceText(labor.rate)+' / čh</b></div>'+
+        '<div class="srow total"><span>Práca bez DPH</span><span>'+priceText(labor.price)+'</span></div>'+
+      '</div></div>'+
+      '<div class="card"><h2>Rozsah práce</h2><div class="grid2">'+extraHtml+'</div><div class="sub" style="margin-top:8px">Demontáž, odvoz a ostatné úkony sú rozsah práce. Ich čas zahrň do človekohodín vyššie.</div></div>'+
+      '<div class="notice" style="margin-bottom:10px">V ďalšom kroku vyberieš konkrétne zariadenie a materiál priamo z katalógu POHODA. Aplikácia pripočíta ich predajnú cenu k práci.</div>'+
+      '<button class="btn primary full" onclick="SpektraInspections.next()">Pokračovať na katalóg →</button>';
+  }
+
   function stepTradeTechnical(){
     const i=ensureTradeDefaults(),type=tradePrimaryType();
     if(type==='zti')return stepZtiTechnical();
+    if(type==='other')return stepOtherTechnical();
     let detail='';
     if(type==='floor_heating'){
       const d=floorDesign();
@@ -918,15 +960,17 @@
   }
 
   function tradeMaterialCardHtml(){
-    return '<div class="card"><h2>Materiál z obhliadky</h2>'+
-      '<div class="inspStockSearch"><div class="field" style="margin-bottom:0"><label>Hľadať v POHODE</label><input id="inspStockSearchInput" placeholder="Názov, kód, PLU, výrobca…" autocomplete="off" oninput="SpektraInspections.searchStock(this.value)"></div>'+
-      '<div id="inspStockResults" class="inspStockResults"></div><div class="inspStockHint">Vybraná karta sa prenesie do ponuky s aktuálnou cenou z POHODY.</div></div>'+
+    const other=tradePrimaryType()==='other';
+    return '<div class="card"><h2>'+(other?'Katalóg POHODA – zariadenie a materiál':'Materiál z obhliadky')+'</h2>'+
+      '<div class="inspStockSearch"><div class="field" style="margin-bottom:0"><label>Hľadať v POHODE</label><input id="inspStockSearchInput" placeholder="'+(other?'napr. Midea ohrievač, bojler, čerpadlo…':'Názov, kód, PLU, výrobca…')+'" autocomplete="off" oninput="SpektraInspections.searchStock(this.value)"></div>'+
+      '<div id="inspStockResults" class="inspStockResults"></div><div class="inspStockHint">'+(other?'Vyber hlavné zariadenie aj potrebný materiál. Cena a karta sa prenesú z POHODY do cenovej ponuky.':'Vybraná karta sa prenesie do ponuky s aktuálnou cenou z POHODY.')+'</div></div>'+
       '<div id="inspMaterials">'+materialRows()+'</div><button class="btn ghost small" onclick="SpektraInspections.addMaterial()">+ Pridať ručne</button></div>';
   }
   function stepTradeInstallation(){
     ensureBaseMaterials();
     const mat=currentMaterialEstimate(),labor=tradeLaborPrice(),net=mat.total+labor,gross=net*1.23;
-    return '<div class="card"><h2>Orientačný návrh ceny</h2><div class="summary">'+
+    const type=tradePrimaryType();
+    return '<div class="card"><h2>'+(type==='other'?esc(tradeLabel(type))+' – orientačná cena':'Orientačný návrh ceny')+'</h2><div class="summary">'+
       '<div class="srow"><span>Materiál z POHODY</span><b>'+priceText(mat.total)+'</b></div>'+
       '<div class="srow"><span>Práca</span><b>'+priceText(labor)+'</b></div>'+
       '<div class="srow"><span>Spolu bez DPH</span><b>'+priceText(net)+'</b></div>'+
@@ -1449,6 +1493,12 @@
       const price=num(inst.water_heater_labor_ex_vat,inst.water_heater_mode==='new_place'?225:150);
       return {mh:null,rate:null,price,crew:null,duration:null,label:'paušál'};
     }
+    if(types.includes('other')){
+      const mh=Math.max(0,num(inst.labor_man_hours,num(inst.labor_workers,1)*num(inst.labor_hours,8)));
+      const rate=Math.max(0,num(inst.labor_hour_rate_ex_vat,35));
+      const crew=Math.max(1,Math.round(num(inst.labor_workers,1)));
+      return {mh,rate,price:mh*rate,crew,duration:crew?Math.ceil((mh/crew)*4)/4:mh,label:rate+' €/čh'};
+    }
     return null;
   }
   function inspectionTechnicalRows(i){
@@ -1481,6 +1531,18 @@
       rows.push(['Plocha podlahovky',dArea+' m²'],['Rozstup rúry',spacing+' cm'],['Orientačná metráž rúry',pipeM+' m'],['Odhad okruhov',Math.max(1,Math.ceil(pipeM/95))]);
     }else if(types.includes('water_heater')){
       rows.push(['Rozsah výmeny',inst.water_heater_mode==='new_place'?'Nové miesto / úprava rozvodov':'Jednoduchá výmena na rovnakom mieste']);
+    }else if(types.includes('other')){
+      const mh=Math.max(0,num(inst.labor_man_hours,num(inst.labor_workers,1)*num(inst.labor_hours,8)));
+      const rate=Math.max(0,num(inst.labor_hour_rate_ex_vat,35));
+      const crew=Math.max(1,Math.round(num(inst.labor_workers,1)));
+      rows.push(
+        ['Zákazka',inst.custom_job_name||'Iné / montážne práce'],
+        ['Človekohodiny',mh+' čh'],
+        ['Počet montérov',crew],
+        ['Sadzba práce',priceText(rate)+' / čh'],
+        ['Práca bez DPH',priceText(mh*rate)],
+        ['Montáž novej položky',inst.custom_install_new===false?'Nie':'Áno']
+      );
     }else{
       rows.push(
         ['Existujúci zdroj',e.source],
@@ -1659,7 +1721,7 @@
         role:m.role||('inspection_material_'+n), name:m.name, qty:Number(m.qty||0), unit:m.unit||st?.unit||'ks',
         pohoda:st||null, pohoda_code:st?.code||m.code||null,
         price:price==null?null:Number(price), cost:cost==null?null:Number(cost),
-        visible:false, mapping_status:st?'mapped_from_inspection':(price==null?'inspection_missing_price':'inspection_snapshot'),
+        visible:tradePrimaryType()==='other', mapping_status:st?'mapped_from_inspection':(price==null?'inspection_missing_price':'inspection_snapshot'),
         customer_group:'Materiál podľa obhliadky', note:'Množstvo podľa obhliadky.'
       };
     });
@@ -1684,6 +1746,14 @@
     if(type==='floor_heating')return ['rozloženie systémových dosiek','uloženie vykurovacích okruhov','montáž a pripojenie rozdeľovača','tlaková skúška systému'];
     if(type==='water_heater')return ['demontáž existujúceho ohrievača podľa potreby','osadenie nového ohrievača','napojenie vody a poistných prvkov','kontrola tesnosti a funkcie'];
     if(type==='zti')return [...ztiScopeSummary(),'montáž vodovodných a odpadových rozvodov podľa obhliadky','lisovanie a osadenie tvaroviek','napojenie vývodov','kontrola tesnosti'];
+    if(type==='other'){
+      const i=ensureTradeDefaults(),scope=[];
+      if(i.custom_install_new!==false)scope.push('montáž / osadenie novej položky vybratej z katalógu');
+      (active.extra_work||[]).forEach(k=>{const x=EXTRA_WORK.find(v=>v[0]===k);if(x)scope.push(x[1])});
+      if(!scope.length)scope.push('montážne práce podľa rozsahu obhliadky');
+      scope.push('kontrola funkcie po dokončení');
+      return [...new Set(scope)];
+    }
     return ['montážne práce podľa rozsahu obhliadky','kontrola funkcie po dokončení'];
   }
   async function createTradeQuote(){
@@ -1710,7 +1780,8 @@
     current.net=Math.round(net*100)/100;current.vat_pct=23;current.vat=Math.round(current.net*.23*100)/100;current.total=Math.round(current.net*1.23*100)/100;
     current.price_complete=!missing;
     current.status='ready';
-    current.pdf_template='technical';current.pdf_banner_mode='none';current.pdf_images_enabled=false;current.pdf_images=[];
+    const materialWithImage=materials.find(i=>i.pohoda&&(i.pohoda.image_url||(Array.isArray(i.pohoda.image_urls)&&i.pohoda.image_urls.length)));
+    current.pdf_template='technical';current.pdf_banner_mode='none';current.pdf_images_enabled=!!materialWithImage;current.pdf_images=[];
     current.optional_services={annual_service:false};current.subsidy={program:'none'};
     current.building={...active.building,area_m2:num(active.building?.heated_area_m2,0),heating:active.existing_system?.heating||null};
     current.inspection_materials=(active.materials||[]).map(m=>({...m}));
@@ -1798,12 +1869,24 @@
   }
 
   function toggleType(key){
-    const a=active.inspection_types||(active.inspection_types=[]);
+    const equipmentKeys=['heat_pump','air_conditioning','gas_boiler','biomass'];
+    const tradeKeys=['floor_heating','water_heater','zti','recovery','other'];
     const before=tradePrimaryType();
+    let a=active.inspection_types||(active.inspection_types=[]);
     const i=a.indexOf(key);
     if(i>=0){
       if(a.length>1)a.splice(i,1);
-    }else a.push(key);
+    }else if(tradeKeys.includes(key)){
+      // Remeselný typ má vlastný workflow. Pri voľbe Iné/Bojler/ZTI atď.
+      // odstránime predvolenú voľbu tepelného čerpadla, aby sa neotvoril TČ formulár.
+      active.inspection_types=[key];
+      a=active.inspection_types;
+    }else if(equipmentKeys.includes(key)&&a.some(x=>tradeKeys.includes(x))){
+      active.inspection_types=[key];
+      a=active.inspection_types;
+    }else{
+      a.push(key);
+    }
     const after=tradePrimaryType();
     if(before!==after){
       if(after==='floor_heating')rebuildFloorHeatingMaterials(false);
