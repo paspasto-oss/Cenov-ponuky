@@ -223,6 +223,7 @@ function extractImages(stock){
 }
 function normalizeXmlStock(stock,idx){
   const header=allDesc(stock).find(x=>localName(x)==='stockheader')||stock;
+  const storage=allDesc(header).find(x=>localName(x)==='storage');
   const raw=rawLeafFields(stock);
   const images=extractImages(stock);
   const row={
@@ -232,8 +233,8 @@ function normalizeXmlStock(stock,idx){
     ean:firstLeafText(header,['ean','barcode'])||null,
     name:firstLeafText(header,['name','stockname','description'])||null,
     unit:firstLeafText(header,['unit'])||null,
-    storage_ref:firstLeafText(header,['storageref','idstorage'])||null,
-    storage_name:firstLeafText(header,['storage','storagename'])||null,
+    storage_ref:firstLeafText(storage,['id'])||firstLeafText(header,['storageref','idstorage'])||null,
+    storage_name:firstLeafText(storage,['ids','name'])||firstLeafText(header,['storage','storagename'])||null,
     stock_group_ref:firstLeafText(header,['stockgroupref','idstockgroup'])||null,
     stock_group:firstLeafText(header,['stockgroup','group'])||null,
     supplier_name:firstLeafText(header,['suppliername','supplier','company'])||null,
@@ -551,6 +552,10 @@ function renderTable(){
 function setTab(t,btn){activeTab=t;document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));btn.classList.add('on');renderTable()}
 
 function collapseImageOnlyRows(rows){
+  // Missing storage metadata does not make a priced stock card image-only.
+  // Otherwise an XML update can be replaced by an old baseline with zero costs.
+  const hasCommercialData=x=>!!(s(x.storage_name)||s(x.storage_ref))||
+    ['purchase_price_ex_vat','sell_price_ex_vat','sell_price_inc_vat','quantity_available'].some(k=>x[k]!=null);
   const groups=new Map();
   const added=[];
   rows.forEach(row=>{
@@ -562,8 +567,8 @@ function collapseImageOnlyRows(rows){
 
   const drop=new Set();
   groups.forEach(group=>{
-    let commercial=group.filter(x=>s(x.storage_name)||s(x.storage_ref));
-    const imageOnly=group.filter(x=>!s(x.storage_name)&&!s(x.storage_ref)&&(
+    let commercial=group.filter(hasCommercialData);
+    const imageOnly=group.filter(x=>!hasCommercialData(x)&&(
       x.image_url||(x.image_urls||[]).length||(x.image_source_refs||[]).length||(x._embedded_images||[]).length
     ));
     if(!imageOnly.length)return;

@@ -45,3 +45,8 @@ uložené sumy. Zdieľanie nemení stav schválenej ponuky na odoslanú.
 Pre nové ceny vytvoriť novú ponuku.
 
 Regresné testy: `node --test mobile-v4/tests/approved-price-lock.cjs`.
+
+XML členenie sa načíta z `stockHeader/storage/id` a `stockHeader/storage/ids`.
+Karta s cenami alebo skladovým množstvom sa nepovažuje za čisto obrázkovú
+kartu ani vtedy, keď nemá členenie. Pri príprave zápisu sa preto nové názvy
+a ceny nesmú nahradiť starým baseline iba kvôli prítomnosti obrázka.
