@@ -29,3 +29,19 @@ Funkčný MVP:
 Aktuálne sa baseline ukladá lokálne do prehliadača. Po pripojení Supabase/POHODA bridge sa rovnaká obrazovka napojí na `stock_sync_runs`, `stock_sync_staging` a `pohoda_stocks`.
 
 Poznámka: XLSX parser je zatiaľ načítaný cez SheetJS CDN. Pre PWA/offline produkciu ho neskôr zabalíme lokálne.
+
+## Týždenná aktualizácia a schválené ponuky
+
+Po nahratí aktuálneho exportu a potvrdení **Použiť aktualizáciu** sa
+v katalógu aktualizujú názvy, nákupné/predajné ceny a ostatné importované
+údaje. Nové ponuky používajú aktuálny katalóg. Rozpracované ponuky možno
+obnoviť tlačidlom **Načítať aktuálne ceny z POHODY**.
+
+Schválená ponuka používa uložené názvy položiek, množstvá, ceny, náklady,
+sadzbu DPH a celkovú sumu. Otvára sa v zobrazení pre zákazníka; prepočet
+z katalógu a cenové úpravy sú zablokované. Pri otvorení ani pri tvorbe PDF
+sa do starších schválených ponúk nedopĺňa montáž a neprepočítavajú sa
+uložené sumy. Zdieľanie nemení stav schválenej ponuky na odoslanú.
+Pre nové ceny vytvoriť novú ponuku.
+
+Regresné testy: `node --test mobile-v4/tests/approved-price-lock.cjs`.

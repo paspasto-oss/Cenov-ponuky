@@ -353,6 +353,7 @@
         </div>
       </div>
     </div>
+    <div id="approvedPriceNotice" class="notice hidden" style="margin-bottom:10px">Schválená ponuka – ceny a názvy položiek sú uzamknuté. Aktualizácia skladu ich nemení.</div>
     <div id="finalSummary" class="card"></div>
     <div id="warrantyCard" class="card">
       <h2>Súhlas so zárukou</h2>
@@ -523,7 +524,12 @@ function draftQuoteNameChanged(){
   }
 }
 window.SpektraSetActiveContext=setActiveContext;
+function isQuotePriceLocked(q=current){return q?.status==='approved'}
 function go(id){
+  if(isQuotePriceLocked()&&/^step[1-4]$/.test(id)){
+    renderFinal();
+    id='step5';
+  }
   if(id==='step3'){
     // Krok 3 je dynamický. Po návrate zo zariadenia alebo po otvorení starej ponuky
     // znovu vykreslíme typ zdroja, typ kotla/klimatizácie a značky.
@@ -1627,6 +1633,7 @@ function applyInspectionOverrides(items,d){
   return items.filter(i=>!(i.inspection_source&&Number(i.qty)===0));
 }
 function buildBOM(){
+  if(isQuotePriceLocked())return;
  let d=recommendation,stock=findStockForDevice(d),items=[];
  if(stock){syncProductImagesFromStock(stock);d=recommendation;}
  items.push({role:'device',name:(d.brand+' '+d.model+' '+(d.variant||'')).trim(),qty:1,unit:'ks',pohoda:stock,price:stock?.sell_price_ex_vat??d.sell_price_ex_vat??null,cost:stock?.purchase_price_ex_vat??d.purchase_price_ex_vat??null,visible:true,mapping_status:stock?'mapped':'unmapped'});
@@ -1822,6 +1829,7 @@ function installationPrice(tier){
 // Kompatibilita starších uložených TČ ponúk:
 // nemeníme uložené ceny zariadenia ani materiálu, iba doplníme chýbajúcu montáž.
 function ensureHeatPumpInstallationItem(){
+  if(isQuotePriceLocked())return false;
   if(!current || (current.category||category)!=='heat_pump')return false;
   if(!Array.isArray(current.items))current.items=[];
 
@@ -1868,6 +1876,7 @@ function ensureHeatPumpInstallationItem(){
 }
 
 function recalcQuoteTotalsFromItems(){
+  if(isQuotePriceLocked())return;
   if(!current||!Array.isArray(current.items))return;
   let net=0,missing=false;
   current.items.forEach(i=>{
@@ -2320,6 +2329,7 @@ function renderInternalProfit(){
   };
 }
 async function setQuoteItemPrice(index,value){
+  if(isQuotePriceLocked())return;
   if(!current?.items?.[index])return;
   const raw=String(value??'').trim().replace(',','.');
   current.items[index].price=raw===''?null:Number(raw);
@@ -2332,6 +2342,7 @@ async function setQuoteItemPrice(index,value){
   try{await upsertCurrent()}catch(e){console.warn('Quote price save failed',e)}
 }
 async function setQuoteItemCost(index,value){
+  if(isQuotePriceLocked())return;
   if(!current?.items?.[index])return;
   const raw=String(value??'').trim().replace(',','.');
   if(raw===''){
@@ -2350,6 +2361,7 @@ async function setQuoteItemCost(index,value){
 }
 
 function renderRecommendation(){
+ if(isQuotePriceLocked()){renderFinal();go('step5');return;}
  syncInstallationTierUI();
  syncOptionalUI();
  renderQuoteImageUI();
@@ -2416,6 +2428,10 @@ function renderRecommendation(){
 }
 async function refreshQuoteFromCatalog(button=null){
   if(!current)return;
+  if(isQuotePriceLocked()){
+    alert('Schválená ponuka má uzamknuté ceny a názvy položiek. Aktualizácia skladu ju nemení. Pre nové ceny vytvor novú ponuku.');
+    return;
+  }
   const btn=button||document.getElementById('refreshPriceBtn');
   const oldText=btn?.textContent||'';
   if(btn){btn.disabled=true;btn.textContent='↻ Načítavam aktuálne ceny…';}
@@ -2521,7 +2537,7 @@ async function refreshQuoteFromCatalog(button=null){
   }
 }
 
-function pickAlternative(id){let d=category==='air_conditioning'?(acMode==='multi'?acMultiOutdoorCandidates(brand,multiCount).find(x=>x.id===id):acStockCandidates(brand).find(x=>x.id===id)):deviceCatalog.find(x=>x.id===id);if(!d)return;recommendation={...d};current.device={...d};ensurePdfImagesState();buildBOM();renderRecommendation()}
+function pickAlternative(id){if(isQuotePriceLocked())return;let d=category==='air_conditioning'?(acMode==='multi'?acMultiOutdoorCandidates(brand,multiCount).find(x=>x.id===id):acStockCandidates(brand).find(x=>x.id===id)):deviceCatalog.find(x=>x.id===id);if(!d)return;recommendation={...d};current.device={...d};ensurePdfImagesState();buildBOM();renderRecommendation()}
 async function upsertCurrent(){
   current.updated=Date.now();current._dirty=true;
   let i=quotes.findIndex(q=>q.id===current.id);
@@ -2543,8 +2559,9 @@ async function upsertCurrent(){
     }
   }
 }
-async function saveDraft(){current.status='draft';await upsertCurrent();alert(window.SpektraDB?.isAuthenticated()?'Ponuka bola uložená a synchronizovaná.':'Ponuka bola uložená lokálne. Po pripojení sa synchronizuje.')}
+async function saveDraft(){if(isQuotePriceLocked())return;current.status='draft';await upsertCurrent();alert(window.SpektraDB?.isAuthenticated()?'Ponuka bola uložená a synchronizovaná.':'Ponuka bola uložená lokálne. Po pripojení sa synchronizuje.')}
 async function finishQuote(){
+  if(isQuotePriceLocked())return;
  if(current.installation_tier==='economy'&&!current.economy_ready){alert('Montáž EKONOM je možné použiť iba po potvrdení všetkých prípravných podmienok zákazníka.');return}
  ensureHeatPumpInstallationItem();
  recalcQuoteTotalsFromItems();
@@ -2773,6 +2790,8 @@ function annualServiceText(){
 }
 function renderFinal(){
  syncPdfTemplateUI();
+ const priceLockNotice=document.getElementById('approvedPriceNotice');
+ if(priceLockNotice)priceLockNotice.classList.toggle('hidden',!isQuotePriceLocked());
  const tradeQuote=isTradeQuote(current);
  const warrantyCard=document.getElementById('warrantyCard');if(warrantyCard)warrantyCard.classList.toggle('hidden',tradeQuote);
  if(!tradeQuote)renderWarrantySignatureStatus();
@@ -2793,7 +2812,7 @@ function renderFinal(){
      : '';
  document.getElementById('finalSummary').innerHTML='<h2 style="margin-top:0">'+esc(current.customer.name)+'</h2><div class="sub">'+esc(current.customer.address)+'</div><div style="margin-top:14px"><b>'+esc(customerText(current.device.brand+' '+current.device.model+' '+(current.device.variant||'')))+'</b></div><div class="srow"><span>Montáž</span><b>'+(
    current.category==='heat_pump'
-     ? (current.installation_tier==='economy'?'EKONOM – '+installationPrice('economy')+' €':'ŠTANDARD – '+installationPrice('standard')+' €')
+     ? ((current.installation_tier==='economy'?'EKONOM':'ŠTANDARD')+' – '+(install?.price!=null?eur(install.price):(isQuotePriceLocked()?'podľa schválenej ponuky':eur(installationPrice(current.installation_tier||'standard')))))
      : (install?.price!=null?eur(install.price):'podľa cenníka')
  )+'</b></div>'+optional+annual+warranty+subsidyHtml+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+ (current.price_complete?eur(current.total):'Cena ešte nie je kompletná') +'</span></div>'
 }
@@ -2854,6 +2873,13 @@ function openQuote(id){
     acMode=current.ac_mode||current.device?.ac_mode||'single';
     multiCount=current.multisplit_count||current.device?.multisplit_count||2;
     recommendation=current.device&&Object.keys(current.device).length?{...current.device}:null;
+    // Approved offers keep their stored items and totals, including legacy
+    // offers without an installation row. Do not hydrate or rebuild from stock.
+    if(isQuotePriceLocked()){
+      renderFinal();
+      go('step5');
+      return;
+    }
     if(isTradeQuote(current)){
       current.optional_services=current.optional_services||{};
       current.optional_services.annual_service=false;
@@ -3652,7 +3678,7 @@ async function shareEmail(){
 
 async function shareNative(){return sharePdf()}
 
-function markSent(){current.status='sent';upsertCurrent()}
+function markSent(){if(isQuotePriceLocked())return;current.status='sent';upsertCurrent()}
 
 async function printPDF(){
   // Otvoríme kartu synchronne, aby mobilný prehliadač nezablokoval popup.
