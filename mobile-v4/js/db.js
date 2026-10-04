@@ -721,7 +721,7 @@ window.SpektraDB = (() => {
       cacheControl:'3600',upsert:false,contentType:file.type||'image/jpeg'
     });
     if(uploadError)throw uploadError;
-    const {data:photo,error}=await client.from('inspection_photos').insert({
+    const photoPayload={
       inspection_id:inspectionId,
       category:category||'other',
       storage_path:path,
@@ -734,7 +734,18 @@ window.SpektraDB = (() => {
       file_size_original:meta.file_size_original==null?null:Number(meta.file_size_original),
       file_size_preview:meta.file_size_preview==null?(file.size||null):Number(meta.file_size_preview),
       is_required:!!isRequired
-    }).select('*').single();
+    };
+    let {data:photo,error}=await client.from('inspection_photos').insert(photoPayload).select('*').single();
+    if(error&&/schema cache|column .* does not exist|Could not find the .* column/i.test(String(error.message||error.details||''))){
+      const fallbackPayload={...photoPayload};
+      delete fallbackPayload.drive_file_url;
+      delete fallbackPayload.drive_folder_url;
+      delete fallbackPayload.file_size_original;
+      delete fallbackPayload.file_size_preview;
+      delete fallbackPayload.original_file_name;
+      delete fallbackPayload.sync_status;
+      ({data:photo,error}=await client.from('inspection_photos').insert(fallbackPayload).select('*').single());
+    }
     if(error){
       await client.storage.from('inspection-media').remove([path]).catch(()=>{});
       throw error;
