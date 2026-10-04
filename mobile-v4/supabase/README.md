@@ -16,6 +16,7 @@ Do prehliadača patrí iba verejný `anonKey`. Nikdy nie `service_role`.
 - `supabase/schema.sql` – tabuľky a RLS,
 - `js/db.js` – klient pre zásoby, ponuky a položky,
 - `supabase-config.example.js` – šablóna konfigurácie.
+- `database/004_inspection_photo_storage.sql` – Obhliadky, bucket `inspection-media`, malé náhľady fotiek a polia pre Drive odkazy.
 
 ## Ďalší krok
 Po pripojení Supabase pluginu vytvoríme projekt, aplikujeme schema.sql, vytvoríme účty/roly a doplníme URL + anon key.

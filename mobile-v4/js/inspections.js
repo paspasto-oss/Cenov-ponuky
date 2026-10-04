@@ -5,6 +5,10 @@
   'use strict';
 
   const CACHE_KEY='spektra_inspections_v1';
+  const PHOTO_DB='spektra_inspection_photos_v1';
+  const PHOTO_STORE='photos';
+  const PHOTO_PREVIEW_MAX=1600;
+  const PHOTO_PREVIEW_QUALITY=0.72;
   const ZTI_PIPE_CLIPS_PER_M=2;
   const ZTI_LABOR_RULES={
     base_mh:1.5,
@@ -87,6 +91,70 @@
     const idx=rows.findIndex(x=>x.local_id===i.local_id);
     if(idx>=0)rows[idx]=JSON.parse(JSON.stringify(i));else rows.unshift(JSON.parse(JSON.stringify(i)));
     storeCache();
+  }
+  function openPhotoDb(){
+    return new Promise((resolve,reject)=>{
+      if(!('indexedDB' in window)){reject(new Error('Prehliadač nepodporuje lokálne úložisko fotiek.'));return}
+      const req=indexedDB.open(PHOTO_DB,1);
+      req.onupgradeneeded=()=>{req.result.createObjectStore(PHOTO_STORE,{keyPath:'key'})};
+      req.onsuccess=()=>resolve(req.result);
+      req.onerror=()=>reject(req.error||new Error('Lokálne úložisko fotiek sa nepodarilo otvoriť.'));
+    });
+  }
+  async function putLocalPhoto(key,file){
+    const db=await openPhotoDb();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction(PHOTO_STORE,'readwrite');
+      tx.objectStore(PHOTO_STORE).put({key,file,name:file.name||null,type:file.type||'image/jpeg',size:file.size||0,created_at:nowIso()});
+      tx.oncomplete=()=>{db.close();resolve()};
+      tx.onerror=()=>{db.close();reject(tx.error)};
+    });
+  }
+  async function getLocalPhoto(key){
+    if(!key)return null;
+    const db=await openPhotoDb();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction(PHOTO_STORE,'readonly');
+      const req=tx.objectStore(PHOTO_STORE).get(key);
+      req.onsuccess=()=>resolve(req.result?.file||null);
+      req.onerror=()=>reject(req.error);
+      tx.oncomplete=()=>db.close();
+    });
+  }
+  async function deleteLocalPhoto(key){
+    if(!key)return;
+    const db=await openPhotoDb();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction(PHOTO_STORE,'readwrite');
+      tx.objectStore(PHOTO_STORE).delete(key);
+      tx.oncomplete=()=>{db.close();resolve()};
+      tx.onerror=()=>{db.close();reject(tx.error)};
+    });
+  }
+  function imageFileToCanvas(file,maxSide=PHOTO_PREVIEW_MAX){
+    return new Promise((resolve,reject)=>{
+      const img=new Image();
+      const url=URL.createObjectURL(file);
+      img.onload=()=>{
+        URL.revokeObjectURL(url);
+        const scale=Math.min(1,maxSide/Math.max(img.width,img.height));
+        const canvas=document.createElement('canvas');
+        canvas.width=Math.max(1,Math.round(img.width*scale));
+        canvas.height=Math.max(1,Math.round(img.height*scale));
+        canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+        resolve(canvas);
+      };
+      img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('Fotku sa nepodarilo načítať.'))};
+      img.src=url;
+    });
+  }
+  async function makePhotoPreview(file){
+    const canvas=await imageFileToCanvas(file);
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',PHOTO_PREVIEW_QUALITY));
+    if(!blob)throw new Error('Náhľad fotky sa nepodarilo vytvoriť.');
+    const base=String(file.name||'foto.jpg').replace(/\.[^.]+$/,'').replace(/[^a-zA-Z0-9._-]/g,'_');
+    const previewFile=new File([blob],base+'_nahlad.jpg',{type:'image/jpeg'});
+    return {file:previewFile,dataUrl:canvas.toDataURL('image/jpeg',0.55),width:canvas.width,height:canvas.height};
   }
   function newInspection(){
     return {
@@ -1359,7 +1427,15 @@
       const cat=photos.filter(p=>p.category===key),must=required.includes(key);
       return '<div class="card"><div class="row" style="margin-bottom:8px"><div><b>'+esc(label)+'</b><small>'+(cat.length?'✓ '+cat.length+' foto':(must?'Povinné foto':'Voliteľné foto'))+'</small></div>'+
         '<label class="btn ghost small" style="cursor:pointer">📷 Foto<input type="file" accept="image/*" capture="environment" style="display:none" onchange="SpektraInspections.photo(\''+key+'\',this.files[0]);this.value=\'\'"></label></div>'+
-        (cat.length?'<div class="inspPhotoGrid">'+cat.map(p=>'<div class="inspThumb">'+(p.signed_url?'<img src="'+esc(p.signed_url)+'" alt="">':'<div style="padding:15px;font-size:12px">'+esc(p.file_name||'Foto')+'</div>')+'<button onclick="SpektraInspections.deletePhoto(\''+esc(p.id||'')+'\')">×</button></div>').join('')+'</div>':'')+
+        (cat.length?'<div class="inspPhotoGrid">'+cat.map(p=>{
+          const img=p.local_preview_url||p.signed_url||'';
+          const retry=['local_only','pending_upload','upload_error'].includes(p.sync_status||'');
+          const key=p.local_photo_key||p.id||'';
+          return '<div><div class="inspThumb">'+(img?'<img src="'+esc(img)+'" alt="">':'<div style="padding:15px;font-size:12px">'+esc(p.file_name||'Foto')+'</div>')+'<button onclick="SpektraInspections.deletePhoto(\''+esc(key)+'\')">×</button></div>'+
+            '<small style="display:block;margin:4px 2px 7px;color:#607787">'+esc(photoSyncLabel(p))+'</small>'+
+            (retry?'<button class="btn ghost small" type="button" onclick="SpektraInspections.retryPhoto(\''+esc(p.local_photo_key||'')+'\')">Znova odoslať</button>':'')+
+          '</div>';
+        }).join('')+'</div>':'')+
       '</div>';
     }).join('');
     const missing=requiredPhotoKeys().filter(k=>!photos.some(p=>p.category===k));
@@ -1367,6 +1443,17 @@
       cards+'<button class="btn primary full" onclick="SpektraInspections.next()">Pokračovať na súhrn →</button>';
   }
   function photoLabel(key){return PHOTO_CATEGORIES.find(x=>x[0]===key)?.[1]||key}
+  function photoSyncLabel(p){
+    const status=p?.sync_status||(p?.storage_path?'preview_uploaded':'local_only');
+    return ({
+      local_only:'uložené v mobile',
+      pending_upload:'čaká na odoslanie',
+      preview_uploaded:'náhľad uložený v Supabase',
+      drive_uploaded:'originál na Drive',
+      synced:'uložené',
+      upload_error:'chyba odoslania'
+    })[status]||status;
+  }
 
   async function saveRemote(i,eventType=null,silent=false){
     const authed=await ensureAuth();
@@ -1402,27 +1489,79 @@
 
   async function photo(category,file){
     if(!file||!active)return;
-    const authed=await ensureAuth();
-    if(!authed){alert('Fotografie sa ukladajú do privátneho online úložiska. Najprv sa prihlás do databázy.');return}
+    const safeName=String(file.name||'foto.jpg').replace(/[^a-zA-Z0-9._-]/g,'_');
+    const key=(active.local_id||uuid())+'/'+category+'/'+Date.now()+'_'+safeName;
     try{
-      if(!active.remote_id)await saveRemote(active,'inspection_saved',true);
-      const p=await SpektraDB.uploadInspectionPhoto(active.remote_id,file,category,requiredPhotoKeys().includes(category));
+      await putLocalPhoto(key,file);
+      const preview=await makePhotoPreview(file);
+      const p={
+        id:key,
+        local_photo_key:key,
+        category,
+        file_name:file.name||'foto.jpg',
+        local_preview_url:preview.dataUrl,
+        sync_status:'local_only',
+        is_required:requiredPhotoKeys().includes(category),
+        file_size_original:file.size||null,
+        file_size_preview:preview.file.size||null,
+        preview_width:preview.width,
+        preview_height:preview.height,
+        created_at:nowIso()
+      };
       active.photos=active.photos||[];
       active.photos.push(p);
       active.checklist=active.checklist||{};
       active.checklist[category]=true;
       active._dirty=true;
+      saveLocal(active);
+      renderWizard();
+      await uploadLocalPhoto(p,preview.file);
+    }catch(e){console.error(e);alert('Fotka ostala uložená v mobile, ale odoslanie zlyhalo: '+(e.message||String(e)))}
+  }
+  async function uploadLocalPhoto(p,previewFile=null){
+    if(!active||!p)return;
+    const authed=await ensureAuth();
+    if(!authed){p.sync_status='pending_upload';active._dirty=true;saveLocal(active);renderWizard();return}
+    try{
+      if(!active.remote_id)await saveRemote(active,'inspection_saved',true);
+      if(!previewFile){
+        const original=await getLocalPhoto(p.local_photo_key);
+        if(!original)throw new Error('Originál fotky nie je dostupný v mobile.');
+        previewFile=(await makePhotoPreview(original)).file;
+      }
+      p.sync_status='pending_upload';active._dirty=true;saveLocal(active);renderWizard();
+      const uploaded=await SpektraDB.uploadInspectionPhoto(active.remote_id,previewFile,p.category,p.is_required,{
+        local_photo_key:p.local_photo_key,
+        original_file_name:p.file_name||null,
+        file_size_original:p.file_size_original||null,
+        file_size_preview:previewFile.size||null,
+        sync_status:'preview_uploaded'
+      });
+      Object.assign(p,uploaded,{local_photo_key:p.local_photo_key,local_preview_url:p.local_preview_url,sync_status:'preview_uploaded'});
+      active._dirty=true;
       await saveRemote(active,'photo_added',true);
       renderWizard();
-    }catch(e){console.error(e);alert('Fotografiu sa nepodarilo uložiť: '+(e.message||String(e)))}
+    }catch(e){
+      p.sync_status='upload_error';
+      p.upload_error=e.message||String(e);
+      active._dirty=true;saveLocal(active);renderWizard();
+      throw e;
+    }
+  }
+  async function retryPhoto(key){
+    if(!active||!key)return;
+    const p=(active.photos||[]).find(x=>x.local_photo_key===key);
+    if(!p)return;
+    try{await uploadLocalPhoto(p)}catch(e){alert('Odoslanie fotky zlyhalo: '+(e.message||String(e)))}
   }
   async function deletePhoto(id){
     if(!active||!id)return;
-    const p=(active.photos||[]).find(x=>x.id===id);
+    const p=(active.photos||[]).find(x=>x.id===id||x.local_photo_key===id);
     if(!p)return;
     try{
-      await SpektraDB.deleteInspectionPhoto(p);
-      active.photos=active.photos.filter(x=>x.id!==id);
+      if(p.id&&p.storage_path)await SpektraDB.deleteInspectionPhoto(p);
+      if(p.local_photo_key)await deleteLocalPhoto(p.local_photo_key).catch(()=>{});
+      active.photos=active.photos.filter(x=>x.id!==id&&x.local_photo_key!==id);
       active.checklist[p.category]=active.photos.some(x=>x.category===p.category);
       active._dirty=true;await saveRemote(active,'photo_deleted',true);renderWizard();
     }catch(e){alert('Fotografiu sa nepodarilo odstrániť: '+(e.message||String(e)))}
@@ -1927,7 +2066,7 @@
     openHome,startNew,edit,refresh,next,back,save,complete,createQuote,openPdf:openInspectionPdf,renderList,resetFilters:resetInspectionFilters,
     input:(path,el,kind,rerender)=>setFromInput(path,el,kind||'text',!!rerender),
     check:(path,el,rerender)=>setFromInput(path,el,'bool',!!rerender),
-    toggleType,toggleExtra,routeChanged,material,addMaterial,removeMaterial,searchStock,chooseStock,materialAutocomplete,chooseMaterialAutocomplete,editTradeSetup,ztiChanged,ztiLaborChanged,dhwSolutionChanged,photo,deletePhoto
+    toggleType,toggleExtra,routeChanged,material,addMaterial,removeMaterial,searchStock,chooseStock,materialAutocomplete,chooseMaterialAutocomplete,editTradeSetup,ztiChanged,ztiLaborChanged,dhwSolutionChanged,photo,deletePhoto,retryPhoto
   };
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initUI);

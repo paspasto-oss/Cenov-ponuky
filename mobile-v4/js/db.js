@@ -709,7 +709,7 @@ window.SpektraDB = (() => {
     };
   }
 
-  async function uploadInspectionPhoto(inspectionId,file,category,isRequired=false) {
+  async function uploadInspectionPhoto(inspectionId,file,category,isRequired=false,meta={}) {
     if (!client || !user) throw new Error('Online databáza nie je prihlásená.');
     if(!inspectionId||!file)throw new Error('Chýba obhliadka alebo fotografia.');
     const type=(file.type||'image/jpeg').toLowerCase();
@@ -726,6 +726,13 @@ window.SpektraDB = (() => {
       category:category||'other',
       storage_path:path,
       file_name:file.name||null,
+      local_photo_key:meta.local_photo_key||null,
+      original_file_name:meta.original_file_name||file.name||null,
+      drive_file_url:meta.drive_file_url||null,
+      drive_folder_url:meta.drive_folder_url||null,
+      sync_status:meta.sync_status||'preview_uploaded',
+      file_size_original:meta.file_size_original==null?null:Number(meta.file_size_original),
+      file_size_preview:meta.file_size_preview==null?(file.size||null):Number(meta.file_size_preview),
       is_required:!!isRequired
     }).select('*').single();
     if(error){
