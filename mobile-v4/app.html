@@ -1347,13 +1347,17 @@ function cleanAcModelName(name,selectedBrand){
 function acStockCandidates(selectedBrand){
   const aliases=acBrandAliases(selectedBrand);
   const selected=norm(selectedBrand);
-  const sourcePool=selected==='midea'?stocks:acStockPool;
+  // Short POHODA names such as "MDV EVO 2,6 kW" do not enter acStockPool.
+  // Match these brands against all imported cards, then apply their set filter.
+  const sourcePool=(selected==='midea'||selected==='mdv')?stocks:acStockPool;
 
   const fromStock=sourcePool.filter(st=>{
+    if(st.active===false)return false;
     const n=norm(st.name),code=String(st.code||'').toUpperCase();
 
     if(selected==='mdv'){
-      const evoSet=['CMDV000122','CMDV000125','CMDV000128','CMDV000131'].includes(code) || (n.includes('mdv')&&n.includes('evo'));
+      const evoSet=['CMDV000122','CMDV000125','CMDV000128','CMDV000131'].includes(code) ||
+        (n.includes('mdv')&&n.includes('evo')&&!/multi|vnutorna|vonkajsia/.test(n));
       return evoSet && Number(st.sell_price_ex_vat)>0;
     }
 
