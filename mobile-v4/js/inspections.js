@@ -1433,6 +1433,7 @@
           const key=p.local_photo_key||p.id||'';
           return '<div><div class="inspThumb">'+(img?'<img src="'+esc(img)+'" alt="">':'<div style="padding:15px;font-size:12px">'+esc(p.file_name||'Foto')+'</div>')+'<button onclick="SpektraInspections.deletePhoto(\''+esc(key)+'\')">×</button></div>'+
             '<small style="display:block;margin:4px 2px 7px;color:#607787">'+esc(photoSyncLabel(p))+'</small>'+
+            (p.local_photo_key?'<button class="btn ghost small" type="button" onclick="SpektraInspections.downloadPhoto(\''+esc(p.local_photo_key)+'\')">Uložiť do mobilu</button>':'')+
             (retry?'<button class="btn ghost small" type="button" onclick="SpektraInspections.retryPhoto(\''+esc(p.local_photo_key||'')+'\')">Znova odoslať</button>':'')+
           '</div>';
         }).join('')+'</div>':'')+
@@ -1446,7 +1447,7 @@
   function photoSyncLabel(p){
     const status=p?.sync_status||(p?.storage_path?'preview_uploaded':'local_only');
     return ({
-      local_only:'uložené v mobile',
+      local_only:'originál uložený v aplikácii',
       pending_upload:'čaká na odoslanie',
       preview_uploaded:'náhľad uložený v Supabase',
       drive_uploaded:'originál na Drive',
@@ -1553,6 +1554,21 @@
     const p=(active.photos||[]).find(x=>x.local_photo_key===key);
     if(!p)return;
     try{await uploadLocalPhoto(p)}catch(e){alert('Odoslanie fotky zlyhalo: '+(e.message||String(e)))}
+  }
+  async function downloadPhoto(key){
+    if(!key)return;
+    try{
+      const file=await getLocalPhoto(key);
+      if(!file)throw new Error('Originál fotky nie je dostupný v tomto mobile.');
+      const url=URL.createObjectURL(file);
+      const a=document.createElement('a');
+      a.href=url;
+      a.download=file.name||('obhliadka-foto-'+Date.now()+'.jpg');
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),60000);
+    }catch(e){alert('Fotku sa nepodarilo uložiť do mobilu: '+(e.message||String(e)))}
   }
   async function deletePhoto(id){
     if(!active||!id)return;
@@ -2066,7 +2082,7 @@
     openHome,startNew,edit,refresh,next,back,save,complete,createQuote,openPdf:openInspectionPdf,renderList,resetFilters:resetInspectionFilters,
     input:(path,el,kind,rerender)=>setFromInput(path,el,kind||'text',!!rerender),
     check:(path,el,rerender)=>setFromInput(path,el,'bool',!!rerender),
-    toggleType,toggleExtra,routeChanged,material,addMaterial,removeMaterial,searchStock,chooseStock,materialAutocomplete,chooseMaterialAutocomplete,editTradeSetup,ztiChanged,ztiLaborChanged,dhwSolutionChanged,photo,deletePhoto,retryPhoto
+    toggleType,toggleExtra,routeChanged,material,addMaterial,removeMaterial,searchStock,chooseStock,materialAutocomplete,chooseMaterialAutocomplete,editTradeSetup,ztiChanged,ztiLaborChanged,dhwSolutionChanged,photo,deletePhoto,retryPhoto,downloadPhoto
   };
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initUI);
