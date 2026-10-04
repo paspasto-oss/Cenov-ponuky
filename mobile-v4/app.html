@@ -3558,7 +3558,8 @@ async function createPdfFile(){
       pdf.addImage(termsCanvas.toDataURL('image/jpeg',0.96),'JPEG',0,0,210,297,undefined,'FAST');
     }
 
-    if(pdf.internal.getNumberOfPages()!==2)throw new Error('Ponuka má nesprávny počet strán. Obnov aplikáciu a skúste PDF vytvoriť znova.');
+    const expectedPages=termsPage?2:1;
+    if(pdf.internal.getNumberOfPages()!==expectedPages)throw new Error('Ponuka má nesprávny počet strán. Obnov aplikáciu a skúste PDF vytvoriť znova.');
     const blob=pdf.output('blob');
     return new File([blob],(current.quote_no||'cenova-ponuka')+'.pdf',{type:'application/pdf'});
   }finally{
