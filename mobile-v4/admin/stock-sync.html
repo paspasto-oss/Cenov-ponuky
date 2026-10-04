@@ -175,6 +175,16 @@ function firstLeafText(root,names){
   const el=allDesc(root).find(x=>wanted.has(localName(x)) && !x.children.length && s(x.textContent));
   return el?s(el.textContent):'';
 }
+function xmlPurchasePrice(header){
+  // POHODA exports weightedPurchasePrice before purchasingPrice. Read each
+  // field separately so XML order and a zero weighted price cannot hide
+  // the current purchase price on the stock card.
+  for(const name of ['purchasingprice','purchaseprice','buyprice','purchasepricewithoutvat','weightedpurchaseprice']){
+    const value=n(firstLeafText(header,[name]));
+    if(value!=null&&value>0)return value;
+  }
+  return null;
+}
 function rawLeafFields(root){
   const out={};
   allDesc(root).forEach(el=>{
@@ -228,7 +238,7 @@ function normalizeXmlStock(stock,idx){
     stock_group:firstLeafText(header,['stockgroup','group'])||null,
     supplier_name:firstLeafText(header,['suppliername','supplier','company'])||null,
     manufacturer:firstLeafText(header,['manufacturer','producer','producername'])||null,
-    purchase_price_ex_vat:n(firstLeafText(header,['purchaseprice','weightedpurchaseprice','buyprice','purchasepricewithoutvat'])),
+    purchase_price_ex_vat:xmlPurchasePrice(header),
     sell_price_ex_vat:n(firstLeafText(header,['sellingprice','sellprice','sellingpricewithoutvat','price'])),
     sell_price_inc_vat:n(firstLeafText(header,['sellingpricevat','sellpricevat','pricevat'])),
     quantity_available:n(firstLeafText(header,['count','quantity','stockamount','amount'])),
