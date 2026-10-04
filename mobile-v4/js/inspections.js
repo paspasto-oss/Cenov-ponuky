@@ -1557,18 +1557,41 @@
   }
   async function downloadPhoto(key){
     if(!key)return;
+    const fallbackWindow=window.open('','_blank');
     try{
-      const file=await getLocalPhoto(key);
+      const p=(active?.photos||[]).find(x=>x.local_photo_key===key||x.id===key);
+      let file=await getLocalPhoto(key);
+      if(!file&&p?.signed_url){
+        const res=await fetch(p.signed_url);
+        if(res.ok)file=new File([await res.blob()],p.file_name||('obhliadka-foto-'+Date.now()+'.jpg'),{type:res.headers.get('content-type')||'image/jpeg'});
+      }
       if(!file)throw new Error('Originál fotky nie je dostupný v tomto mobile.');
+      const fileName=file.name||('obhliadka-foto-'+Date.now()+'.jpg');
+      if(navigator.canShare&&navigator.share&&navigator.canShare({files:[file]})){
+        if(fallbackWindow)fallbackWindow.close();
+        await navigator.share({files:[file],title:fileName,text:'Fotka z obhliadky'});
+        return;
+      }
       const url=URL.createObjectURL(file);
       const a=document.createElement('a');
       a.href=url;
-      a.download=file.name||('obhliadka-foto-'+Date.now()+'.jpg');
+      a.download=fileName;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setTimeout(()=>URL.revokeObjectURL(url),60000);
-    }catch(e){alert('Fotku sa nepodarilo uložiť do mobilu: '+(e.message||String(e)))}
+      if(fallbackWindow){
+        fallbackWindow.document.title=fileName;
+        fallbackWindow.document.body.style.margin='0';
+        fallbackWindow.document.body.style.background='#111';
+        fallbackWindow.document.body.innerHTML='<p style="font:16px sans-serif;color:white;padding:14px;margin:0">Ak sa fotka nestiahla automaticky, podrž ju prstom a zvoľ Uložiť obrázok.</p><img src="'+url+'" style="display:block;max-width:100%;height:auto;margin:auto">';
+      }else{
+        alert('Sťahovanie bolo spustené. Ak fotku nevidíš v Galérii, pozri priečinok Stiahnuté / Downloads.');
+      }
+      setTimeout(()=>URL.revokeObjectURL(url),180000);
+    }catch(e){
+      if(fallbackWindow)fallbackWindow.close();
+      alert('Fotku sa nepodarilo uložiť do mobilu: '+(e.message||String(e)))
+    }
   }
   async function deletePhoto(id){
     if(!active||!id)return;
