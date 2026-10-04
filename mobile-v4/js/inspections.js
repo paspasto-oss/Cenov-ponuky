@@ -468,6 +468,7 @@
     renderProgress();
     const titles=['','1. Zákazník','2. Objekt','3. Vykurovanie a výkon','4. Montáž a materiál','5. Fotodokumentácia','6. Súhrn'];
     document.getElementById('inspWizardTitle').textContent=titles[step]||'Obhliadka';
+    if(window.SpektraSetActiveContext)window.SpektraSetActiveContext('Obhliadka',active.customer?.name||'',titles[step]||'rozpracovaná');
     const body=document.getElementById('inspWizardBody');
     body.innerHTML=step===1?stepCustomer():step===2?stepBuilding():step===3?stepTechnical():step===4?stepInstallation():step===5?stepPhotos():stepSummary();
   }
@@ -484,6 +485,7 @@
     let obj=active;
     for(let i=0;i<parts.length-1;i++){if(!obj[parts[i]]||typeof obj[parts[i]]!=='object')obj[parts[i]]={};obj=obj[parts[i]]}
     obj[parts[parts.length-1]]=value;
+    if(path==='customer.name'&&window.SpektraSetActiveContext)window.SpektraSetActiveContext('Obhliadka',value,'1. Zákazník');
     active._dirty=true;
     saveLocal(active);
     if(rerender)renderWizard();
@@ -498,7 +500,7 @@
   function stepCustomer(){
     const c=active.customer||{};
     return '<div class="card">'+
-      field('Meno alebo firma *','icName',c.name,'text','onchange="SpektraInspections.input(\'customer.name\',this)"')+
+      field('Meno alebo firma *','icName',c.name,'text','oninput="SpektraInspections.input(\'customer.name\',this)"')+
       '<div class="grid2">'+field('Telefón *','icPhone',c.phone,'tel','onchange="SpektraInspections.input(\'customer.phone\',this)"')+field('E-mail','icEmail',c.email,'email','onchange="SpektraInspections.input(\'customer.email\',this)"')+'</div>'+
       field('Adresa realizácie *','icAddress',c.address,'text','onchange="SpektraInspections.input(\'customer.address\',this)"')+
       '<div class="field"><label>Poznámka k zákazníkovi</label><textarea onchange="SpektraInspections.input(\'customer.notes\',this)">'+esc(c.notes||'')+'</textarea></div>'+
