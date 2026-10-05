@@ -21,6 +21,7 @@
 </style>
 <link rel="stylesheet" href="js/quote-list-summary.css?v=20261005-list1">
 <script src="js/quote-list-summary.js?v=20261005-list1"></script>
+<script src="js/pdf-banners.js?v=20261005-universal1"></script>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
@@ -2615,11 +2616,7 @@ async function handleCustomBanner(file){
   }
 }
 function getPdfBannerType(){
-  if(current.category==='heat_pump')return 'heatpump';
-  if(current.category==='air_conditioning')return 'airconditioning';
-  if(current.category==='boiler'&&current.boiler_type==='gas')return 'gas_boiler';
-  if(current.category==='boiler'&&['pellet','biomass'].includes(current.boiler_type))return 'biomass';
-  return 'generic';
+  return SpektraPdfBanners.type(current||{});
 }
 function absolutePdfUrl(url){
   if(!url)return null;
@@ -2639,16 +2636,7 @@ function quoteRowIllustration(i,installationItem=null){
 }
 function getPdfBannerUrl(){
   ensurePdfTemplateState();
-  if(current.pdf_banner_mode==='none')return null;
-  if(current.pdf_banner_mode==='custom'&&current.pdf_banner_url)return absolutePdfUrl(current.pdf_banner_url);
-  const type=getPdfBannerType();
-  const fallback={
-    heatpump:'assets/pdf-banners/heatpump.jpg',
-    airconditioning:'assets/pdf-banners/airconditioning.jpg',
-    gas_boiler:'assets/pdf-banners/gas-boiler.jpg',
-    biomass:'assets/pdf-banners/biomass.jpg'
-  };
-  return absolutePdfUrl(pdfBannerCatalog[type]||fallback[type]||current.device?.image_url||null);
+  return absolutePdfUrl(SpektraPdfBanners.select(current||{},pdfBannerCatalog).url);
 }
 function pdfPresentationSubtitle(){
   const type=getPdfBannerType();
@@ -3358,7 +3346,9 @@ function offerHtmlPresentation(){
 
   const bannerHtml=current.pdf_banner_mode==='none'
     ? '<div style="height:22mm;background:linear-gradient(90deg,#eaf4f9,#fff);border-bottom:1px solid #d7e6ef"></div>'
-    : '<div style="height:58mm;position:relative;overflow:hidden;background:#eaf4f9">'+
+    : SpektraPdfBanners.isUniversal(bannerUrl)
+      ? SpektraPdfBanners.artworkHtml(bannerUrl)
+      : '<div style="height:58mm;position:relative;overflow:hidden;background:#eaf4f9">'+
         (bannerUrl?'<img crossorigin="anonymous" src="'+esc(bannerUrl)+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center">':'')+
         '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,.97) 0%,rgba(255,255,255,.90) 22%,rgba(255,255,255,.42) 50%,rgba(255,255,255,.08) 78%,rgba(255,255,255,.02) 100%)"></div>'+
         '<div style="position:absolute;left:9mm;top:7mm;width:80mm">'+
@@ -3509,6 +3499,9 @@ async function inlineImagesForPdf(root){
         setTimeout(done,2500);
       });
     }catch(e){
+      if(img.closest('[data-pdf-banner="universal"]')){
+        throw new Error('Univerzálny banner sa nenačítal. Skontrolujte pripojenie a obnovte aplikáciu.');
+      }
       console.warn('PDF image inline failed',src,e);
     }
   }
