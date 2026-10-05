@@ -1,0 +1,57 @@
+name: Validate quote material editor
+on:
+  push:
+    branches: [feat/quote-material-editor]
+permissions:
+  contents: write
+concurrency:
+  group: quote-material-editor-validation
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: github.repository == 'paspasto-oss/Cenov-ponuky' && github.ref == 'refs/heads/feat/quote-material-editor'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply exact locally tested patch
+        run: |
+          python3 - <<'PY'
+          import base64, gzip, hashlib, json, pathlib, subprocess
+          p=pathlib.Path('.github/patches/quote-material-editor.patch.gz.b64')
+          encoded=p.read_text().strip()
+          corrections=pathlib.Path('.github/patches/material-transfer-corrections.json')
+          if corrections.exists():
+            for change in json.loads(corrections.read_text()):
+              assert encoded.count(change['old'])==1
+              encoded=encoded.replace(change['old'],change['new'])
+          patch=gzip.decompress(base64.b64decode(encoded,validate=True))
+          assert hashlib.sha256(patch).hexdigest()=='d27920ab15eef7deb571d034820f380e65669a856e164ac83df51e6432c47274'
+          assert subprocess.check_output(['git','hash-object','mobile-v4/app.html'],text=True).strip()=='0dc2dea5ee896ccad086f5edb6c2344e3efb4b96'
+          subprocess.run(['git','apply','--check','-'],input=patch,check=True)
+          subprocess.run(['git','apply','-'],input=patch,check=True)
+          PY
+      - name: Regression tests
+        run: |
+          set -o pipefail
+          node --test mobile-v4/tests/*.cjs | tee /tmp/material-tests.txt
+      - name: Commit tested code on isolated branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/patches/quote-material-editor.patch.gz.b64 .github/workflows/material-editor-apply.yml
+          if test -f .github/patches/material-transfer-corrections.json; then git rm .github/patches/material-transfer-corrections.json; fi
+          git add index.html mobile-v4
+          git commit -m 'Add editable quote materials with persistent quantities, exclusions and catalog additions'
+          git push origin HEAD:feat/quote-material-editor
+          git rev-parse HEAD
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: material-editor-validation
+          path: |
+            .github/patches/quote-material-editor.patch.gz.b64
+            /tmp/material-tests.txt
+          retention-days: 1
