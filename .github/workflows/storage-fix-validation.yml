@@ -1,0 +1,23 @@
+name: Storage repair validation
+on:
+  push:
+    branches: [fix/atomic-quote-storage]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test mobile-v4/tests/*.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: storage-repair-source
+          path: |
+            mobile-v4
+            index.html
+          retention-days: 1
