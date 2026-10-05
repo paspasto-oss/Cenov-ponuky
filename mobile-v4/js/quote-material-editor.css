@@ -1,0 +1,17 @@
+/* Shared quote material editor, sized for both field phones and desktop. */
+.quoteMaterialTools{border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0;background:var(--p2)}
+.quoteMaterialSearchGrid{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:10px}
+.quoteMaterialResults{display:grid;gap:8px;max-height:420px;overflow:auto;margin-top:8px;overscroll-behavior:contain}
+.quoteStockResult{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--p);border:1px solid var(--line);border-radius:10px;padding:10px}
+.quoteStockResult>div{min-width:0;overflow-wrap:anywhere}.quoteStockResult small{display:block;color:var(--m);margin-top:4px}.quoteStockResult button{flex-shrink:0;min-height:44px}
+.quoteMaterialRow{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(280px,44%);align-items:start!important}
+.quoteMaterialInfo{min-width:0;overflow-wrap:anywhere}.quoteMaterialInfo small{display:block;margin-top:5px}
+.quoteMaterialNumbers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;min-width:0}
+.quoteMaterialNumbers label{display:block;min-width:0;font-size:11px;font-weight:700;color:var(--m)}
+.quoteMaterialNumbers input{padding:9px 8px;font-size:16px;text-align:right;margin-top:4px;min-height:44px}
+.quoteFixedQty{display:block;padding:14px 5px;text-align:right;color:var(--t);font-size:16px}
+.quoteMaterialLineTotal{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13px;padding-top:4px}
+.quoteRemoveMaterial{color:var(--r)!important;min-height:44px;min-width:82px}
+#quoteMaterialStatus{margin:8px 0;font-size:12px;padding:8px;border-radius:8px;overflow-wrap:anywhere}
+#bomDetails summary:focus-visible,.quoteMaterialTools button:focus-visible,.quoteMaterialRow button:focus-visible,.quoteMaterialTools input:focus-visible,.quoteMaterialRow input:focus-visible{outline:2px solid var(--b);outline-offset:2px}
+@media(max-width:720px){.quoteMaterialRow{grid-template-columns:minmax(0,1fr)}.quoteMaterialSearchGrid{grid-template-columns:minmax(0,1fr) 90px}.quoteStockResult{align-items:flex-start}.quoteStockResult b{font-size:13px}.quoteMaterialTools{padding:9px}.quoteMaterialNumbers{gap:6px}}
