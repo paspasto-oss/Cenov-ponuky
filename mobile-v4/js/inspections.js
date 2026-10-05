@@ -1997,9 +1997,12 @@
     current.inspection_extra_work=[...(active.extra_work||[])];
     current.inspection_notes=active.notes||null;
 
-    await upsertCurrent();
-    if(current.remote_id){await SpektraDB.linkInspectionQuote(active.remote_id,current.remote_id,'generated');active.status='converted';active._dirty=false;saveLocal(active)}
-    renderFinal();go('step5');
+    const quoteId=current.id,sourceInspection=active;
+    const saved=await upsertCurrent();
+    const savedQuote=quotes.find(q=>q.id===quoteId);
+    if(!saved?.ok||!saved.synced){alert('Ponuka zostala miestnym konceptom. Prepojenie obhliadky nebolo potvrdené. '+(saved?.error||''));return;}
+    if(savedQuote?.remote_id){await SpektraDB.linkInspectionQuote(sourceInspection.remote_id,savedQuote.remote_id,'generated');sourceInspection.status='converted';sourceInspection._dirty=false;saveLocal(sourceInspection)}
+    if(current?.id===quoteId){renderFinal();go('step5');}
     alert(missing?'Ponuka bola vytvorená, ale niektorým materiálovým položkám chýba cena. Doplň ich pred odoslaním.':'Orientačná cenová ponuka bola vytvorená z obhliadky.');
   }
   async function createQuote(){
@@ -2066,12 +2069,15 @@
     toggleLoss();
     renderChoices();
 
-    await upsertCurrent();
-    if(current.remote_id){
-      await SpektraDB.linkInspectionQuote(active.remote_id,current.remote_id,'generated');
-      active.status='converted';active._dirty=false;saveLocal(active);
+    const quoteId=current.id,sourceInspection=active;
+    const saved=await upsertCurrent();
+    const savedQuote=quotes.find(q=>q.id===quoteId);
+    if(!saved?.ok||!saved.synced){alert('Koncept bol zachovaný v zariadení. Prepojenie obhliadky nebolo potvrdené. '+(saved?.error||''));return;}
+    if(savedQuote?.remote_id){
+      await SpektraDB.linkInspectionQuote(sourceInspection.remote_id,savedQuote.remote_id,'generated');
+      sourceInspection.status='converted';sourceInspection._dirty=false;saveLocal(sourceInspection);
     }
-    go('step3');
+    if(current?.id===quoteId)go('step3');
     alert('Z obhliadky bol vytvorený draft cenovej ponuky. Vyber značku a zariadenie; ostatný editor ponuky funguje ďalej po starom.');
   }
 

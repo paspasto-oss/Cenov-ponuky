@@ -19,9 +19,11 @@
 .hidden{display:none!important}
 @media(max-width:720px){.wrap{padding:9px}.actions{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.choiceGrid{grid-template-columns:repeat(2,1fr)}.priceBox{grid-template-columns:1fr}.sendgrid{grid-template-columns:1fr}.hero h1{font-size:21px}.quoteBackBar{bottom:calc(62px + env(safe-area-inset-bottom));width:calc(100% - 12px);border-radius:12px;padding:6px}#step1,#step2,#step3,#step4,#step5{padding-bottom:92px}}
 </style>
-<script src="js/idb-stock.js?v=20260926-scale100k2"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/idb-stock.js?v=20260926-scale100k2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="js/db.js?v=20260930-profitfix1"></script>
+<script src="js/quote-storage.js?v=20261005-atomic1"></script>
+<script src="js/db.js?v=20261005-atomic1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
@@ -56,6 +58,7 @@
       </div>
       <div id="mainAuthMsg" class="sub" style="margin-top:8px"></div>
     </div>
+    <div id="quoteStorageIssues" class="card hidden"></div>
     <div class="stats">
       <div class="stat"><small>Ponuky spolu</small><strong id="stAll">0</strong></div>
       <div class="stat"><small>Rozpracované</small><strong id="stDraft">0</strong></div>
@@ -609,20 +612,22 @@ async function mainRegister(){
   const msg=document.getElementById('mainAuthMsg');
   try{
     const r=await SpektraDB.signUp(document.getElementById('mainAuthEmail').value,document.getElementById('mainAuthPassword').value,'Spektra');
-    msg.textContent=r.session?'Účet vytvorený a prihlásený.':'Účet vytvorený. Potvrď e-mail, ak to Supabase vyžaduje, a potom sa prihlás.';
-    if(r.session){await mainLogin();}
+    msg.textContent='Účet vytvorený. Potvrďte e-mail a požiadajte administrátora Spektra o aktiváciu.';
+    if(r.session){await SpektraDB.signOut();}
   }catch(e){msg.textContent='Chyba: '+e.message}
 }
 let quoteSyncBusy=false;
+let quoteSyncLastError=null;
 
 function remoteQuoteToLocal(r){
   const w=r.workflow||{};
-  const cust=Array.isArray(r.customers)?(r.customers[0]||{}):(r.customers||{});
-  const vatPct=Number(r.vat_pct||23), net=Number(r.subtotal_ex_vat||0);
+  const cust=r.customer_snapshot?.name?{...r.customer_snapshot,notes:r.customer_snapshot.note}:
+    (Array.isArray(r.customers)?(r.customers[0]||{}):(r.customers||{}));
+  const vatPct=Number(r.vat_pct??23), net=Number(r.subtotal_ex_vat||0);
   const items=(r.quote_items||[]).slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).map(i=>{
     const st=i.pohoda_code?(stockByCodeMap.get(norm(i.pohoda_code))||null):null;
     return {
-      role:i.role||null,name:i.name,qty:Number(i.qty||1),unit:i.unit||'ks',
+      role:i.role||null,name:i.name,qty:Number(i.qty??1),unit:i.unit||'ks',pohoda_stock_id:i.pohoda_stock_id??null,stored_metadata:i.metadata||{},
       pohoda:st,pohoda_code:i.pohoda_code||null,
       price:i.sell_price_ex_vat==null?null:Number(i.sell_price_ex_vat),
       cost:i.purchase_price_ex_vat==null?null:Number(i.purchase_price_ex_vat),
@@ -649,56 +654,73 @@ function remoteQuoteToLocal(r){
     pdf_images_enabled:!!w.pdf_images_enabled,pdf_images_user_disabled:!!w.pdf_images_user_disabled,
     pdf_images:Array.isArray(w.pdf_images)?w.pdf_images:[],
     items,net,vat_pct:vatPct,vat:net*vatPct/100,total:Number(r.total_inc_vat||0),
-    price_complete:!!r.price_complete,_server_quote_no:true,_dirty:false
+    price_complete:!!r.price_complete,_server_quote_no:true,_dirty:false,
+    sync_version:r.sync_version==null?null:Number(r.sync_version),_server_status:r.status,
+    _server_updated_at:r.updated_at,issued_on:r.issued_on,valid_until:r.valid_until
   };
 }
 
 function mergeCloudQuotes(remoteRows){
-  const byId=new Map(quotes.map(q=>[q.id,q]));
-  remoteRows.map(remoteQuoteToLocal).forEach(rq=>{
-    const local=byId.get(rq.id);
-    if(!local || !local._dirty || (rq.updated||0)>=(local.updated||0))byId.set(rq.id,rq);
-  });
-  quotes=[...byId.values()];
-  localStorage.setItem(QUOTES_KEY,JSON.stringify(quotes));
+  quoteStorage().merge(remoteRows.map(remoteQuoteToLocal));
 }
 
 async function syncQuotes(pushLocal=true,silent=false){
   if(quoteSyncBusy)return;
-  const el=document.getElementById('quoteSyncState');
-  if(!window.SpektraDB?.isAuthenticated()){
-    if(el)el.textContent='Ponuky: lokálne';
-    if(!silent)renderHome();
-    return;
-  }
+  if(!window.SpektraDB?.isAuthenticated()){renderQuoteStorageState();return;}
   quoteSyncBusy=true;
   try{
-    if(el)el.textContent='Ponuky: sync…';
-    if(pushLocal){
-      const pending=quotes.filter(q=>!q.remote_id||q._dirty);
-      for(let i=0;i<pending.length;i++){
-        const q=pending[i];
-        if(el)el.textContent='Ponuky ↑ '+(i+1)+'/'+pending.length;
-        try{
-          const ids=await SpektraDB.saveQuote(q);
-          q.remote_id=ids.remote_id;q.remote_customer_id=ids.remote_customer_id;
-          q.quote_no=ids.quote_no||q.quote_no;q._server_quote_no=true;q._dirty=false;delete q._sync_error;
-        }catch(e){
-          console.error('Quote upload failed',q.quote_no,e);
-          q._sync_error=e.message||String(e);
-        }
-      }
-      localStorage.setItem(QUOTES_KEY,JSON.stringify(quotes));
-    }
-    const remote=await SpektraDB.listQuotes();
-    mergeCloudQuotes(remote);
-    if(el)el.textContent='Ponuky: '+remote.length+' online';
-    renderHome();
+    // Pull first. Never overwrite a dirty local offer merely because a server
+    // timestamp is newer; CAS/version checks determine whether it can be saved.
+    mergeCloudQuotes(await SpektraDB.listQuotes());
+    if(pushLocal){await quoteStorage().flush();mergeCloudQuotes(await SpektraDB.listQuotes());}
+    quoteSyncLastError=null;renderHome();
   }catch(e){
-    console.error('Quote sync failed',e);
-    if(el)el.textContent='Ponuky: chyba';
-    if(!silent)alert('Synchronizácia ponúk zlyhala: '+e.message);
-  }finally{quoteSyncBusy=false}
+    quoteSyncLastError=e.message||String(e);
+    const el=document.getElementById('quoteSyncState');if(el)el.textContent='Ponuky: chyba spojenia';
+    if(!silent)alert('Synchronizácia zlyhala. Miestne údaje zostali zachované: '+e.message);
+  }finally{quoteSyncBusy=false;renderQuoteStorageState();}
+}
+
+let quoteStorageController=null;
+function quoteStorage(){
+  if(!quoteStorageController)quoteStorageController=SpektraQuoteStorage.create({
+    getRows:()=>quotes,setRows:value=>{quotes=value},getCurrent:()=>current,
+    persist:()=>localStorage.setItem(QUOTES_KEY,JSON.stringify(quotes)),
+    authenticated:()=>!!window.SpektraDB?.isAuthenticated(),
+    send:(q,requestId)=>SpektraDB.saveQuote(q,requestId),
+    onState:()=>{renderHome();renderQuoteStorageState()},
+    onError:e=>{const el=document.getElementById('quoteSyncState');if(el)el.textContent='Miestne uloženie zlyhalo';console.error(e)}
+  });
+  return quoteStorageController;
+}
+function renderQuoteStorageState(){
+  const pending=quotes.filter(q=>q._dirty||q._outbox);
+  const conflicts=quotes.filter(q=>q._conflict);
+  const errors=quotes.filter(q=>q._sync_error&&!q._conflict);
+  const el=document.getElementById('quoteSyncState');
+  if(el)el.textContent=conflicts.length?'Ponuky: '+conflicts.length+' konfliktov':
+    errors.length?'Ponuky: '+errors.length+' chýb uloženia':pending.length?'Ponuky: '+pending.length+' čaká na uloženie':
+    quoteSyncLastError?'Ponuky: chyba spojenia':
+    window.SpektraDB?.isAuthenticated()?'Ponuky: synchronizované':'Ponuky: miestne';
+  const box=document.getElementById('quoteStorageIssues');if(!box)return;
+  const issues=quotes.filter(q=>q._conflict||q._sync_error||q._needs_review);
+  box.classList.toggle('hidden',!issues.length);
+  box.innerHTML=issues.length?'<h2>Uloženie vyžaduje pozornosť</h2>'+issues.map(q=>
+    '<div class="notice warn" style="margin-bottom:8px"><b>'+esc(q.quote_no||'Koncept')+' — '+esc(q.customer?.name||'')+'</b><br>'+esc(q._needs_review?'Miestna kópia na kontrolu. Otvorte ju a uložte ako koncept.':q._sync_error||'Konflikt verzií.')+
+    (q._conflict?'<br><button class="btn ghost small" type="button" data-recover-quote="'+esc(q.id)+'">Zachovať kópiu a načítať serverovú verziu</button>':'')+'</div>').join(''):'';
+  box.querySelectorAll('[data-recover-quote]').forEach(b=>b.addEventListener('click',()=>recoverQuoteStorage(b.dataset.recoverQuote)));
+}
+async function recoverQuoteStorage(id){
+  if(!confirm('Miestne zmeny zachovám ako samostatný koncept na kontrolu. Pôvodnú ponuku načítam zo servera. Pokračovať?'))return;
+  try{
+    const rows=await SpektraDB.listQuotes();
+    const local=quotes.find(q=>q.id===id);
+    const remote=rows.find(r=>r.id===local?.remote_id||r.local_id===id);
+    if(!remote)throw new Error('Serverová ponuka sa nenašla. Miestne zmeny zostali zachované.');
+    quoteStorage().recover(id,remoteQuoteToLocal(remote));
+    if(current?.id===id){current=JSON.parse(JSON.stringify(quotes.find(q=>q.id===id)));go('home');}
+    alert('Pôvodná ponuka je obnovená. Miestne zmeny nájdete v ponuke KÓPIA ako koncept na kontrolu.');
+  }catch(e){alert(e.message)}
 }
 
 function quoteCreatedTs(q){
@@ -869,7 +891,7 @@ function filterHeatPumpDhwDevices(devices){
   return devices;
 }
 
-function startWizard(){current={id:'q_'+Date.now(),quote_no:'NÁVRH-'+String(Date.now()).slice(-6),_server_quote_no:false,_dirty:true,status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_template:'presentation',pdf_banner_mode:'auto',pdf_banner_url:null,pdf_banner_path:null,pdf_images_enabled:false,pdf_images_user_disabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;boilerType='gas';acMode='single';multiCount=2;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
+function startWizard(){current={id:SpektraQuoteStorage.uuid(),quote_no:'NÁVRH-'+String(Date.now()).slice(-6),_server_quote_no:false,_dirty:true,status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_template:'presentation',pdf_banner_mode:'auto',pdf_banner_url:null,pdf_banner_path:null,pdf_images_enabled:false,pdf_images_user_disabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;boilerType='gas';acMode='single';multiCount=2;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
 function nextBuilding(){let name=s(document.getElementById('cName').value),phone=s(document.getElementById('cPhone').value),addr=s(document.getElementById('cAddress').value);if(!name||!phone||!addr){alert('Vyplň meno, telefón a adresu realizácie.');return}current.customer={name,phone,email:s(document.getElementById('cEmail').value),address:addr,note:s(document.getElementById('cNote').value)};renderExternalDhwTankPicker();go('step2')}
 function toggleLoss(){let known=document.getElementById('hasLoss').value==='yes';document.getElementById('lossKnown').classList.toggle('hidden',!known);document.getElementById('lossEstimate').classList.toggle('hidden',known)}
 function nextCategory(){let known=document.getElementById('hasLoss').value==='yes',loss=+document.getElementById('heatLoss').value||0,area=+document.getElementById('area').value||0;if(known&&loss<=0){alert('Zadaj tepelnú stratu.');return}if(!known&&area<=0){alert('Zadaj vykurovanú plochu.');return}const dhwSolution=current.category==='air_conditioning'?'none':document.getElementById('dhwMode').value;const externalTankCode=dhwSolution==='external'?(document.getElementById('externalDhwTankCode')?.value||EXTERNAL_DHW_TANK_200.code):null;current.building={known_loss:known,heat_loss_kw:known?loss:null,area_m2:known?null:area,w_per_m2:+document.getElementById('buildingClass').value,heating:document.getElementById('heating').value,dhw_solution:dhwSolution,with_external_dhw_tank:dhwSolution==='external',external_dhw_tank_code:externalTankCode};renderChoices();go('step3')}
@@ -2543,27 +2565,22 @@ async function refreshQuoteFromCatalog(button=null){
 
 function pickAlternative(id){if(isQuotePriceLocked())return;let d=category==='air_conditioning'?(acMode==='multi'?acMultiOutdoorCandidates(brand,multiCount).find(x=>x.id===id):acStockCandidates(brand).find(x=>x.id===id)):deviceCatalog.find(x=>x.id===id);if(!d)return;recommendation={...d};current.device={...d};ensurePdfImagesState();buildBOM();renderRecommendation()}
 async function upsertCurrent(){
-  current.updated=Date.now();current._dirty=true;
-  let i=quotes.findIndex(q=>q.id===current.id);
-  if(i>=0)quotes[i]=JSON.parse(JSON.stringify(current));else quotes.push(JSON.parse(JSON.stringify(current)));
-  persist();
-  if(window.SpektraDB?.isAuthenticated()){
-    try{
-      const ids=await SpektraDB.saveQuote(current);
-      current.remote_id=ids.remote_id;current.remote_customer_id=ids.remote_customer_id;
-      current.quote_no=ids.quote_no||current.quote_no;current._server_quote_no=true;current._dirty=false;delete current._sync_error;
-      i=quotes.findIndex(q=>q.id===current.id);if(i>=0)quotes[i]=JSON.parse(JSON.stringify(current));
-      localStorage.setItem(QUOTES_KEY,JSON.stringify(quotes));renderHome();
-      const el=document.getElementById('quoteSyncState');if(el)el.textContent='Ponuky: synchronizované';
-    }catch(e){
-      current._sync_error=e.message||String(e);
-      i=quotes.findIndex(q=>q.id===current.id);if(i>=0)quotes[i]=JSON.parse(JSON.stringify(current));
-      localStorage.setItem(QUOTES_KEY,JSON.stringify(quotes));console.error('Online quote save failed',e);
-      const el=document.getElementById('quoteSyncState');if(el)el.textContent='Ponuky: chyba sync';
-    }
-  }
+  if(!current)return {ok:false,synced:false,error:'Chýba ponuka.'};
+  const edited=current;
+  const result=await quoteStorage().save(edited);
+  if(!result.ok&&!result.conflict)console.warn('Quote save incomplete',result.error);
+  return result;
 }
-async function saveDraft(){if(isQuotePriceLocked())return;current.status='draft';await upsertCurrent();alert(window.SpektraDB?.isAuthenticated()?'Ponuka bola uložená a synchronizovaná.':'Ponuka bola uložená lokálne. Po pripojení sa synchronizuje.')}
+
+async function saveDraft(){
+  if(isQuotePriceLocked())return;
+  current.status='draft';
+  const result=await upsertCurrent();
+  alert(result?.ok&&result.synced?'Ponuka bola uložená a synchronizovaná.':
+    result?.ok?'Ponuka bola uložená v tomto zariadení. Čaká na synchronizáciu.':
+    'Synchronizácia nebola potvrdená. '+(result?.error||'Skontrolujte stav uloženia.'));
+}
+
 async function finishQuote(){
   if(isQuotePriceLocked())return;
  if(current.installation_tier==='economy'&&!current.economy_ready){alert('Montáž EKONOM je možné použiť iba po potvrdení všetkých prípravných podmienok zákazníka.');return}
@@ -2934,9 +2951,20 @@ function openQuote(id){
 }
 async function approveQuote(){
   if(!current)return;
-  current.status='approved';await upsertCurrent();renderFinal();
-  alert(window.SpektraDB?.isAuthenticated()?'Ponuka bola schválená a synchronizovaná na všetkých zariadeniach.':'Ponuka bola schválená lokálne; po pripojení sa synchronizuje.');
+  if(!current.price_complete||!current.items?.length){alert('Schváliť možno iba ponuku s kompletnými cenami.');return;}
+  const edited=current,previousStatus=current.status;
+  current.status='approved';const result=await upsertCurrent();
+  if(!result?.ok&&/^(22|23502|23514)/.test(result?.code||'')){
+    edited.status=previousStatus;const local=quotes.find(q=>q.id===edited.id);
+    if(local){local.status=previousStatus;local._outbox=null;}
+    persist();
+  }
+  if(current?.id===edited.id)renderFinal();
+  alert(result?.ok&&result.synced?'Ponuka bola schválená a server potvrdil uloženie.':
+    result?.ok?'Schválenie je uložené iba v tomto zariadení. Čaká na synchronizáciu.':
+    'Server schválenie nepotvrdil. '+(result?.error||'Skontrolujte stav uloženia.'));
 }
+
 function message(){
   const sub=calculateSubsidy();
   let subsidyText='';
@@ -2987,8 +3015,8 @@ async function shareWA(){
 function offerHtmlTechnical(){
   ensureHeatPumpInstallationItem();
   recalcQuoteTotalsFromItems();
-  const issueDate=new Date();
-  const validDate=new Date(issueDate.getTime()+14*24*60*60*1000);
+  const issueDate=current.issued_on?new Date(current.issued_on+'T12:00:00'):new Date(current.created||Date.now());
+  const validDate=current.valid_until?new Date(current.valid_until+'T12:00:00'):new Date(issueDate.getTime()+14*24*60*60*1000);
   const issue=issueDate.toLocaleDateString('sk-SK');
   const valid=validDate.toLocaleDateString('sk-SK');
   const net=current.net||0;
@@ -3218,8 +3246,8 @@ function offerHtmlPresentation(){
   ensureHeatPumpInstallationItem();
   recalcQuoteTotalsFromItems();
 
-  const issueDate=new Date();
-  const validDate=new Date(issueDate.getTime()+14*24*60*60*1000);
+  const issueDate=current.issued_on?new Date(current.issued_on+'T12:00:00'):new Date(current.created||Date.now());
+  const validDate=current.valid_until?new Date(current.valid_until+'T12:00:00'):new Date(issueDate.getTime()+14*24*60*60*1000);
   const issue=issueDate.toLocaleDateString('sk-SK');
   const valid=validDate.toLocaleDateString('sk-SK');
   const net=Number(current.net||0);
@@ -3866,6 +3894,7 @@ loadConfig().then(async()=>{
   renderHome();
   setInterval(()=>{if(!document.hidden)syncQuotes(false,true)},30000);
 });
+window.addEventListener('online',()=>syncQuotes(true,true));
 window.addEventListener('focus',()=>syncQuotes(false,true));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncQuotes(false,true)});
 </script>

@@ -1,0 +1,26 @@
+name: Application regression tests
+on:
+  push:
+    branches: [main, fix/atomic-quote-storage]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: application-tests-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compile application modules
+        run: |
+          node --check mobile-v4/js/db.js
+          node --check mobile-v4/js/inspections.js
+          node --check mobile-v4/js/quote-storage.js
+      - name: Test prices, imports and durable quote storage
+        run: node --test mobile-v4/tests/*.cjs

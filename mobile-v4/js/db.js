@@ -13,9 +13,12 @@ window.SpektraDB = (() => {
 
   async function init() {
     if (!configured() || !window.supabase) return { online:false, reason:'not_configured' };
+    if (!client) {
     client = window.supabase.createClient(config().url, config().anonKey, {
       auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
     });
+    client.auth.onAuthStateChange((_event,session)=>{user=session?.user||null});
+    }
     const { data } = await client.auth.getSession();
     user = data?.session?.user || null;
     return { online:true, authenticated:!!user, user };
@@ -26,6 +29,11 @@ window.SpektraDB = (() => {
     const { data, error } = await client.auth.signInWithPassword({ email, password });
     if (error) throw error;
     user = data.user;
+    const profile=await getProfile();
+    if(!profile?.active){
+      await client.auth.signOut({scope:'local'});user=null;
+      throw new Error('Účet čaká na aktiváciu administrátorom Spektra.');
+    }
     return user;
   }
 
@@ -50,7 +58,7 @@ window.SpektraDB = (() => {
 
   async function signOut() {
     if (!client) return;
-    await client.auth.signOut();
+    await client.auth.signOut({scope:'local'});
     user = null;
   }
 
@@ -404,118 +412,36 @@ window.SpektraDB = (() => {
     };
   }
 
-  async function saveQuote(q) {
+  async function saveQuote(q, requestId) {
     if (!client || !user) throw new Error('Online databáza nie je prihlásená.');
-
-    let remoteId=q.remote_id||null;
-    let customerId=q.remote_customer_id||null;
-
-    if(!remoteId && q.id){
-      const {data:existing,error:existingError}=await client.from('quotes')
-        .select('id,customer_id,quote_no')
-        .eq('local_id',q.id)
-        .maybeSingle();
-      if(existingError) throw existingError;
-      if(existing){
-        remoteId=existing.id;
-        customerId=existing.customer_id||customerId;
-        q.quote_no=existing.quote_no||q.quote_no;
-        q._server_quote_no=true;
-      }
-    }
-
-    if(!remoteId && !q._server_quote_no){
-      q.quote_no=await nextQuoteNo();
-      q._server_quote_no=true;
-    }
-
-    if (!customerId) {
-      const { data, error } = await client.from('customers').insert({
-        name:q.customer?.name || 'Bez mena',
-        phone:q.customer?.phone || null,
-        email:q.customer?.email || null,
-        address:q.customer?.address || null,
-        notes:q.customer?.note || null,
-        created_by:user.id
-      }).select('id').single();
-      if (error) throw error;
-      customerId = data.id;
-    } else {
-      const { error } = await client.from('customers').update({
-        name:q.customer?.name || 'Bez mena',
-        phone:q.customer?.phone || null,
-        email:q.customer?.email || null,
-        address:q.customer?.address || null,
-        notes:q.customer?.note || null,
-        updated_at:new Date().toISOString()
-      }).eq('id',customerId);
-      if(error) throw error;
-    }
-
-    const quotePayload = {
-      local_id:q.id,
-      quote_no:q.quote_no,
-      customer_id:customerId,
-      status:q.status||'draft',
-      category:q.category||null,
-      brand:q.brand||null,
-      system_type:q.system_type||null,
-      installation_tier:q.installation_tier||'standard',
-      building:q.building||{},
-      device:q.device||{},
-      optional_services:q.optional_services||{},
-      subsidy:q.subsidy||{},
-      workflow:workflowState(q),
-      subtotal_ex_vat:q.net||0,
-      vat_pct:q.vat_pct||23,
-      total_inc_vat:q.total||0,
-      price_complete:!!q.price_complete,
-      updated_by:user.id,
-      updated_at:new Date().toISOString()
+    if (!requestId) throw new Error('Chýba identifikátor uloženia. Obnovte aplikáciu.');
+    const metadataOnly=q.status==='approved'&&q._server_status==='approved';
+    const quotePayload={
+      id:q.remote_id||null,local_id:q.id,customer_id:q.remote_customer_id||null,status:q.status||'draft',
+      category:q.category||null,brand:q.brand||null,system_type:q.system_type||null,
+      installation_tier:q.installation_tier||'standard',building:q.building||{},device:q.device||{},
+      optional_services:q.optional_services||{},subsidy:q.subsidy||{},workflow:workflowState(q),
+      vat_pct:q.vat_pct??23,customer:{name:q.customer?.name||'Bez mena',phone:q.customer?.phone||'',
+        email:q.customer?.email||'',address:q.customer?.address||'',note:q.customer?.note||''},
+      metadata_only:metadataOnly
     };
-
-    if(remoteId){
-      const {error}=await client.from('quotes').update(quotePayload).eq('id',remoteId);
-      if(error) throw error;
-    }else{
-      quotePayload.created_by=user.id;
-      let ins=await client.from('quotes').insert(quotePayload).select('id,quote_no,updated_at').single();
-      if(ins.error && (ins.error.code==='23505'||String(ins.error.message||'').toLowerCase().includes('duplicate'))){
-        q.quote_no=await nextQuoteNo();
-        quotePayload.quote_no=q.quote_no;
-        ins=await client.from('quotes').insert(quotePayload).select('id,quote_no,updated_at').single();
-      }
-      if(ins.error) throw ins.error;
-      remoteId=ins.data.id;
-      q.quote_no=ins.data.quote_no||q.quote_no;
-      q._server_quote_no=true;
+    const items=metadataOnly?[]:(q.items||[]).map((i,n)=>({
+      sort_order:n,role:i.role||null,
+      pohoda_stock_id:Object.prototype.hasOwnProperty.call(i,'pohoda_stock_id')?i.pohoda_stock_id:(i.pohoda?.pohoda_stock_id||null),
+      pohoda_code:i.pohoda?.code||i.pohoda_code||null,name:i.name,qty:i.qty??1,unit:i.unit||'ks',
+      purchase_price_ex_vat:i.cost??null,sell_price_ex_vat:i.price??null,mapping_status:i.mapping_status||null,
+      visible_to_customer:!!i.visible,customer_group:i.customer_group||null,
+      metadata:{...(i.stored_metadata||{}),note:i.note||'',work_scope:i.work_scope||[],
+        price_override:i.price_override===true,cost_override:i.cost_override===true}
+    }));
+    const {data,error}=await client.rpc('save_quote_atomic',{
+      p_quote:quotePayload,p_items:items,p_expected_version:q.sync_version??null,p_request_id:requestId
+    });
+    if(error){
+      const e=new Error(error.message||'Uloženie ponuky zlyhalo.');e.code=error.code;throw e;
     }
-
-    await client.from('quote_items').delete().eq('quote_id',remoteId);
-    if((q.items||[]).length){
-      const payload=q.items.map((i,n)=>({
-        quote_id:remoteId,sort_order:n,role:i.role||null,pohoda_stock_id:i.pohoda?.pohoda_stock_id||null,
-        pohoda_code:i.pohoda?.code||i.pohoda_code||null,name:i.name,qty:i.qty||1,unit:i.unit||'ks',
-        purchase_price_ex_vat:i.cost,sell_price_ex_vat:i.price,mapping_status:i.mapping_status||null,
-        visible_to_customer:!!i.visible,customer_group:i.customer_group||null,
-        metadata:{
-          note:i.note||'',
-          work_scope:i.work_scope||[],
-          price_override:i.price_override===true,
-          cost_override:i.cost_override===true
-        }
-      }));
-      const {error}=await client.from('quote_items').insert(payload);
-      if(error) throw error;
-    }
-    return {
-      remote_id:remoteId,
-      remote_customer_id:customerId,
-      quote_no:q.quote_no,
-      server_quote_no:true
-    };
+    return data;
   }
-
 
   // ------------------------------------------------------------
   // Field inspections / site surveys
