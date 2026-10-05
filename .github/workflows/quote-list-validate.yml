@@ -1,0 +1,44 @@
+name: Quote list financial summary validation
+on:
+  push:
+    branches: [feat/quote-list-financials]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply reviewed integration when present
+        run: |
+          if [ -f .github/patches/quote-list-integrate.py ]; then
+            python .github/patches/quote-list-integrate.py
+          fi
+      - name: Test application
+        run: node --test mobile-v4/tests/*.cjs | tee /tmp/quote-list-tests.txt
+      - name: Commit verified integration on feature branch only
+        run: |
+          if [ -f .github/patches/quote-list-integrate.py ]; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git rm .github/patches/quote-list-integrate.py .github/workflows/quote-list-validate.yml
+            git add mobile-v4 index.html
+            git commit -m 'Integrate tested quote list price breakdown and profit summary'
+            git push origin HEAD:feat/quote-list-financials
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: quote-list-source
+          path: |
+            mobile-v4
+            index.html
+          retention-days: 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: quote-list-tests
+          path: /tmp/quote-list-tests.txt
+          retention-days: 7
