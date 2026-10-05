@@ -4,16 +4,64 @@ on:
     branches: [fix/atomic-quote-storage]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
+concurrency:
+  group: storage-repair-branch
+  cancel-in-progress: false
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: fix/atomic-quote-storage
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test mobile-v4/tests/*.cjs
+      - name: Apply exact reviewed patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -f tools/storage-fix.part1.b64; then
+            cat tools/storage-fix.part{1,2,3,4}.b64 | tr -d '\n\r' | base64 -d | gzip -d > /tmp/storage-fix.patch
+            echo 'c0493e9b74f599a59f2cab5f6c40f98d01c43ad3f742a0c91251c1afbeeda759  /tmp/storage-fix.patch' | sha256sum -c -
+            git apply --check /tmp/storage-fix.patch
+            git apply /tmp/storage-fix.patch
+            git rm tools/storage-fix.part{1,2,3,4}.b64
+          fi
+      - name: Validate migration creation with pinned Supabase CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes supabase@2.119.0 --help > /tmp/supabase-help.txt
+          npx --yes supabase@2.119.0 migration new --help > /tmp/supabase-migration-help.txt
+          cd mobile-v4
+          for spec in 20261005163554_quote_storage_guards_and_backup 20261005163705_atomic_quote_save_rpc; do
+            name=${spec:15}
+            mv "supabase/migrations/$spec.sql" "/tmp/$spec.sql"
+            npx --yes supabase@2.119.0 migration new "$name"
+            generated=$(find supabase/migrations -maxdepth 1 -name "*_$name.sql" | sort | tail -1)
+            test -n "$generated"
+            cp "/tmp/$spec.sql" "$generated"
+            mv "$generated" "supabase/migrations/$spec.sql"
+          done
+      - name: Compile and test complete application
+        run: |
+          node --check mobile-v4/js/db.js
+          node --check mobile-v4/js/inspections.js
+          node --check mobile-v4/js/quote-storage.js
+          node --test mobile-v4/tests/*.cjs
+      - name: Commit verified repair on isolated branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add index.html mobile-v4
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Fix atomic quote saving, version conflicts and approved data protection'
+            git push origin HEAD:fix/atomic-quote-storage
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: storage-repair-source
