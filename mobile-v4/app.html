@@ -19,6 +19,8 @@
 .hidden{display:none!important}
 @media(max-width:720px){.wrap{padding:9px}.actions{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.choiceGrid{grid-template-columns:repeat(2,1fr)}.priceBox{grid-template-columns:1fr}.sendgrid{grid-template-columns:1fr}.hero h1{font-size:21px}.quoteBackBar{bottom:calc(62px + env(safe-area-inset-bottom));width:calc(100% - 12px);border-radius:12px;padding:6px}#step1,#step2,#step3,#step4,#step5{padding-bottom:92px}}
 </style>
+<link rel="stylesheet" href="js/quote-list-summary.css?v=20261005-list1">
+<script src="js/quote-list-summary.js?v=20261005-list1"></script>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
@@ -776,9 +778,10 @@ function renderHome(){
  box.innerHTML=filtered.map(q=>{
    const ref=esc(q.quote_no||q.id||'');
    const date=quoteCreatedTs(q)?new Date(quoteCreatedTs(q)).toLocaleDateString('sk-SK'):'—';
-   return '<div class="row" data-quote-ref="'+ref+'" style="cursor:pointer">'+
-     '<div style="flex:1;min-width:0"><b>'+esc(q.customer?.name||'Bez mena')+'</b><small>'+esc(date)+' · '+esc(q.customer?.address||'Bez adresy')+'<br>'+esc(q.quote_no||'')+' · '+esc(labelCat(q.category))+' · '+esc(q.brand||'')+(q._sync_error?' · ⚠ sync':'')+'</small></div>'+
-     '<div style="display:flex;align-items:center;gap:7px"><span class="badge '+q.status+'">'+labelStatus(q.status)+'</span><button class="btn small quoteEditBtn" type="button" data-quote-ref="'+ref+'">Upraviť</button></div>'+
+   return '<div class="row quoteListRow" data-quote-ref="'+ref+'" style="cursor:pointer">'+
+     '<div class="quoteListBody"><b>'+esc(q.customer?.name||'Bez mena')+'</b><small>'+esc(date)+' · '+esc(q.customer?.address||'Bez adresy')+'</small>'+
+     '<div class="quoteListMeta"><span class="quoteListCode">'+esc(q.quote_no||'')+' · '+esc(labelCat(q.category))+' · '+esc(q.brand||'')+(q._sync_error?' · ⚠ sync':'')+'</span>'+SpektraQuoteSummary.html(q)+'</div></div>'+
+     '<div class="quoteListActions"><span class="badge '+esc(q.status)+'">'+labelStatus(q.status)+'</span><button class="btn small quoteEditBtn" type="button" data-quote-ref="'+ref+'">Upraviť</button></div>'+
    '</div>';
  }).join('');
  box.querySelectorAll('.row[data-quote-ref]').forEach(row=>row.addEventListener('click',e=>{
@@ -2318,28 +2321,8 @@ function setSubsidyProgram(program){
   upsertCurrent();
 }
 
-function quoteProfitStats(){
-  const items=Array.isArray(current?.items)?current.items:[];
-  let sales=0,knownCost=0;
-  const missingCost=[];
-  for(const i of items){
-    const qty=Number(i.qty||0);
-    const price=i.price==null?null:Number(i.price);
-    const cost=i.cost==null?null:Number(i.cost);
-    if(price!=null&&Number.isFinite(price))sales+=price*qty;
-    const explicitCost=i.cost_override===true;
-    const hasKnownCost=cost!=null&&Number.isFinite(cost)&&(explicitCost||cost>0);
-    if(hasKnownCost){
-      knownCost+=cost*qty;
-    }else if(qty>0&&price!=null&&Number(price)!==0&&i.mapping_status!=='included_in_installation'){
-      missingCost.push(i);
-    }
-  }
-  const complete=missingCost.length===0;
-  const gross=complete?sales-knownCost:null;
-  const margin=complete&&sales>0?gross/sales*100:null;
-  const markup=complete&&knownCost>0?gross/knownCost*100:null;
-  return {sales,knownCost,gross,margin,markup,missingCost,complete};
+function quoteProfitStats(q=current){
+  return SpektraQuoteSummary.calculate(q||{});
 }
 function pct(v){
   return v==null||!Number.isFinite(Number(v))?'—':new Intl.NumberFormat('sk-SK',{minimumFractionDigits:1,maximumFractionDigits:1}).format(Number(v))+' %';
@@ -2356,7 +2339,7 @@ function renderInternalProfit(){
   if(warning){
     warning.classList.toggle('hidden',!stats.missingCost.length);
     if(stats.missingCost.length){
-      warning.innerHTML='<b>Pozor:</b> pri '+stats.missingCost.length+' položkách chýba nákupný náklad. Zobrazený zisk je preto vyšší než skutočný. Chýba: <b>'+
+      warning.innerHTML='<b>Pozor:</b> pri '+stats.missingCost.length+' položkách chýba nákupný náklad. Zisk je označený ako neúplný. Chýba: <b>'+
         stats.missingCost.slice(0,5).map(i=>esc(customerText(i.name))).join(', ')+'</b>'+
         (stats.missingCost.length>5?' a ďalších '+(stats.missingCost.length-5)+'.':'.');
     }
