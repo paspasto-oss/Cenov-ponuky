@@ -1,15 +1,15 @@
-# PDF 1 – dynamické bannery
+# Presentation PDF headers
 
-Prezentačná šablóna PDF 1 vyberá banner podľa typu zariadenia.
+Automatic selection is defined by `js/pdf-banners.js` and used by `getPdfBannerUrl()`.
 
-Plánované finálne fotografie:
+- `heatpump.jpg`: heat pumps (existing banner unchanged).
+- `airconditioning.jpg`: air conditioners (existing banner unchanged).
+- `gas-boiler.jpg`: gas boilers (existing banner unchanged).
+- `biomass.jpg`: pellet / biomass boilers (existing banner unchanged).
+- `default-offer.webp`: user-approved universal artwork, 1500 × 500 (3:1), optimized from the supplied 2172 × 724 PNG. Includes the SPEKTRA INSTALL logo and the exact approved wording: **Riešenie na mieru** / **Vykurovanie · úsporné · overené**.
 
-- `heatpump.jpg` – moderný rodinný dom s tepelným čerpadlom
-- `airconditioning.jpg` – svetlý moderný interiér s nástennou klimatizáciou
-- `gas-boiler.jpg` – plynový kondenzačný kotol v čistej technickej miestnosti rodinného domu
-- `biomass.jpg` – kotol na biomasu/pelety v čistej domácej technickej miestnosti
-- `default.jpg` – univerzálny Spektra Install banner
+The universal image is used for ZTI, floor heating, ventilation, water heaters, other work, electric boilers and unrecognized categories without a category-specific banner. A product thumbnail does not replace the offer header. User-selected custom banners and explicit `none` always take priority. Existing Supabase `pdf_banners` category overrides are preserved.
 
-Kým nie sú schválené všetky kategórie, TČ používa existujúci banner v `assets/pdf-images/tepelne-cerpadla-banner.jpg`; ostatné kategórie používajú produktový obrázok z POHODY na jemnom svetlomodrom pozadí.
+The universal image is a finished composition, rendered once at full 3:1 aspect ratio without an extra logo, slogan or gradient over it. Existing photographic headers keep their original HTML overlay and layout. Technical PDF layout is intentionally unchanged. Failure to load the bundled universal image stops PDF creation with a visible retry message.
 
-Po schválení fotografií stačí doplniť súbory a zmeniť mapovanie vo funkcii `getPdfBannerUrl()`.
+No quote, stock, database permissions, prices, signatures, or archived PDF files are rewritten by this display-only change. Asset is served locally with the application; Canva or expiring external URLs are not runtime dependencies.
