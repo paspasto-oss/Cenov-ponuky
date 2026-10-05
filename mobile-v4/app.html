@@ -22,8 +22,10 @@
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
+<link rel="stylesheet" href="js/quote-material-editor.css?v=20261005-material1">
+<script src="js/quote-materials.js?v=20261005-material1"></script>
 <script src="js/quote-storage.js?v=20261005-atomic1"></script>
-<script src="js/db.js?v=20261005-atomic1"></script>
+<script src="js/db.js?v=20261005-material1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
@@ -186,13 +188,25 @@
       </div>
       <div id="quoteImageStatus" class="sub" style="margin-top:8px">Obrázky produktov z POHODY a vlastné obrázky sa do PDF vložia iba po zaškrtnutí.</div>
     </div>
+    <div id="quoteMaterialEditorSlot">
     <details class="card" id="bomDetails">
       <summary style="cursor:pointer;font-weight:900;font-size:17px;color:#173247;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px">
-        <span>Položky na pozadí</span><span style="font-size:13px;color:#607787">Rozbaliť ▾</span>
+        <span>Montážny materiál a položky</span><span style="font-size:13px;color:#607787">Rozbaliť ▾</span>
       </summary>
       <div class="sub" style="margin:9px 0">Tieto položky sa použijú pre POHODU. Zákazník ich v PDF môže vidieť zoskupené.</div>
+      <div class="sub" id="quoteMaterialCount"></div>
+      <div class="quoteMaterialTools">
+        <b>+ Doplniť materiál zo zásob</b>
+        <div class="quoteMaterialSearchGrid" style="margin-top:9px">
+          <div class="field"><label for="quoteMaterialSearch">Hľadať v katalógu POHODA</label><input id="quoteMaterialSearch" type="search" autocomplete="off" placeholder="Názov, kód, PLU alebo EAN…" oninput="searchQuoteMaterials(this.value)"></div>
+          <div class="field"><label for="quoteMaterialAddQty">Množstvo</label><input id="quoteMaterialAddQty" type="text" inputmode="decimal" value="1" aria-label="Množstvo na pridanie"></div>
+        </div>
+        <div id="quoteMaterialResults" class="quoteMaterialResults"></div>
+      </div>
+      <div id="quoteMaterialStatus" role="status" aria-live="polite"></div>
       <div id="bomItems" class="items"></div>
     </details>
+    </div>
     <div id="installationTierCard" class="card">
       <h2>Typ montáže</h2>
       <div class="choiceGrid" style="grid-template-columns:1fr 1fr">
@@ -357,6 +371,7 @@
       </div>
     </div>
     <div id="approvedPriceNotice" class="notice hidden" style="margin-bottom:10px">Schválená ponuka – ceny a názvy položiek sú uzamknuté. Aktualizácia skladu ich nemení.</div>
+    <div id="finalMaterialEditorSlot"></div>
     <div id="finalSummary" class="card"></div>
     <div id="warrantyCard" class="card">
       <h2>Súhlas so zárukou</h2>
@@ -1660,6 +1675,7 @@ function applyInspectionOverrides(items,d){
 }
 function buildBOM(){
   if(isQuotePriceLocked())return;
+  if(window.SpektraQuoteMaterials)SpektraQuoteMaterials.capture(current);
  let d=recommendation,stock=findStockForDevice(d),items=[];
  if(stock){syncProductImagesFromStock(stock);d=recommendation;}
  items.push({role:'device',name:(d.brand+' '+d.model+' '+(d.variant||'')).trim(),qty:1,unit:'ks',pohoda:stock,price:stock?.sell_price_ex_vat??d.sell_price_ex_vat??null,cost:stock?.purchase_price_ex_vat??d.purchase_price_ex_vat??null,visible:true,mapping_status:stock?'mapped':'unmapped'});
@@ -1839,6 +1855,7 @@ function buildBOM(){
  }
  items=applyInspectionOverrides(items,d);
  items=consolidateBOM(items);
+ if(window.SpektraQuoteMaterials)items=SpektraQuoteMaterials.apply(current,items,stocks,SpektraQuoteMaterials.scope(current,systemType(d)));
  current.items=items;current.system_type=systemType(d);current.bundle_key=key;current.device=recommendation;current.route_m=Number(current.inspection_routes?.route_m||5);current.updated=Date.now()
 }
 function installationPrice(tier){
@@ -2364,7 +2381,7 @@ async function setQuoteItemPrice(index,value){
   current.updated=Date.now();
   current._dirty=true;
   recalcQuoteTotalsFromItems();
-  renderRecommendation();
+  if(typeof isTradeQuote==='function'&&isTradeQuote(current))renderFinal();else renderRecommendation();
   try{await upsertCurrent()}catch(e){console.warn('Quote price save failed',e)}
 }
 async function setQuoteItemCost(index,value){
@@ -2382,7 +2399,7 @@ async function setQuoteItemCost(index,value){
   current.updated=Date.now();
   current._dirty=true;
   renderInternalProfit();
-  renderRecommendation();
+  if(typeof isTradeQuote==='function'&&isTradeQuote(current))renderFinal();else renderRecommendation();
   try{await upsertCurrent()}catch(e){console.warn('Quote cost save failed',e)}
 }
 
@@ -2421,25 +2438,8 @@ function renderRecommendation(){
  }
  if(altCount)altCount.textContent=alt.length?'('+alt.length+')':'';
  if(altList)altList.innerHTML=alt.map(x=>'<div class="row" onclick="pickAlternative(\''+x.id+'\')"><div><b>'+esc(x.model+' '+(x.variant||''))+'</b><small>'+((x.power_kw||'—')+' kW')+'</small></div><span>Vybrať ›</span></div>').join('');
- document.getElementById('bomItems').innerHTML=current.items.map((i,index)=>{
-   let link='';
-   if(i.pohoda) link=' · POHODA: '+esc(i.pohoda.code||i.pohoda.plu||'namapované');
-   else if(i.mapping_status==='included_in_installation') link=' · zahrnuté v cene montáže';
-   else if(i.pohoda_code && i.price!=null) link=' · interná cena · POHODA kód: '+esc(i.pohoda_code);
-   else if(i.pohoda_code) link=' · POHODA kód: '+esc(i.pohoda_code)+' · karta/cena chýba';
-   else if(i.price!=null) link=' · interná cena';
-   else link=' · bez POHODA kódu';
-   const knownPurchase=i.cost_override===true||(i.cost!=null&&Number(i.cost)>0);
-   return '<div class="item" style="align-items:center">'+
-     '<div style="flex:1;min-width:0"><b>'+esc(customerText(i.name))+'</b><small>'+i.qty+' '+esc(i.unit)+link+'</small>'+
-       '<small style="margin-top:4px">'+(knownPurchase?'Nákupný náklad je započítaný.':'⚠ Nákupný náklad chýba – doplň ho pre správny zisk.')+'</small></div>'+
-     '<div style="width:132px;min-width:132px;display:grid;gap:6px">'+
-       '<label style="display:block;font-size:10px;font-weight:800;color:#607787">Predaj bez DPH<input type="number" step="0.01" min="0" value="'+(i.price==null?'':Number(i.price))+'" style="margin-top:3px;padding:7px 8px;font-size:13px;text-align:right" onchange="setQuoteItemPrice('+index+',this.value)"></label>'+
-       '<label style="display:block;font-size:10px;font-weight:800;color:#607787">Interný nákup<input type="number" step="0.01" min="0" placeholder="doplniť" value="'+(knownPurchase?Number(i.cost):'')+'" style="margin-top:3px;padding:7px 8px;font-size:13px;text-align:right" onchange="setQuoteItemCost('+index+',this.value)"></label>'+
-     '</div>'+
-   '</div>'
- }).join('');
- let net=0,missing=false;current.items.forEach(i=>{if(i.price==null)missing=true;else net+=(+i.price||0)*(+i.qty||0)});current.net=net;current.vat_pct=23;current.vat=net*.23;current.total=net*1.23;
+ renderQuoteMaterialEditor();
+ let net=0,missing=false;current.items.forEach(i=>{if(i.price==null)missing=true;else net+=(+i.price||0)*(+i.qty||0)});current.net=net;current.vat_pct=Number(current.vat_pct??23);current.vat=net*current.vat_pct/100;current.total=net*(1+current.vat_pct/100);
  let dev=current.items[0]?.price,install=current.items.slice(1).reduce((a,i)=>a+(i.price==null?0:(+i.price||0)*(+i.qty||0)),0);document.getElementById('devicePrice').textContent=eur(dev);document.getElementById('installPrice').textContent=missing?eur(install)+' (známe položky)':eur(install);document.getElementById('netPrice').textContent=missing?'Neúplná cena':eur(net);document.getElementById('vatPrice').textContent=missing?'—':eur(current.vat);document.getElementById('grossPrice').textContent=missing?'—':eur(current.total);const warning=document.getElementById('priceWarning');
  if(warning){
    warning.classList.toggle('hidden',!missing);
@@ -2525,26 +2525,7 @@ async function refreshQuoteFromCatalog(button=null){
     multiCount=count;
     ensurePdfImagesState();
 
-    const overrides=(current.items||[]).filter(i=>i.price_override===true||i.cost_override===true).map(i=>({
-      role:i.role||null,
-      code:i.pohoda?.code||i.pohoda_code||null,
-      name:i.name||'',
-      price_override:i.price_override===true,
-      price:i.price,
-      cost_override:i.cost_override===true,
-      cost:i.cost
-    }));
     buildBOM();
-    for(const o of overrides){
-      const target=current.items.find(i=>
-        (o.code&&String(i.pohoda?.code||i.pohoda_code||'')===String(o.code))||
-        (!o.code&&o.role&&i.role===o.role)||
-        (!o.code&&!o.role&&i.name===o.name)
-      );
-      if(!target)continue;
-      if(o.price_override){target.price=o.price;target.price_override=true}
-      if(o.cost_override){target.cost=o.cost;target.cost_override=true}
-    }
     recalcQuoteTotalsFromItems();
     renderRecommendation();
     await upsertCurrent();
@@ -2567,6 +2548,7 @@ function pickAlternative(id){if(isQuotePriceLocked())return;let d=category==='ai
 async function upsertCurrent(){
   if(!current)return {ok:false,synced:false,error:'Chýba ponuka.'};
   const edited=current;
+  if(window.SpektraQuoteMaterials)SpektraQuoteMaterials.capture(edited);
   const result=await quoteStorage().save(edited);
   if(!result.ok&&!result.conflict)console.warn('Quote save incomplete',result.error);
   return result;
@@ -2810,6 +2792,7 @@ function annualServiceText(){
     : '';
 }
 function renderFinal(){
+ if(typeof renderQuoteMaterialEditor==='function')renderQuoteMaterialEditor();
  syncPdfTemplateUI();
  const priceLockNotice=document.getElementById('approvedPriceNotice');
  if(priceLockNotice)priceLockNotice.classList.toggle('hidden',!isQuotePriceLocked());
@@ -3898,6 +3881,7 @@ window.addEventListener('online',()=>syncQuotes(true,true));
 window.addEventListener('focus',()=>syncQuotes(false,true));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncQuotes(false,true)});
 </script>
+<script src="js/quote-material-editor.js?v=20261005-material1"></script>
 <script src="js/inspections.js?v=20261004-active-context1"></script>
 </body>
 </html>

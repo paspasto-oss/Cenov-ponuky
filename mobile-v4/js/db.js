@@ -406,6 +406,7 @@ window.SpektraDB = (() => {
       inspection_routes:q.inspection_routes||{},
       inspection_extra_work:Array.isArray(q.inspection_extra_work)?q.inspection_extra_work:[],
       inspection_notes:q.inspection_notes||null,
+      material_edits:q.material_edits||null,
       warranty_consent:q.warranty_consent?.accepted && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(q.warranty_consent.signature_data_url||'')
         ? {accepted:true,signature_data_url:q.warranty_consent.signature_data_url,signed_at:q.warranty_consent.signed_at||null,offer_key:q.warranty_consent.offer_key||null}
         : null
