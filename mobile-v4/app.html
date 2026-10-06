@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#B9D9EB">
+<meta name="theme-color" content="#f3f6f8">
 <link rel="icon" type="image/svg+xml" href="favicon.svg?v=20261001-cs1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -33,8 +33,8 @@
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
-<link rel="stylesheet" href="js/home-toolbar.css?v=20261006-menu4">
-<link rel="stylesheet" href="js/visual-refresh.css?v=20261006-clean1">
+<link rel="stylesheet" href="js/home-toolbar.css?v=20261006-menu5">
+<link rel="stylesheet" href="js/visual-refresh.css?v=20261006-clean2">
 </head>
 <body>
 <div class="wrap">
@@ -49,7 +49,7 @@
       <p>Martina zadá len údaje zákazníka a domu. Technický návrh spraví aplikácia na pozadí.</p>
       <div class="actions">
         <button class="big primary" onclick="startWizard()"><span>＋</span><b>Nová cenová ponuka</b><small>Zákazník → dom → zariadenie → cena → PDF</small></button>
-        <button class="big" onclick="location.href='admin/stock-sync.html?v=20261004-purchasepersist1'"><span>↻</span><b>Aktualizovať zásoby</b><small>Nahrať nový export Zásoby.xlsx z POHODY</small></button>
+        <button class="big" onclick="location.href='admin/stock-sync.html?v=20261006-clean2'"><span>↻</span><b>Aktualizovať zásoby</b><small>Nahrať nový export Zásoby.xlsx z POHODY</small></button>
         <button class="big" onclick="syncQuotes(true,false)"><span>⟳</span><b>Synchronizovať ponuky</b><small>PC práca ↔ mobil ↔ PC doma</small></button>
       </div>
     </div>
@@ -418,7 +418,7 @@
 <nav class="nav">
   <button onclick="go('home')"><span>⌂</span>Prehľad</button>
   <button onclick="startWizard()"><span>＋</span>Nová ponuka</button>
-  <button onclick="location.href='admin/stock-sync.html?v=20261004-purchasepersist1'"><span>↻</span>Zásoby</button>
+  <button onclick="location.href='admin/stock-sync.html?v=20261006-clean2'"><span>↻</span>Zásoby</button>
   <button onclick="exportQuotes()"><span>⇩</span>Export</button>
 </nav>
 
@@ -3884,6 +3884,6 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncQuotes
 </script>
 <script src="js/quote-material-editor.js?v=20261005-material1"></script>
 <script src="js/inspections.js?v=20261006-clean1"></script>
-<script src="js/home-toolbar.js?v=20261006-menu4"></script>
+<script src="js/home-toolbar.js?v=20261006-menu5"></script>
 </body>
 </html>

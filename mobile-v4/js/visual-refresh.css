@@ -84,3 +84,99 @@
 @media(pointer:coarse){
  #quoteList .quoteEditBtn,#quoteList .quotePdfBtn,#inspectionList .inspectionEditBtn,#inspectionList .inspectionPdfBtn{min-height:44px}
 }
+/* Consistent form surfaces across every quote and inspection step. */
+.wrap .screen>.topline{padding:8px 0 3px}
+.wrap .topline h1{font-size:21px;font-weight:650;color:var(--t)}
+.wrap .steps,.wrap .inspectionProgress{margin-bottom:16px;gap:7px}
+.wrap .step,.wrap .inspectionProgress i{height:4px;background:#dce5ed}
+.wrap .step.on,.wrap .inspectionProgress i.on{background:#00539b}
+.wrap .card{padding:16px;margin-bottom:14px}
+.wrap .compactListCard{padding:14px 0 0}
+.wrap .card h2{margin-bottom:12px;font-size:17px}
+.wrap .choice,.wrap .inspType{min-height:62px;border:2px solid #e0e7ed;background:#fff;color:var(--t);border-radius:9px;padding:10px;box-shadow:none}
+.wrap .choice.on,.wrap .inspType.on{background:#edf5fc;border-color:#00539b;color:#00539b}
+.wrap .choice:not(.disabled):hover,.wrap .inspType:hover{background:#f4f8fb}
+.wrap .choice.on:hover,.wrap .inspType.on:hover{background:#e5f0fa}
+.wrap .choice b,.wrap .inspType b{font-size:13px;font-weight:650}
+.wrap .choice span,.wrap .inspType span{font-size:20px;margin-bottom:4px}
+.wrap .choice small{font-size:12px;color:#526778}
+.wrap .choice.on small{color:#365c78}
+.wrap #pdfTemplatePresentation,.wrap #pdfTemplateTechnical{min-height:82px}
+.wrap #presentationBannerSettings .choice{min-height:62px}
+.wrap .field{gap:6px;margin-bottom:13px}
+.wrap input,.wrap select,.wrap textarea{color:var(--t);background:#fff;padding:10px 12px}
+.wrap input[type="checkbox"],.wrap input[type="radio"]{accent-color:#00539b;flex-shrink:0}
+.wrap .row{background:#f8fafc;border-color:var(--line);border-radius:8px;padding:10px 12px;gap:10px}
+.wrap .row b{font-weight:650}
+.wrap .row small,.wrap .sub{color:var(--m)}
+.wrap .priceBox{gap:10px}
+.wrap .pbox{padding:12px;border-radius:9px}
+.wrap .pbox strong{font-size:19px;font-weight:650;color:#00539b}
+.wrap .reco{border-radius:9px;padding:12px}
+.wrap .reco h3{font-weight:650}
+.wrap .reco .kw{font-size:21px;font-weight:650}
+.wrap .summary{border-radius:9px;padding:14px}
+.wrap .srow{padding:7px 0;gap:12px}
+.wrap .srow.total{border-color:var(--line);font-weight:700;font-size:21px}
+.wrap .item{border-radius:8px;padding:11px 12px;gap:12px}
+.wrap .item b{font-weight:600}
+.wrap .alternativesMenu{border-radius:9px}
+.wrap .alternativesMenu summary{font-weight:600;border-color:var(--line)}
+.wrap details.card>summary{font-weight:650!important;color:var(--t)!important;font-size:16px!important}
+.wrap .quoteMaterialTools{background:#f8fafc;border-color:var(--line);border-radius:9px}
+.wrap .quoteStockResult,.wrap .inspStockResult,.wrap .inspManualSuggestion{background:#fff;border-color:var(--line);color:var(--t);border-radius:8px}
+.wrap .inspStockResult:hover,.wrap .inspManualSuggestion:hover{background:#edf5fc}
+.wrap .inspStockResult b,.wrap .inspManualSuggestion b{font-weight:600}
+.wrap .inspMaterial button{background:#edf2f6;border-radius:6px;color:#365c78}
+.wrap .inspMaterialMeta{font-size:11px}
+.wrap .inspThumb{background:#f8fafc;border-color:var(--line);border-radius:9px}
+.wrap .sendgrid{gap:9px}
+.wrap .sendgrid .btn{min-height:44px;font-size:14px}
+.wrap .quoteBackBar,.wrap .inspBackBar{background:#fff;border-color:var(--line);border-radius:9px;box-shadow:0 3px 12px rgba(31,51,69,.08)}
+.wrap .quoteBackBar .btn,.wrap .inspBackBar .btn{font-weight:600;min-height:44px;font-size:14px}
+body>.nav{background:#fff;border-top:1px solid var(--line);box-shadow:0 -2px 10px rgba(31,51,69,.04)}
+body>.nav button{color:#00539b;font-weight:600}
+body>.nav .btn.primary{background:#00539b;color:#fff;border-radius:7px}
+/* Stock import uses the same shared theme and compact sticky branding. */
+.stockSyncPage .wrap>.head{position:sticky;top:0;z-index:60;background:#fff;border-bottom:1px solid var(--line);margin:-14px -18px 16px;padding:9px 18px;min-height:48px}
+.stockSyncPage .head .logo{width:24px;height:24px;border-width:3px;flex-shrink:0}
+.stockSyncPage .head .brand{gap:8px;min-width:0}
+.stockSyncPage .head h1{font-size:16px;font-weight:650}
+.stockSyncPage .head .pill{background:#f5f8fa;border-color:var(--line);color:var(--m);font-size:11px;padding:4px 7px}
+.stockSyncPage .field{display:flex;flex-direction:column}
+.stockSyncPage .drop{background:#f8fafc;border-color:#c8d8e5;border-radius:9px;padding:20px}
+.stockSyncPage .drop.drag{background:#edf5fc;border-color:#00539b}
+.stockSyncPage .drop b{font-weight:600}
+.stockSyncPage .stat{background:#fff;border-color:var(--line);border-radius:8px;padding:12px}
+.stockSyncPage .stat strong{color:var(--t);font-size:21px;font-weight:650}
+.stockSyncPage .stat.new strong{color:#28775c}
+.stockSyncPage .stat.price strong{color:#805d13}
+.stockSyncPage .stat.stock strong{color:#00539b}
+.stockSyncPage .stat.off strong,.stockSyncPage .stat.conf strong{color:#b92323}
+.stockSyncPage .progress{background:#e3eaf0;height:6px}
+.stockSyncPage .tab{background:#fff;color:var(--m);border-color:var(--line);border-radius:6px}
+.stockSyncPage .tab.on{background:#edf5fc;color:#00539b;border-color:#bdd4e8;font-weight:600}
+.stockSyncPage .tableWrap{border-color:var(--line);border-radius:8px}
+.stockSyncPage .tbl th{background:#f8fafc;color:#526778;border-color:var(--line);font-weight:600}
+.stockSyncPage .tbl td{border-color:var(--line)}
+.stockSyncPage .chg{border-radius:5px;font-size:11px}
+.stockSyncPage .chg.new{background:#edf7f1;color:#28775c}
+.stockSyncPage .chg.price{background:#fff6de;color:#805d13}
+.stockSyncPage .chg.stock,.stockSyncPage .chg.meta{background:#edf5fc;color:#00539b}
+.stockSyncPage .chg.removed,.stockSyncPage .chg.conflict{background:#fff0f0;color:#b92323}
+@media(max-width:620px){
+ .wrap .topline h1{font-size:19px}
+ .wrap .card{padding:13px}
+ .wrap .compactListCard{padding:14px 0 0}
+ .wrap .choiceGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .wrap .choice,.wrap .inspType{padding:9px 7px;overflow-wrap:anywhere}
+ .wrap #presentationBannerSettings>.choiceGrid{grid-template-columns:1fr!important}
+ .wrap #pdfTemplatePresentation,.wrap #pdfTemplateTechnical{min-height:84px}
+ .stockSyncPage .wrap>.head{margin:-10px -9px 13px;padding:8px 9px;gap:8px}
+ .stockSyncPage .head .brand{flex:1}
+ .stockSyncPage .head h1{font-size:14px}
+ .stockSyncPage .head .pill{max-width:35%;overflow-wrap:anywhere}
+ .stockSyncPage #authCard>.grid{grid-template-columns:1fr!important}
+}
+.wrap .compactListCard>.compactListHeading{background:#fff;border:0;border-radius:0;padding:0 16px 12px}
+@media(max-width:620px){.wrap .compactListCard>.compactListHeading{padding-left:12px;padding-right:12px}}
