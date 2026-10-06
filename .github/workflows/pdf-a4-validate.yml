@@ -1,0 +1,36 @@
+name: Trade PDF A4 pagination validation
+on:
+  push:
+    branches: [fix/trade-pdf-a4-pagination]
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply reviewed integration
+        run: python .github/patches/pdf-a4-apply.py
+      - name: Run regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test mobile-v4/tests/*.cjs | tee /tmp/pdf-a4-tests.txt
+      - name: Commit tested integration on feature branch only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/patches/pdf-a4-apply.py .github/workflows/pdf-a4-validate.yml
+          git add mobile-v4/app.html mobile-v4/index.html index.html
+          git commit -m 'Integrate verified A4 trade quote pagination'
+          git push origin HEAD:fix/trade-pdf-a4-pagination
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pdf-a4-tests
+          path: /tmp/pdf-a4-tests.txt
+          retention-days: 7
