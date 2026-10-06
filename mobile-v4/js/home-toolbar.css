@@ -46,3 +46,6 @@ html{scroll-padding-top:90px}
   #home>.stats .stat small,#inspectionHome>.stats .stat small{font-size:10px}
   #home>.stats .stat strong,#inspectionHome>.stats .stat strong{font-size:18px;margin-top:3px}
 }
+
+.compactFilterViewport[hidden]{display:none!important}
+.compactListHeading .compactFilterToggle{min-height:28px;padding:4px 9px}

@@ -33,6 +33,7 @@
     const viewport=doc.createElement('div');
     viewport.className='compactFilterViewport';
     viewport.id=prefix+'FilterViewport';
+    viewport.hidden=true;
     viewport.setAttribute('role','region');
     viewport.setAttribute('aria-label',prefix==='quote'?'Filtre cenových ponúk':'Filtre obhliadok');
     const bar=doc.createElement('div');
@@ -49,6 +50,18 @@
     wrappers.forEach(wrapper=>{if(wrapper.classList.contains('grid2')&&!wrapper.children.length)wrapper.remove()});
     heading.classList.add('compactListHeading');
     card.classList.add('compactListCard');
+    const toggle=doc.createElement('button');
+    toggle.id=prefix+'FilterToggle';toggle.type='button';
+    toggle.className='btn ghost small compactFilterToggle';
+    toggle.textContent='Rozbaliť filtre';
+    toggle.setAttribute('aria-controls',viewport.id);
+    toggle.setAttribute('aria-expanded','false');
+    toggle.onclick=()=>{
+      viewport.hidden=!viewport.hidden;
+      toggle.textContent=viewport.hidden?'Rozbaliť filtre':'Skryť filtre';
+      toggle.setAttribute('aria-expanded',String(!viewport.hidden));
+    };
+    heading.appendChild(toggle);
   }
   function updateView(){
     const doc=root.document,bar=doc.getElementById('homeToolbar');
