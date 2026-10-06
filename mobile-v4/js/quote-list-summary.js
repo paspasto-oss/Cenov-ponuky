@@ -65,8 +65,8 @@
     else if(!s.complete)reason='Ponuka nemá kompletné predajné ceny alebo platné množstvá.';
     return '<span class="quoteListFinancials" aria-label="Finančný prehľad ponuky">'+
       metric('quoteListTotal','Celkom',s.total,'s DPH','Celá uložená ponuka vrátane zariadenia, materiálu a prác; pred odpočítaním dotácie.',empty)+
-      metric('','Montáž',s.installation,'s DPH','Súčet montáže a služieb účtovaných v tejto ponuke. Budúci ročný servis mimo položiek sa nepripočítava.',empty)+
       metric('','Materiál',s.material,'s DPH','Predajná cena materiálu a príslušenstva vrátane doplnených zásobníkov, bez hlavného zariadenia a vnútorných klimatizačných jednotiek.',empty)+
+      metric('','Montáž',s.installation,'s DPH','Súčet montáže a služieb účtovaných v tejto ponuke. Budúci ročný servis mimo položiek sa nepripočítava.',empty)+
       metric('quoteListProfit','Zisk',s.gross,'bez DPH',reason,missing,s.gross!=null&&s.gross<0?'negative':'')+
       '</span>';
   }

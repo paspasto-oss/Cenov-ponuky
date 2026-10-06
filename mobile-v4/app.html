@@ -20,7 +20,7 @@
 @media(max-width:720px){.wrap{padding:9px}.actions{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.choiceGrid{grid-template-columns:repeat(2,1fr)}.priceBox{grid-template-columns:1fr}.sendgrid{grid-template-columns:1fr}.hero h1{font-size:21px}.quoteBackBar{bottom:calc(62px + env(safe-area-inset-bottom));width:calc(100% - 12px);border-radius:12px;padding:6px}#step1,#step2,#step3,#step4,#step5{padding-bottom:92px}}
 </style>
 <link rel="stylesheet" href="js/quote-list-summary.css?v=20261005-list1">
-<script src="js/quote-list-summary.js?v=20261005-list1"></script>
+<script src="js/quote-list-summary.js?v=20261006-clean1"></script>
 <script src="js/pdf-banners.js?v=20261005-universal1"></script>
 <script src="js/pdf-pagination.js?v=20261006-a4-1"></script>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>
@@ -33,7 +33,8 @@
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
-<link rel="stylesheet" href="js/home-toolbar.css?v=20261006-menu3">
+<link rel="stylesheet" href="js/home-toolbar.css?v=20261006-menu4">
+<link rel="stylesheet" href="js/visual-refresh.css?v=20261006-clean1">
 </head>
 <body>
 <div class="wrap">
@@ -784,16 +785,21 @@ function renderHome(){
    return '<div class="row quoteListRow" data-quote-ref="'+ref+'" style="cursor:pointer">'+
      '<div class="quoteListBody"><b>'+esc(q.customer?.name||'Bez mena')+'</b><small>'+esc(date)+' · '+esc(q.customer?.address||'Bez adresy')+'</small>'+
      '<div class="quoteListMeta"><span class="quoteListCode">'+esc(q.quote_no||'')+' · '+esc(labelCat(q.category))+' · '+esc(q.brand||'')+(q._sync_error?' · ⚠ sync':'')+'</span>'+SpektraQuoteSummary.html(q)+'</div></div>'+
-     '<div class="quoteListActions"><span class="badge '+esc(q.status)+'">'+labelStatus(q.status)+'</span><button class="btn small quoteEditBtn" type="button" data-quote-ref="'+ref+'">Upraviť</button></div>'+
+     '<div class="quoteListActions"><span class="badge '+esc(q.status)+'">'+labelStatus(q.status)+'</span><div class="quoteListActionButtons"><button class="btn small quoteEditBtn" type="button" data-quote-ref="'+ref+'">Otvoriť</button><button class="btn small quotePdfBtn" type="button" data-quote-ref="'+ref+'">PDF / Tlač</button></div></div>'+
    '</div>';
  }).join('');
  box.querySelectorAll('.row[data-quote-ref]').forEach(row=>row.addEventListener('click',e=>{
-   if(e.target.closest('.quoteEditBtn'))return;
+   if(e.target.closest('button'))return;
    openQuote(row.dataset.quoteRef);
  }));
  box.querySelectorAll('.quoteEditBtn').forEach(btn=>btn.addEventListener('click',e=>{
    e.stopPropagation();
    openQuote(btn.dataset.quoteRef);
+ }));
+ box.querySelectorAll('.quotePdfBtn').forEach(btn=>btn.addEventListener('click',e=>{
+   e.stopPropagation();
+   openQuote(btn.dataset.quoteRef,true);
+   if(String(current?.quote_no||current?.id||'')===btn.dataset.quoteRef)printPDF();
  }));
 }
 function labelStatus(x){return x==='ready'?'Na schválenie':x==='sent'?'Odoslaná':x==='approved'?'Schválená':'Rozpracovaná'}
@@ -2819,7 +2825,7 @@ function hydrateQuoteForm(){
   toggleLoss();
 }
 
-function openQuote(id){
+function openQuote(id,pdfOnly=false){
   try{
     const ref=String(id||'');
     const matches=quotes.filter(x=>String(x.id||'')===ref || String(x.quote_no||'')===ref);
@@ -2850,6 +2856,8 @@ function openQuote(id){
     acMode=current.ac_mode||current.device?.ac_mode||'single';
     multiCount=current.multisplit_count||current.device?.multisplit_count||2;
     recommendation=current.device&&Object.keys(current.device).length?{...current.device}:null;
+    // List PDF uses the saved snapshot without installation repairs or BOM rebuilds.
+    if(pdfOnly){renderFinal();go('step5');return;}
     // Approved offers keep their stored items and totals, including legacy
     // offers without an installation row. Do not hydrate or rebuild from stock.
     if(isQuotePriceLocked()){
@@ -3875,7 +3883,7 @@ window.addEventListener('focus',()=>syncQuotes(false,true));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncQuotes(false,true)});
 </script>
 <script src="js/quote-material-editor.js?v=20261005-material1"></script>
-<script src="js/inspections.js?v=20261004-active-context1"></script>
-<script src="js/home-toolbar.js?v=20261006-menu3"></script>
+<script src="js/inspections.js?v=20261006-clean1"></script>
+<script src="js/home-toolbar.js?v=20261006-menu4"></script>
 </body>
 </html>

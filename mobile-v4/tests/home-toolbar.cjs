@@ -63,7 +63,7 @@ test('enhancement contains no data writes or authentication operations',()=>{
 test('homepage integration refreshes entry URLs and leaves original filters in place',()=>{
   for(const suffix of ['Name','Place','From','To'])assert.equal((html.match(new RegExp('id="quoteFilter'+suffix+'"','g'))||[]).length,1);
   for(const entry of [path.join(base,'index.html'),path.join(base,'../index.html')]){
-    assert.match(fs.readFileSync(entry,'utf8'),/20261006-menu3/);
+    assert.match(fs.readFileSync(entry,'utf8'),/20261006-menu4/);
   }
   const css=fs.readFileSync(path.join(base,'js/home-toolbar.css'),'utf8');
   assert.match(css,/grid-template-columns:repeat\(6,minmax/);

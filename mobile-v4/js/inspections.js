@@ -414,8 +414,9 @@
       const date=ts?new Date(ts).toLocaleDateString('sk-SK'):'—';
       return '<div class="row" style="cursor:pointer" onclick="SpektraInspections.edit(\''+esc(x.local_id)+'\')">'+
         '<div style="flex:1;min-width:0"><b>'+esc(x.customer?.name||'Bez mena')+'</b><small>'+esc(date)+' · '+esc(x.customer?.address||'Bez adresy')+'<br>'+esc(type)+sync+'</small></div>'+
-        '<button type="button" class="btn ghost small" style="padding:6px 9px;min-width:auto" onclick="event.stopPropagation();SpektraInspections.openPdf(\''+esc(x.local_id)+'\')">PDF</button>'+
-        '<span class="inspStatus '+esc(x.status)+'">'+esc(statusLabel(x.status))+'</span>'+
+        '<div class="inspectionListActions"><span class="inspStatus '+esc(x.status)+'">'+esc(statusLabel(x.status))+'</span><div class="inspectionActionButtons">'+
+        '<button type="button" class="btn small inspectionEditBtn" onclick="event.stopPropagation();SpektraInspections.edit(\''+esc(x.local_id)+'\')">Otvoriť</button>'+
+        '<button type="button" class="btn small inspectionPdfBtn" onclick="event.stopPropagation();SpektraInspections.openPdf(\''+esc(x.local_id)+'\')">PDF</button></div></div>'+
       '</div>';
     }).join('');
   }

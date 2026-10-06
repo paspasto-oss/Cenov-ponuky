@@ -1,0 +1,86 @@
+/* Product chrome only. Customer PDF markup and financial calculations are unchanged. */
+:root{--bg:#f3f6f8;--p:#fff;--p2:#f4f8fb;--line:#dce5ed;--t:#1f3345;--m:#607183}
+.wrap{max-width:1180px;padding:12px 18px}
+.wrap .card{border-color:var(--line);border-radius:12px;box-shadow:none}
+.wrap .card h2,.wrap .topline h1{font-weight:650}
+.wrap .btn{font-weight:600;border-radius:7px}
+.wrap .btn.ghost{background:#fff;border-color:#d3dee8;color:var(--t)}
+.wrap .field label{font-weight:600;color:#526778}
+.wrap input,.wrap select,.wrap textarea{border-color:#cdd9e3;border-radius:8px}
+.wrap input:focus-visible,.wrap select:focus-visible,.wrap textarea:focus-visible,.wrap button:focus-visible{outline:3px solid #84b8e0;outline-offset:2px}
+.appStickyHeader{background:#fff;margin-left:-18px;margin-right:-18px;padding-left:18px;padding-right:18px;border-bottom:1px solid var(--line);box-shadow:none}
+.appStickyHeader .head{padding-bottom:1px}
+.appStickyHeader .brand b{font-weight:650}
+.appStickyHeader .pill{background:#f5f8fa;border-color:var(--line);color:#526778}
+.appStickyHeader .homeToolbar{border:0;background:#fff;padding:3px 0;border-radius:0;scrollbar-width:thin}
+.appStickyHeader .homeToolbarButton{background:#fff;border:0;border-radius:6px;font-weight:600}
+.appStickyHeader .homeToolbarButton[aria-current="page"]{background:#edf5fc;color:#00539b;border-color:transparent}
+.appStickyHeader .homeToolbarButton[data-home-action="newQuote"]{background:#00539b;color:#fff}
+.appStickyHeader .homeToolbarButton:hover{background:#e8f1f8;color:#00539b}
+.appStickyHeader .homeToolbarButton[data-home-action="newQuote"]:hover{background:#004582;color:#fff}
+#home>.stats,#inspectionHome>.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;background:#fff;border:1px solid var(--line);border-radius:9px;margin-top:16px}
+#home>.stats .stat,#inspectionHome>.stats .stat{border:0;border-right:1px solid var(--line);border-radius:0;background:transparent;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;gap:6px}
+#home>.stats .stat:last-child,#inspectionHome>.stats .stat:last-child{border-right:0}
+#home>.stats .stat small,#inspectionHome>.stats .stat small{font-size:12px;color:var(--m)}
+#home>.stats .stat strong,#inspectionHome>.stats .stat strong{font-size:16px;font-weight:650;margin:0}
+.wrap .compactListCard{padding:14px 0 0;margin-top:12px!important;overflow:hidden}
+.wrap .compactListHeading{padding:0 16px 12px;background:#fff}
+.wrap .compactListHeading h2{font-size:18px}
+.wrap .compactListHeading small{font-size:12px}
+.wrap .compactFilterViewport{margin:0 12px 12px}
+.wrap .compactFilterBar label{font-size:12px}
+#quoteList,#inspectionList{gap:0}
+#quoteList .row,#inspectionList>.row{background:#fff;border:0;border-top:1px solid var(--line);border-radius:0;padding:15px 16px;transition:background .12s}
+#quoteList .row:hover,#inspectionList>.row:hover{background:#fafcfe}
+#quoteList .quoteListRow{display:grid;grid-template-columns:minmax(180px,1fr) minmax(310px,1.1fr) auto;gap:4px 18px;align-items:center}
+#quoteList .quoteListBody,#quoteList .quoteListMeta{display:contents}
+#quoteList .quoteListBody>b{grid-column:1;grid-row:1;font-size:15px;font-weight:650;overflow-wrap:anywhere}
+#quoteList .quoteListBody>small{grid-column:1;grid-row:2;margin:0;font-size:12px;overflow-wrap:anywhere}
+#quoteList .quoteListCode{grid-column:1;grid-row:3;font-size:12px;margin:0;color:var(--m)}
+#quoteList .quoteListFinancials{grid-column:2;grid-row:1 / span 3;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px;margin:0}
+#quoteList .quoteListFinancials .quoteListMetric{gap:1px}
+#quoteList .quoteListFinancials .quoteListMetricLabel{font-size:12px;color:var(--m)}
+#quoteList .quoteListFinancials .quoteListVat{font-size:11px}
+#quoteList .quoteListFinancials .quoteListMetric strong{font-size:13px;font-weight:600;color:var(--t)}
+#quoteList .quoteListFinancials .quoteListTotal{grid-column:1/-1;display:flex;flex-direction:row;justify-content:space-between;align-items:baseline;border-bottom:1px solid #edf1f5;padding-bottom:6px}
+#quoteList .quoteListFinancials .quoteListTotal strong{font-size:19px;font-weight:700;color:#00539b}
+#quoteList .quoteListFinancials .quoteListProfit strong{color:#28775c}
+#quoteList .quoteListFinancials .quoteListProfit.negative strong{color:#a12222}
+#quoteList .quoteListFinancials .quoteListMetric.incomplete strong{color:#805c12;font-size:12px}
+#quoteList .quoteListActions{grid-column:3;grid-row:1 / span 3;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+#quoteList .quoteListActionButtons{display:flex;gap:6px;flex-wrap:wrap}
+.wrap .badge,.wrap .inspStatus{border-radius:5px;font-size:12px;padding:3px 7px;font-weight:500;white-space:nowrap}
+.wrap .badge.draft,.wrap .badge.ready,.wrap .inspStatus.in_progress{background:#fff6de;color:#805d13}
+.wrap .badge.sent{background:#edf5fc;color:#00539b}
+.wrap .badge.approved,.wrap .inspStatus.completed,.wrap .inspStatus.converted{background:#edf7f1;color:#28775c}
+#quoteList .quoteEditBtn,#inspectionList .inspectionEditBtn{background:#fff;color:var(--t);border:1px solid #d3dee8;font-size:13px;padding:6px 9px}
+#quoteList .quotePdfBtn,#inspectionList .inspectionPdfBtn{background:#fff0f0;color:#b92323;border:1px solid transparent;font-size:13px;padding:6px 9px}
+#inspectionList .inspectionListActions{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+#inspectionList .inspectionActionButtons{display:flex;gap:6px}
+.wrap .reco,.wrap .summary,.wrap .pbox,.wrap .item,.wrap .alternativesMenu{border-color:var(--line);background:#fff}
+.wrap .notice{background:#edf5fc;border-color:#cfdfec;color:#365c78}
+.wrap .notice.warn{background:#fff6de;border-color:#e6d6b3;color:#715719}
+.wrap .notice.ok{background:#edf7f1;border-color:#d3e7dc;color:#28775c}
+@media(max-width:960px){
+ #quoteList .quoteListRow{grid-template-columns:minmax(160px,1fr) minmax(270px,1fr)}
+ #quoteList .quoteListActions{grid-column:1/-1;grid-row:4;flex-direction:row;justify-content:space-between;align-items:center;margin-top:6px}
+}
+@media(max-width:620px){
+ .wrap{padding:9px}
+ .appStickyHeader{margin-left:-9px;margin-right:-9px;padding-left:9px;padding-right:9px}
+ #home>.stats .stat,#inspectionHome>.stats .stat{flex-direction:column;align-items:flex-start;padding:8px;gap:3px}
+ #home>.stats .stat small,#inspectionHome>.stats .stat small{font-size:11px}
+ #home>.stats .stat strong,#inspectionHome>.stats .stat strong{font-size:16px}
+ #quoteList .quoteListRow{grid-template-columns:minmax(0,1fr);gap:5px;padding:14px 12px}
+ #quoteList .quoteListFinancials{grid-column:1;grid-row:4;grid-template-columns:repeat(3,minmax(0,1fr));margin:7px 0 2px;gap:7px 8px}
+ #quoteList .quoteListFinancials .quoteListMetricLabel{font-size:11px}
+ #quoteList .quoteListFinancials .quoteListVat{display:block;font-size:11px}
+ #quoteList .quoteListFinancials .quoteListTotal .quoteListVat{display:inline}
+ #quoteList .quoteListActions{grid-column:1;grid-row:5;margin-top:7px;flex-wrap:wrap;gap:8px}
+ #inspectionList>.row{padding:14px 12px;flex-wrap:wrap}
+ #inspectionList .inspectionListActions{width:100%;flex-direction:row;justify-content:space-between;align-items:center;margin-top:6px}
+ .wrap .compactListHeading{padding-left:12px;padding-right:12px;gap:8px}
+}
+@media(pointer:coarse){
+ #quoteList .quoteEditBtn,#quoteList .quotePdfBtn,#inspectionList .inspectionEditBtn,#inspectionList .inspectionPdfBtn{min-height:44px}
+}
