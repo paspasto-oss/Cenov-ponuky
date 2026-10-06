@@ -54,8 +54,8 @@
     const doc=root.document,bar=doc.getElementById('homeToolbar');
     if(!bar)return;
     const screen=doc.querySelector('.screen.on')?.id;
-    const listScreen=screen==='home'||screen==='inspectionHome';
-    bar.hidden=!listScreen;
+    // Keep navigation available in every quote and inspection step.
+    bar.hidden=false;
     const active=screen==='home'?'quotes':screen==='inspectionHome'?'inspections':null;
     bar.querySelectorAll('[data-home-action]').forEach(button=>{
       if(button.dataset.homeAction===active)button.setAttribute('aria-current','page');
@@ -96,7 +96,10 @@
       button.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">'+icons[key]+'</svg><span>'+label+'</span>';
       row.appendChild(button);
     });
-    head.insertAdjacentElement('afterend',nav);
+    const header=doc.createElement('header');
+    header.id='appStickyHeader';header.className='appStickyHeader';
+    head.before(header);
+    header.appendChild(head);header.appendChild(nav);
     hero.remove();
     compactFilters('quote');compactFilters('inspection');
     // The shared toolbar also serves the inspection list. Retain its separate

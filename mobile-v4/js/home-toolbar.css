@@ -1,9 +1,27 @@
+/* Shared compact header stays above all quote and inspection screens. */
+.appStickyHeader{position:sticky;top:0;z-index:60;background:var(--bg);padding:calc(3px + env(safe-area-inset-top,0px)) 0 4px;margin-top:-12px;margin-bottom:10px;box-shadow:0 4px 6px -6px #173247}
+.appStickyHeader .head{min-height:28px;gap:6px;margin:0 0 3px}
+.appStickyHeader .brand{gap:6px;flex:1;overflow:hidden}
+.appStickyHeader .logo{width:24px;height:24px;border-width:3px}
+.appStickyHeader .brand b{font-size:15px;white-space:nowrap}
+.appStickyHeader .brand .sub{display:none}
+.appStickyHeader .activeContext{font-size:11px;padding:3px 6px;max-width:38vw;min-width:0}
+.appStickyHeader .head>div:last-child{flex-wrap:nowrap!important;flex:0 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
+.appStickyHeader .pill{font-size:10px;padding:3px 5px;white-space:nowrap}
+html{scroll-padding-top:90px}
+@media(max-width:720px){
+  .appStickyHeader{margin-top:-9px}
+  .appStickyHeader .head>div:last-child{max-width:32%}
+  .appStickyHeader .brand b{font-size:13px}
+  .appStickyHeader .activeContext{max-width:25vw}
+}
+@media print{.appStickyHeader{display:none!important}}
 /* Scoped to navigation and list filters; quote/PDF layouts remain untouched. */
-.homeToolbar{margin:0 0 12px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:7px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:#8fb8cf transparent}
+.homeToolbar{margin:0;background:#fff;border:1px solid var(--line);border-radius:8px;padding:3px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:#8fb8cf transparent}
 .homeToolbar[hidden]{display:none!important}
 .homeToolbarRow{display:grid;grid-template-columns:repeat(6,minmax(156px,1fr));gap:6px}
-.homeToolbar .homeToolbarButton{display:flex;align-items:center;justify-content:center;gap:7px;min-height:48px;padding:10px 9px;border:1px solid #c0d8e6;border-radius:9px;background:#f3f9fc;color:#064b80;font-size:13px;font-weight:800;line-height:1.25;white-space:nowrap}
-.homeToolbarButton svg{width:20px;height:20px;flex:0 0 20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.homeToolbar .homeToolbarButton{display:flex;align-items:center;justify-content:center;gap:5px;min-height:24px;padding:3px 9px;border:1px solid #c0d8e6;border-radius:5px;background:#f3f9fc;color:#064b80;font-size:13px;font-weight:800;line-height:1.25;white-space:nowrap}
+.homeToolbarButton svg{width:16px;height:16px;flex:0 0 16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .homeToolbar .homeToolbarButton:hover{background:#e4f1f8;border-color:#00539b}
 .homeToolbar .homeToolbarButton[aria-current="page"]{background:#00539b;border-color:#00539b;color:#fff}
 .homeToolbarButton:focus-visible,.compactFilterBar input:focus-visible,.compactFilterBar button:focus-visible{outline:3px solid #0a71b8;outline-offset:2px}
@@ -17,9 +35,9 @@
 .compactListHeading h2{font-size:17px}
 .compactListHeading .btn{white-space:nowrap;min-height:40px}
 @media(max-width:720px){
-  .homeToolbar{padding:6px;margin-bottom:10px;border-radius:12px}
+  .homeToolbar{padding:3px;margin-bottom:0;border-radius:8px}
   .homeToolbarRow{grid-template-columns:repeat(6,160px);gap:6px}
-  .homeToolbar .homeToolbarButton{min-height:48px}
+  .homeToolbar .homeToolbarButton{min-height:24px}
   .compactFilterBar{grid-template-columns:180px 180px 158px 158px max-content;min-width:max-content}
   .compactFilterBar input{font-size:16px}
   .compactListHeading{flex-wrap:wrap}

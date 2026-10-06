@@ -38,11 +38,11 @@ test('list navigation reflects actual active screen without changing it',()=>{
   e.change('inspectionHome');e.window.SpektraHomeToolbar.updateView();
   assert.equal(e.buttons[0].attrs['aria-current'],'page');assert.equal(e.buttons[1].attrs['aria-current'],undefined);
 });
-test('toolbar is hidden in both editors and for unknown screens',()=>{
+test('toolbar remains visible in every quote and inspection step',()=>{
   const e=env();
   for(const s of ['step1','step2','step3','step4','step5','inspectionWizard',null]){
     e.change(s);e.window.SpektraHomeToolbar.updateView();
-    assert.equal(e.bar.hidden,true);assert.ok(e.buttons.every(b=>!b.attrs['aria-current']));
+    assert.equal(e.bar.hidden,false);assert.ok(e.buttons.every(b=>!b.attrs['aria-current']));
   }
 });
 test('repeated mount does not rebuild toolbar or reset inputs',()=>{
@@ -63,7 +63,7 @@ test('enhancement contains no data writes or authentication operations',()=>{
 test('homepage integration refreshes entry URLs and leaves original filters in place',()=>{
   for(const suffix of ['Name','Place','From','To'])assert.equal((html.match(new RegExp('id="quoteFilter'+suffix+'"','g'))||[]).length,1);
   for(const entry of [path.join(base,'index.html'),path.join(base,'../index.html')]){
-    assert.match(fs.readFileSync(entry,'utf8'),/20261006-menu1/);
+    assert.match(fs.readFileSync(entry,'utf8'),/20261006-menu2/);
   }
   const css=fs.readFileSync(path.join(base,'js/home-toolbar.css'),'utf8');
   assert.match(css,/grid-template-columns:repeat\(6,minmax/);
