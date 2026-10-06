@@ -1,0 +1,50 @@
+name: Compact home toolbar validation
+on:
+  push:
+    branches: [feat/compact-home-toolbar]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply reviewed integration if present
+        run: |
+          if [ -f .github/patches/compact-home-integrate.py ]; then
+            python .github/patches/compact-home-integrate.py
+          fi
+      - name: Run regression tests
+        run: |
+          set -euo pipefail
+          node --test mobile-v4/tests/*.cjs | tee /tmp/compact-home-tests.txt
+      - name: Commit verified files on feature branch only
+        run: |
+          if [ -f .github/patches/compact-home-integrate.py ]; then
+            test "$GITHUB_REF" = 'refs/heads/feat/compact-home-toolbar'
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git rm .github/patches/compact-home-integrate.py .github/workflows/compact-home-validate.yml
+            git add mobile-v4 index.html
+            git commit -m 'Integrate tested six-button home toolbar and single-row filters'
+            git push origin HEAD:feat/compact-home-toolbar
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: compact-home-source
+          path: |
+            mobile-v4
+            index.html
+          retention-days: 2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: compact-home-tests
+          path: /tmp/compact-home-tests.txt
+          retention-days: 7
