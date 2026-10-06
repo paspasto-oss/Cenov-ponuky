@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="js/quote-list-summary.css?v=20261005-list1">
 <script src="js/quote-list-summary.js?v=20261005-list1"></script>
 <script src="js/pdf-banners.js?v=20261005-universal1"></script>
+<script src="js/pdf-pagination.js?v=20261006-a4-1"></script>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
@@ -3038,8 +3039,8 @@ function offerHtmlTechnical(){
       '<td style="padding:7px 5px;border-bottom:1px solid #d7dce3;vertical-align:top">'+
         '<div style="display:flex;align-items:flex-start">'+productImage+
           '<div style="width:'+textWidth+'">'+
-            '<div style="font-weight:700;font-size:10px;line-height:1.25;margin-bottom:3px">'+esc(customerText(i.name))+'</div>'+
-            (desc?'<div style="font-size:8.2px;color:#5c6670;line-height:1.35">'+esc(desc)+'</div>':'')+
+            '<div data-pdf-item-name style="font-weight:700;font-size:10px;line-height:1.25;margin-bottom:3px">'+esc(customerText(i.name))+'</div>'+
+            (desc?'<div data-pdf-item-description style="font-size:8.2px;color:#5c6670;line-height:1.35">'+esc(desc)+'</div>':'')+
           '</div>'+
         '</div>'+
       '</td>'+
@@ -3104,7 +3105,7 @@ function offerHtmlTechnical(){
       : '')+'</div></div>';
 
   const note=current.customer.note
-    ? '<div style="margin-top:14px;padding:10px 12px;background:#f6f6f6;border-left:3px solid #c20000">'+esc(current.customer.note)+'</div>'
+    ? '<div data-pdf-note style="margin-top:14px;padding:10px 12px;background:#f6f6f6;border-left:3px solid #c20000">'+esc(current.customer.note)+'</div>'
     : '';
 
   const subsidy=calculateSubsidy();
@@ -3129,10 +3130,10 @@ function offerHtmlTechnical(){
     ? '<div style="height:42mm;margin:0 0 18px;background:#f7f7f7;border:1px solid #e5e5e5;overflow:hidden;display:flex;align-items:center;justify-content:center"><img crossorigin="anonymous" src="'+esc(enabledPdfImages[0].url)+'" style="width:100%;height:100%;object-fit:contain;display:block"></div>'
     : '';
   const extraImages=enabledPdfImages.length>1
-    ? '<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:6px">Fotografie</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">'+enabledPdfImages.slice(1).map(img=>'<div style="height:42mm;border:1px solid #e5e5e5;background:#f7f7f7;display:flex;align-items:center;justify-content:center;overflow:hidden"><img crossorigin="anonymous" src="'+esc(img.url)+'" style="width:100%;height:100%;object-fit:contain;display:block"></div>').join('')+'</div></div>'
+    ? '<div data-pdf-gallery style="margin-top:16px"><div style="font-weight:700;margin-bottom:6px">Fotografie</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">'+enabledPdfImages.slice(1).map(img=>'<div style="height:42mm;border:1px solid #e5e5e5;background:#f7f7f7;display:flex;align-items:center;justify-content:center;overflow:hidden"><img crossorigin="anonymous" src="'+esc(img.url)+'" style="width:100%;height:100%;object-fit:contain;display:block"></div>').join('')+'</div></div>'
     : '';
 
-  return '<div style="width:190mm;min-height:277mm;padding:10mm 9mm 8mm;font-family:Arial,sans-serif;color:#111;background:#fff;font-size:10.5px;line-height:1.35;position:relative">'+
+  return '<div data-pdf-layout="technical" style="width:190mm;min-height:277mm;padding:10mm 9mm 8mm;font-family:Arial,sans-serif;color:#111;background:#fff;font-size:10.5px;line-height:1.35;position:relative">'+
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:26px">'+
       '<div style="font-size:9px;color:#666;line-height:1.45">'+
         'Spektra Install s.r.o.<br>Hollého 210, 015 01 Rajec<br>IČO: 53690036 · IČ DPH: SK2121464047'+
@@ -3166,7 +3167,7 @@ function offerHtmlTechnical(){
     '</div>'+
 
     '<div style="font-size:22px;color:#00539B;font-weight:700;margin:2px 0 12px">Cenová ponuka</div>'+
-    '<table style="width:100%;border-collapse:collapse;font-size:9.2px;border:1px solid #d7dce3">'+
+    '<table data-pdf-items style="width:100%;border-collapse:collapse;font-size:9.2px;border:1px solid #d7dce3">'+
       '<thead><tr style="background:#00539B;color:#fff">'+
         '<th style="text-align:left;padding:7px 5px;width:auto">Názov položky</th>'+
         '<th style="text-align:center;padding:7px 4px;width:22mm">Množstvo</th>'+
@@ -3177,7 +3178,7 @@ function offerHtmlTechnical(){
       '<tbody>'+rows+'</tbody>'+
     '</table>'+
 
-    '<div style="display:flex;justify-content:flex-end;margin-top:12px">'+
+    '<div data-pdf-totals style="display:flex;justify-content:flex-end;margin-top:12px">'+
       '<div style="width:255px">'+
         '<div style="display:flex;justify-content:space-between;padding:3px 0"><span>Základ dane:</span><b>'+eur(net)+'</b></div>'+
         '<div style="display:flex;justify-content:space-between;padding:3px 0"><span>DPH '+(current.vat_pct||23)+' %:</span><b>'+eur(vat)+'</b></div>'+
@@ -3187,7 +3188,7 @@ function offerHtmlTechnical(){
 
     subsidyBlock+extraImages+note+materialScope+scope+annual+(isTradeQuote(current)?'':warrantyConsentHtml())+
 
-    '<div style="position:absolute;left:9mm;right:9mm;bottom:8mm;border-top:1px solid #888;padding-top:5px;display:flex;justify-content:space-between;color:#555;font-size:8px">'+
+    '<div data-pdf-footer style="position:absolute;left:9mm;right:9mm;bottom:8mm;border-top:1px solid #888;padding-top:5px;display:flex;justify-content:space-between;color:#555;font-size:8px">'+
       '<div>Spektra Install s.r.o.<br>Hollého 210, 015 01 Rajec</div>'+
       '<div style="text-align:right"><a data-pdf-link href="https://www.spektrainstall.sk/" target="_blank" style="color:#00539B;text-decoration:none;font-weight:700">www.spektrainstall.sk</a> · <a data-pdf-link href="https://www.spektrashop.sk/" target="_blank" style="color:#00539B;text-decoration:none;font-weight:700">www.spektrashop.sk</a></div>'+
     '</div>'+
@@ -3268,8 +3269,8 @@ function offerHtmlPresentation(){
             ?'<div style="width:29mm;height:24mm;display:flex;align-items:center;justify-content:center;flex:0 0 auto;background:#fff;border-radius:5px"><img crossorigin="anonymous" src="'+esc(imageUrl)+'" style="max-width:100%;max-height:100%;object-fit:contain"></div>'
             :'<div style="width:8mm;height:8mm;flex:0 0 auto;border-radius:50%;background:#eaf4f9;display:flex;align-items:center;justify-content:center;color:#00539B;font-weight:900">✓</div>')+
           '<div>'+
-            '<div style="font-weight:800;font-size:9.8px;line-height:1.25;color:#173247">'+esc(customerText(i.name))+'</div>'+
-            (desc?'<div style="font-size:7.9px;color:#617383;margin-top:3px;line-height:1.35">'+esc(desc)+'</div>':'')+
+            '<div data-pdf-item-name style="font-weight:800;font-size:9.8px;line-height:1.25;color:#173247">'+esc(customerText(i.name))+'</div>'+
+            (desc?'<div data-pdf-item-description style="font-size:7.9px;color:#617383;margin-top:3px;line-height:1.35">'+esc(desc)+'</div>':'')+
           '</div>'+
         '</div>'+
       '</td>'+
@@ -3369,10 +3370,10 @@ function offerHtmlPresentation(){
     '<div style="display:flex;align-items:center;justify-content:center;gap:5px"><span style="color:#c20000;font-weight:900;font-size:14px">◆</span><span style="font-size:7.8px;font-weight:700">Servis<br>a záruka</span></div>'+
   '</div>';
 
-  return '<div style="width:210mm;min-height:297mm;font-family:Arial,sans-serif;color:#173247;background:#fff;font-size:9px;position:relative;overflow:hidden">'+
+  return '<div data-pdf-layout="presentation" style="width:210mm;min-height:297mm;font-family:Arial,sans-serif;color:#173247;background:#fff;font-size:9px;position:relative;overflow:hidden">'+
     bannerHtml+
     benefits+
-    '<div style="padding:5mm 7mm 64mm">'+
+    '<div data-pdf-content style="padding:5mm 7mm 64mm">'+
       '<div style="display:grid;grid-template-columns:1fr 1.45fr .88fr;gap:7mm;align-items:center;margin-bottom:5mm">'+
         '<div>'+
           '<div style="font-size:7.2px;font-weight:900;color:#596d7c">PRE:</div>'+
@@ -3390,7 +3391,7 @@ function offerHtmlPresentation(){
         '</div>'+
       '</div>'+
 
-      '<table style="width:100%;border-collapse:separate;border-spacing:0;border:1px solid #d5e2ea;border-radius:7px;overflow:hidden;font-size:8.7px">'+
+      '<table data-pdf-items style="width:100%;border-collapse:separate;border-spacing:0;border:1px solid #d5e2ea;border-radius:7px;overflow:hidden;font-size:8.7px">'+
         '<thead><tr style="background:#00539B;color:#fff">'+
           '<th style="text-align:left;padding:7px 7px;width:auto">Názov položky</th>'+
           '<th style="text-align:center;padding:7px 4px;width:22mm">Množstvo</th>'+
@@ -3400,7 +3401,7 @@ function offerHtmlPresentation(){
         '<tbody>'+rowHtml+'</tbody>'+
       '</table>'+
 
-      '<div style="display:grid;grid-template-columns:1.15fr .85fr;gap:4mm;margin-top:4mm">'+
+      '<div data-pdf-totals style="display:grid;grid-template-columns:1.15fr .85fr;gap:4mm;margin-top:4mm">'+
         '<div style="background:#f8fafc;border:1px solid #dbe6ee;border-radius:7px;padding:4mm;min-height:28mm">'+subsidyBox+'</div>'+
         '<div style="background:#eaf4f9;border:1px solid #b9d9eb;border-radius:7px;padding:4mm;min-height:28mm">'+
           '<div style="display:flex;justify-content:space-between;margin-bottom:3px;font-size:8.5px"><span>Základ dane:</span><b>'+eur(net)+'</b></div>'+
@@ -3413,12 +3414,12 @@ function offerHtmlPresentation(){
       '</div>'+
 
       (current.customer?.note
-        ?'<div style="margin-top:4mm;padding:3mm;background:#f8fafb;border-left:2px solid #c20000;font-size:8px">'+esc(current.customer.note)+'</div>'
+        ?'<div data-pdf-note style="margin-top:4mm;padding:3mm;background:#f8fafb;border-left:2px solid #c20000;font-size:8px">'+esc(current.customer.note)+'</div>'
         :'')+
       (isTradeQuote(current)?'':warrantyConsentHtml(true))+
     '</div>'+
 
-    '<div style="position:absolute;left:7mm;right:7mm;bottom:4mm;background:#fff">'+
+    '<div data-pdf-footer style="position:absolute;left:7mm;right:7mm;bottom:4mm;background:#fff">'+
       '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4mm;padding-top:4mm;border-top:1px solid #dbe3e9">'+
         '<div style="padding-right:2mm">'+
           '<div style="display:flex;align-items:center;gap:5px;font-size:11.3px;color:#00539B;font-weight:900;margin-bottom:5px"><span style="color:#c20000;font-size:14px">◇</span>Rozsah materiálu</div>'+
@@ -3525,11 +3526,26 @@ async function createPdfFile(){
   holder.style.background='#fff';
   holder.style.overflow='visible';
   holder.innerHTML=offerHtml();
+  const paginateTradeOffer=isTradeQuote(current);
+  const pdfIdentity={quoteNo:current.quote_no||'',customerName:current.customer?.name||''};
   document.body.appendChild(holder);
 
   try{
     const root=holder.firstElementChild;
     if(!root)throw new Error('Chýba obsah ponuky.');
+
+    // Trade offers may contain dozens of individually visible stock rows.
+    // Build separate A4 DOM pages before rasterizing; never shrink the long list.
+    if(paginateTradeOffer){
+      if(!window.SpektraPdfPagination)throw new Error('Stránkovanie PDF sa nenačítalo. Obnovte aplikáciu.');
+      await inlineImagesForPdf(root);
+      await SpektraPdfPagination.waitForAssets(root);
+      const prepared=SpektraPdfPagination.prepare(root,pdfIdentity);
+      try{
+        const pdf=await SpektraPdfPagination.render(prepared,{html2canvas:window.html2canvas,jsPDF:window.jspdf.jsPDF});
+        return new File([pdf.output('blob')],(pdfIdentity.quoteNo||'cenova-ponuka')+'.pdf',{type:'application/pdf'});
+      }finally{prepared.dispose();}
+    }
 
     // Zapamätáme si klikateľné oblasti ešte pred rasterizáciou.
     // PDF je vizuálne obraz stránky, preto odkazy doplníme následne ako PDF anotácie.
