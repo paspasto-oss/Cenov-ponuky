@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="sk">
-<head>
+<head><base href="/mobile-v4/">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f3f6f8">
@@ -24,13 +24,13 @@
 <script src="js/pdf-banners.js?v=20261005-universal1"></script>
 <script src="js/pdf-pagination.js?v=20261006-a4-1"></script>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-config.js"></script>
+
+
 <link rel="stylesheet" href="js/quote-material-editor.css?v=20261007-rows1">
 <script src="js/quote-materials.js?v=20261007-rows1"></script>
 <script src="js/quote-row-output.js?v=20261007-rows1"></script>
 <script src="js/quote-storage.js?v=20261005-atomic1"></script>
-<script src="js/db.js?v=20261007-contacts1"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
@@ -459,7 +459,7 @@
 </nav>
 
 <script>
-const QUOTES_KEY='spektra_quotes_v4';
+const QUOTES_KEY='spektra_quotes_rowqa_20261007';
 let quotes=JSON.parse(localStorage.getItem(QUOTES_KEY)||'[]');
 let stocks=[];
 let staticDeviceCatalog=[];
@@ -3896,18 +3896,19 @@ async function downloadPohodaIssuedOfferXml(){
 }
 
 function exportQuotes(){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(quotes,null,2)],{type:'application/json'}));a.download='spektra-ponuky-v4.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),300)}
-loadConfig().then(async()=>{
-  await syncQuotes(true,true);
-  renderHome();
-  setInterval(()=>{if(!document.hidden)syncQuotes(false,true)},30000);
-});
-window.addEventListener('online',()=>syncQuotes(true,true));
-window.addEventListener('focus',()=>syncQuotes(false,true));
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncQuotes(false,true)});
 </script>
 <script src="js/quote-material-editor.js?v=20261007-rows1"></script>
 <script src="js/inspections.js?v=20261006-clean1"></script>
 <script src="js/home-toolbar.js?v=20261007-bottom1"></script>
-<script src="js/contacts.js?v=20261007-contacts1"></script>
+
+<script>
+window.SpektraDB={isAuthenticated:()=>false,init:async()=>({online:false,authenticated:false}),getClient:()=>null};
+if(!quotes.length)quotes=[{"id": "row-qa-offer", "quote_no": "UKÁŽKA CP-2026", "status": "sent", "category": "heat_pump", "system_type": "monoblock", "created": 1791392400000, "updated": 1791392400000, "customer": {"name": "Ukážková ponuka – rodinný dom", "address": "Kontrola editora"}, "building": {}, "device": {"brand": "Midea", "model": "M-Thermal 10 kW"}, "optional_services": {"annual_service": false}, "pdf_template": "technical", "pdf_banner_mode": "none", "pdf_images_enabled": false, "subsidy": {"program": "none"}, "installation_tier": "standard", "vat_pct": 23, "price_complete": true, "items": [{"role": "device", "name": "Tepelné čerpadlo Midea M-Thermal 10 kW", "qty": 1, "unit": "ks", "price": 4400, "cost": 3200, "visible": true}, {"role": "installation_service", "name": "Montáž tepelného čerpadla a uvedenie do prevádzky", "qty": 1, "unit": "súb.", "price": 900, "cost": 420, "visible": true}, {"role": "pipe", "name": "Medené potrubie 28 mm", "qty": 5, "unit": "m", "price": 14.8, "cost": 8.6, "visible": false}, {"role": "magnetic_filter", "name": "Magnetický filter na vykurovaciu sústavu", "qty": 1, "unit": "ks", "price": 86, "cost": 51, "visible": false}], "net": 5460.0, "vat": 1255.8, "total": 6715.8}];
+stocks=[{"id": "qa-valve", "fingerprint": "qa-valve-fingerprint", "code": "VENT-1", "plu": "501", "name": "Guľový ventil 1\"", "unit": "ks", "active": true, "sell_price_ex_vat": 18.9, "purchase_price_ex_vat": 10.2, "quantity_available": 15}];
+rebuildStockIndexes();
+document.getElementById('onlineState').textContent='SKÚŠOBNÁ UKÁŽKA';
+document.getElementById('catalogState').textContent='Ukážkový katalóg';
+document.addEventListener('DOMContentLoaded',()=>{renderHome();openQuote('row-qa-offer');});
+</script>
 </body>
 </html>

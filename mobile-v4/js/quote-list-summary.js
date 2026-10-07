@@ -3,7 +3,7 @@
 (function(root){
   'use strict';
   const equipmentRoles=new Set(['device','multisplit_indoor_units']);
-  const serviceRoles=new Set(['installation','installation_service','heating_system_flush_cleaner_inhibitor','wall_penetration_80mm_50cm','annual_service']);
+  const serviceRoles=new Set(['installation','installation_service','heating_system_flush_cleaner_inhibitor','wall_penetration_80mm_50cm','annual_service','quote_manual_service']);
   const euro=new Intl.NumberFormat('sk-SK',{style:'currency',currency:'EUR'});
   function number(value){
     if(value==null||typeof value==='boolean'||(typeof value!=='number'&&typeof value!=='string')||String(value).trim()==='')return null;

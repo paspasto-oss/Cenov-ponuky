@@ -1,16 +1,24 @@
-/* UI for quote-materials.js. Uses the existing quote outbox, totals and PDF rows. */
+/* Shared line editor. Item changes use the existing durable quote outbox. */
+let quoteRowsEditorActive=false;
 let quoteMaterialSearchTimer=null;
 let quoteMaterialSearchRows=[];
 let quoteMaterialSearchOwner=null;
 let quoteMaterialSearchLimit=20;
+let quoteMaterialStatusVersion=0;
 
+function openQuoteRows(){
+  if(!current)return;
+  if(!window.SpektraQuoteMaterials.unlocked(current)){renderFinal();go('step5');return;}
+  quoteRowsEditorActive=true;
+  renderQuoteMaterialEditor();renderQuoteRowsSummary();go('quoteRows');
+}
 function renderQuoteMaterialEditor(){
   if(!current)return;
   const api=window.SpektraQuoteMaterials;
   const details=document.getElementById('bomDetails');
-  const slot=document.getElementById(isTradeQuote(current)?'finalMaterialEditorSlot':'quoteMaterialEditorSlot');
+  const slot=document.getElementById(quoteRowsEditorActive?'rowMaterialEditorSlot':isTradeQuote(current)?'finalMaterialEditorSlot':'quoteMaterialEditorSlot');
   if(details&&slot&&details.parentElement!==slot)slot.appendChild(details);
-  if(details)details.classList.toggle('hidden',!api.unlocked(current));
+  if(details){details.classList.toggle('hidden',!api.unlocked(current));if(quoteRowsEditorActive)details.open=true;}
   if(!api.unlocked(current))return;
   if(quoteMaterialSearchOwner!==current.id){
     quoteMaterialSearchOwner=current.id;quoteMaterialSearchRows=[];quoteMaterialSearchLimit=20;
@@ -18,87 +26,138 @@ function renderQuoteMaterialEditor(){
     const input=document.getElementById('quoteMaterialSearch');if(input)input.value='';
     const qty=document.getElementById('quoteMaterialAddQty');if(qty)qty.value='1';
     const results=document.getElementById('quoteMaterialResults');if(results)results.replaceChildren();
-    setQuoteMaterialStatus('Množstvá aj vymazané položky sa zachovajú pri obnove cien.');
+    for(const id of ['quoteCatalogPanel','quoteManualPanel'])document.getElementById(id)?.classList.add('hidden');
+    resetManualQuoteForm();
+    setQuoteMaterialStatus('Zmeny sa ukladajú automaticky po opustení upraveného poľa.');
   }
-  const target=document.getElementById('bomItems');
-  if(!target)return;
-  target.innerHTML=(current.items||[]).map((i,index)=>{
-    const canEdit=api.editable(i);
+  const target=document.getElementById('bomItems');if(!target)return;
+  const input=(i,n,field,label,value,extra='')=>'<input aria-label="'+label+' – '+esc(i.name)+'" data-row-field="'+field+'" type="text" '+extra+' value="'+esc(value??'')+'" onchange="setQuoteItemField('+n+',\''+field+'\',this.value,this)">';
+  const rows=(current.items||[]).map((i,n)=>{
+    const textOnly=api.isText(i),meta=i.stored_metadata?.quote_material;
     const code=i.pohoda?.code||i.pohoda_code||'';
-    let info=code?'Kód: '+code:'Bez skladového kódu';
+    let info=textOnly?'Poznámka bez ceny':meta?.origin==='manual'?(i.role==='quote_manual_service'?'Vlastná práca / služba':'Vlastná položka'):code?'Kód: '+code:'Položka bez skladového kódu';
     if(i.pohoda?.plu)info+=' · PLU: '+i.pohoda.plu;
-    if(i.mapping_status==='included_in_installation')info+=' · zahrnuté v montáži';
-    if(i.mapping_status==='catalog_item_missing')info+=' · karta nie je v aktuálnom katalógu; uložená cena ostala';
-    const knownPurchase=i.cost_override===true||(i.cost!=null&&Number(i.cost)>0);
-    const amount=i.price==null?null:Number(i.price)*Number(i.qty);
-    return '<div class="item quoteMaterialRow">'+
-      '<div class="quoteMaterialInfo"><b>'+esc(customerText(i.name))+'</b><small>'+esc(info)+'</small>'+
-      '<small>'+(knownPurchase?'Nákupný náklad je započítaný.':'⚠ Nákupný náklad chýba – doplň ho pre správny zisk.')+'</small>'+
-      (!canEdit?'<small>Zariadenie / služba – upravuje sa v technickom návrhu.</small>':'')+'</div>'+
-      '<div class="quoteMaterialNumbers">'+
-        '<label>Množstvo ('+esc(i.unit||'ks')+')'+(canEdit?
-          '<input aria-label="Množstvo – '+esc(i.name)+'" data-material-qty="'+index+'" type="text" inputmode="decimal" value="'+esc(i.qty)+'" onchange="setQuoteItemQuantity('+index+',this.value)">':
-          '<span class="quoteFixedQty">'+esc(i.qty)+' '+esc(i.unit||'ks')+'</span>')+'</label>'+
-        '<label>Predaj / MJ bez DPH<input aria-label="Predajná cena – '+esc(i.name)+'" type="number" step="0.0001" min="0" value="'+(i.price==null?'':Number(i.price))+'" onchange="setQuoteItemPrice('+index+',this.value)"></label>'+
-        '<label>Nákup / MJ bez DPH<input aria-label="Nákupná cena – '+esc(i.name)+'" type="number" step="0.0001" min="0" placeholder="doplniť" value="'+(knownPurchase?Number(i.cost):'')+'" onchange="setQuoteItemCost('+index+',this.value)"></label>'+
-      '</div><div class="quoteMaterialLineTotal"><span>Spolu bez DPH <b>'+eur(amount)+'</b></span>'+
-        (canEdit?'<button type="button" class="btn ghost small quoteRemoveMaterial" data-material-remove="'+index+'" onclick="removeQuoteMaterial('+index+')" aria-label="Vymazať – '+esc(i.name)+'">Vymazať</button>':'')+
-      '</div></div>';
+    if(i.mapping_status==='catalog_item_missing')info+=' · skladová karta sa nenašla';
+    const knownCost=i.cost!=null&&(Number(i.cost)>0||i.cost_override===true);
+    const total=Number(i.qty)===0?0:i.price==null?null:Number(i.price)*Number(i.qty);
+    return '<tr data-quote-row="'+n+'" class="'+(textOnly?'quoteTextRow':'')+'"><td class="quoteRowName"><div class="quoteRowNameWrap"><span class="quoteRowNumber">'+(n+1)+'</span><div><textarea rows="2" aria-label="Názov položky '+(n+1)+'" data-row-field="name" onchange="setQuoteItemField('+n+',\'name\',this.value,this)">'+esc(i.name)+'</textarea><small>'+esc(info)+'</small></div></div></td>'+
+      (textOnly?'<td colspan="5" class="quoteTextLabel">Text sa vytlačí bez množstva a ceny.</td>':
+        '<td>'+input(i,n,'qty','Množstvo',i.qty,'inputmode="decimal"')+'</td>'+
+        '<td>'+input(i,n,'unit','Merná jednotka',i.unit||'ks','maxlength="10"')+'</td>'+
+        '<td>'+input(i,n,'price','Predajná cena',i.price,'inputmode="decimal" placeholder="doplniť"')+'</td>'+
+        '<td>'+input(i,n,'cost','Nákupná cena',knownCost?i.cost:null,'inputmode="decimal" placeholder="doplniť"')+'</td>'+
+        '<td class="quoteRowAmount" data-row-total="'+n+'">'+eur(total)+'</td>')+
+      '<td><button type="button" class="quoteRemoveMaterial" title="Vymazať položku" onclick="removeQuoteMaterial('+n+')" aria-label="Vymazať – '+esc(i.name)+'">×</button></td></tr>';
   }).join('');
+  target.innerHTML=rows?'<div class="quoteTableScroll" role="region" aria-label="Upraviteľné položky ponuky" tabindex="0"><table class="quoteRowsTable"><thead><tr><th scope="col">Položka / popis</th><th scope="col">Množstvo</th><th scope="col">MJ</th><th scope="col">Predaj / MJ<small>bez DPH</small></th><th scope="col">Nákup / MJ<small>bez DPH</small></th><th scope="col">Spolu<small>bez DPH</small></th><th scope="col"><span class="quoteSrOnly">Odstrániť</span></th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="notice">Ponuka zatiaľ nemá položky. Pridajte položku z katalógu alebo vlastný riadok.</div>';
   const count=document.getElementById('quoteMaterialCount');
-  if(count)count.textContent='Materiálové položky: '+(current.items||[]).filter(api.editable).length;
+  if(count)count.textContent='Počet riadkov: '+(current.items||[]).length+' · Ceny sú za jednu mernú jednotku.';
+  const detail=document.getElementById('quoteRowsDetailedPdf');if(detail)detail.checked=current.material_edits?.pdf_detail===true;
+}
+function renderQuoteRowsSummary(){
+  if(!current)return;
+  const title=document.getElementById('quoteRowsTitle');if(title)title.textContent=current.quote_no||'Položky ponuky';
+  const customer=document.getElementById('quoteRowsCustomer');if(customer)customer.textContent=[current.customer?.name,current.customer?.address].filter(Boolean).join(' · ');
+  const result=window.SpektraQuoteSummary.calculate(current);
+  const values={quoteRowsNet:current.price_complete?eur(current.net):'Neúplná cena',quoteRowsVat:current.price_complete?eur(current.vat):'—',quoteRowsTotal:result.total==null?'Neúplná cena':eur(result.total),quoteRowsProfit:result.gross==null?'Doplniť náklady':eur(result.gross)};
+  for(const [id,value] of Object.entries(values)){const el=document.getElementById(id);if(el)el.textContent=value;}
+  const vatLabel=document.getElementById('quoteRowsVatLabel');if(vatLabel)vatLabel.textContent='DPH '+(current.vat_pct??23)+' %';
+  const hint=document.getElementById('quoteRowsWarning');
+  if(hint){
+    let message='';
+    const unpriced=(current.items||[]).filter(i=>i.price==null);
+    if(!current.items?.length)message='Pridajte aspoň jednu položku.';
+    else if(unpriced.length)message='Doplňte predajnú cenu pri '+unpriced.length+' položkách, prípadne nepotrebné riadky vymažte.';
+    else if(result.inconsistent)message='Uložený súčet nesedí s riadkami. Skontrolujte položky a stlačte Uložiť zmeny.';
+    else if(result.missingCost.length)message='Pri '+result.missingCost.length+' položkách chýba nákupná cena. Pre správny hrubý zisk doplňte aj náklady na prácu.';
+    hint.textContent=message;hint.classList.toggle('hidden',!message);
+  }
 }
 function setQuoteMaterialStatus(text,error=false){
+  quoteMaterialStatusVersion++;
   const el=document.getElementById('quoteMaterialStatus');
-  if(el){el.textContent=text;el.classList.toggle('warn',error)}
+  if(el){el.textContent=text;el.classList.toggle('warn',error);}
 }
-function renderQuoteAfterMaterialChange(){
+function renderQuoteAfterMaterialChange(rerender=false){
   recalcQuoteTotalsFromItems();
-  if(isTradeQuote(current))renderFinal();else renderRecommendation();
+  if(quoteRowsEditorActive){if(rerender)renderQuoteMaterialEditor();renderQuoteRowsSummary();}
+  else if(isTradeQuote(current))renderFinal();else renderRecommendation();
 }
-async function saveQuoteMaterialChange(message){
+async function saveQuoteMaterialChange(message,rerender=false){
   const owner=current;
-  renderQuoteAfterMaterialChange();
+  renderQuoteAfterMaterialChange(rerender);
   setQuoteMaterialStatus(message+' Ukladám…');
-  const pending=upsertCurrent();
-  const token=owner._edit_token;
+  const statusVersion=quoteMaterialStatusVersion;
   try{
+    const pending=upsertCurrent(),token=owner._edit_token;
     const result=await pending;
-    if(current?.id!==owner.id||current._edit_token!==token)return;
+    if(current?.id!==owner.id||current._edit_token!==token||quoteMaterialStatusVersion!==statusVersion)return result;
+    renderQuoteRowsSummary();
     setQuoteMaterialStatus(result?.ok?(message+(result.synced?' Uložené a synchronizované.':' Uložené v tomto zariadení; čaká na synchronizáciu.')):
-      message+' Synchronizácia nepotvrdená: '+(result?.error||'Skontrolujte stav ponuky.'),!result?.ok);
+      message+' Uloženie nepotvrdené: '+(result?.error||'Skontrolujte stav ponuky.'),!result?.ok);
+    return result;
   }catch(e){
-    if(current?.id===owner.id)setQuoteMaterialStatus('Uloženie zlyhalo: '+e.message,true);
+    if(current?.id===owner.id&&quoteMaterialStatusVersion===statusVersion)setQuoteMaterialStatus('Uloženie zlyhalo: '+e.message,true);
+    return {ok:false,error:e.message};
   }
 }
-async function setQuoteItemQuantity(index,value){
-  if(!window.SpektraQuoteMaterials.unlocked(current))return;
-  try{window.SpektraQuoteMaterials.setQuantity(current,index,value)}
-  catch(e){renderQuoteMaterialEditor();setQuoteMaterialStatus(e.message,true);return}
-  return saveQuoteMaterialChange('Množstvo bolo zmenené.');
+async function setQuoteItemField(index,field,value,input=null){
+  const api=window.SpektraQuoteMaterials;if(!api.unlocked(current))return;
+  try{
+    api.setField(current,index,field,value);
+    if(quoteRowsEditorActive)api.enableRows(current);
+    if(input){input.removeAttribute('aria-invalid');input.value=current.items[index][field]??'';}
+    const item=current.items[index],total=document.querySelector('[data-row-total="'+index+'"]');
+    if(total)total.textContent=eur(Number(item.qty)===0?0:item.price==null?null:Number(item.price)*Number(item.qty));
+  }catch(e){if(input)input.setAttribute('aria-invalid','true');setQuoteMaterialStatus(e.message,true);return;}
+  return saveQuoteMaterialChange('Položka bola zmenená.');
 }
+function setQuoteItemQuantity(index,value){return setQuoteItemField(index,'qty',value);}
 async function removeQuoteMaterial(index){
-  const api=window.SpektraQuoteMaterials;
-  if(!api.unlocked(current)||!api.editable(current.items?.[index]))return;
-  const item=current.items[index];
-  if(!confirm('Vymazať z ponuky položku „'+item.name+'“? Skladová karta v POHODE zostane zachovaná.'))return;
-  try{api.remove(current,index)}catch(e){setQuoteMaterialStatus(e.message,true);return}
-  return saveQuoteMaterialChange('Položka bola vymazaná z ponuky.');
+  const api=window.SpektraQuoteMaterials;if(!api.unlocked(current)||!current.items?.[index])return;
+  if(!confirm('Vymazať z ponuky položku „'+current.items[index].name+'“?'))return;
+  try{api.remove(current,index);if(quoteRowsEditorActive)api.enableRows(current);}
+  catch(e){setQuoteMaterialStatus(e.message,true);return;}
+  return saveQuoteMaterialChange('Položka bola vymazaná.',true);
+}
+function toggleQuoteAddPanel(kind){
+  const id=kind==='catalog'?'quoteCatalogPanel':'quoteManualPanel',panel=document.getElementById(id);
+  if(!panel)return;
+  const opening=panel.classList.contains('hidden');panel.classList.toggle('hidden',!opening);
+  document.getElementById(kind==='catalog'?'quoteManualPanel':'quoteCatalogPanel')?.classList.add('hidden');
+  if(opening)document.getElementById(kind==='catalog'?'quoteMaterialSearch':'quoteManualName')?.focus();
+}
+function resetManualQuoteForm(){
+  for(const [id,value] of Object.entries({quoteManualName:'',quoteManualQty:'1',quoteManualUnit:'ks',quoteManualPrice:'',quoteManualCost:'',quoteManualKind:'material'})){const el=document.getElementById(id);if(el)el.value=value;}
+  updateQuoteManualKind();
+}
+function updateQuoteManualKind(){
+  const kind=document.getElementById('quoteManualKind')?.value;
+  document.getElementById('quoteManualNumbers')?.classList.toggle('hidden',kind==='text');
+}
+async function addManualQuoteItem(){
+  const api=window.SpektraQuoteMaterials;if(!api.unlocked(current))return;
+  const value=id=>document.getElementById(id)?.value;
+  try{
+    const kind=value('quoteManualKind');
+    api.addManual(current,{name:value('quoteManualName'),qty:value('quoteManualQty'),unit:value('quoteManualUnit'),price:value('quoteManualPrice'),cost:value('quoteManualCost'),textOnly:kind==='text',service:kind==='service'},window.SpektraQuoteStorage.uuid());
+    if(quoteRowsEditorActive)api.enableRows(current);
+    resetManualQuoteForm();
+    return await saveQuoteMaterialChange(kind==='text'?'Textová poznámka bola pridaná.':'Vlastná položka bola pridaná.',true);
+  }catch(e){setQuoteMaterialStatus(e.message,true);}
 }
 function searchQuoteMaterials(query,more=false){
   clearTimeout(quoteMaterialSearchTimer);
   if(!window.SpektraQuoteMaterials.unlocked(current))return;
-  const owner=current.id;
-  quoteMaterialSearchLimit=more?quoteMaterialSearchLimit+20:20;
+  const owner=current.id;quoteMaterialSearchLimit=more?quoteMaterialSearchLimit+20:20;
   quoteMaterialSearchTimer=setTimeout(()=>{
     if(current?.id!==owner||!window.SpektraQuoteMaterials.unlocked(current))return;
     quoteMaterialSearchOwner=owner;
     const box=document.getElementById('quoteMaterialResults');if(!box)return;
-    const found=window.SpektraQuoteMaterials.search(stocks,query,quoteMaterialSearchLimit);
-    quoteMaterialSearchRows=found.rows;
-    if(String(query).trim().length<2){box.innerHTML='<div class="sub">Zadajte aspoň 2 znaky.</div>';return}
-    if(!stocks.length){box.innerHTML='<div class="notice warn">Katalóg zásob nie je načítaný. Prihláste sa a synchronizujte zásoby.</div>';return}
-    if(!found.total){box.innerHTML='<div class="sub">V aktívnych zásobách sa nenašla zhoda.</div>';return}
+    const found=window.SpektraQuoteMaterials.search(stocks,query,quoteMaterialSearchLimit);quoteMaterialSearchRows=found.rows;
+    if(String(query).trim().length<2){box.innerHTML='<div class="sub">Zadajte aspoň 2 znaky.</div>';return;}
+    if(!stocks.length){box.innerHTML='<div class="notice warn">Katalóg zásob nie je načítaný. Prihláste sa a synchronizujte zásoby.</div>';return;}
+    if(!found.total){box.innerHTML='<div class="sub">V aktívnych zásobách sa nenašla zhoda.</div>';return;}
     box.innerHTML='<div class="sub">Nájdené '+found.total+' · zobrazené '+found.rows.length+'</div>'+found.rows.map((st,n)=>
       '<div class="quoteStockResult"><div><b>'+esc(st.name)+'</b><small>'+esc(['Kód: '+(st.code||'—'),'PLU: '+(st.plu||'—'),st.storage_name||''].filter(Boolean).join(' · '))+'</small>'+
       '<small>Predaj: '+eur(st.sell_price_ex_vat)+' / '+esc(st.unit||'ks')+' bez DPH · Skladom: '+esc(st.quantity_available??'—')+' '+esc(st.unit||'ks')+'</small></div>'+
@@ -107,14 +166,40 @@ function searchQuoteMaterials(query,more=false){
   },more?0:180);
 }
 async function addQuoteMaterialFromStock(index){
-  if(!window.SpektraQuoteMaterials.unlocked(current)||quoteMaterialSearchOwner!==current.id)return;
-  const selected=quoteMaterialSearchRows[index];
-  if(!selected)return;
-  // Validate the original result against the latest in-memory catalog, not the row index.
-  const st=window.SpektraQuoteMaterials.findStock({id:selected.id,fingerprint:selected.fingerprint,plu:selected.plu,code:selected.code,storage_ref:selected.storage_ref},stocks);
+  const api=window.SpektraQuoteMaterials;
+  if(!api.unlocked(current)||quoteMaterialSearchOwner!==current.id)return;
+  const selected=quoteMaterialSearchRows[index];if(!selected)return;
+  const st=api.findStock({id:selected.id,fingerprint:selected.fingerprint,plu:selected.plu,code:selected.code,storage_ref:selected.storage_ref},stocks);
   try{
-    const qty=document.getElementById('quoteMaterialAddQty')?.value;
-    const result=window.SpektraQuoteMaterials.add(current,st,qty,window.SpektraQuoteStorage.uuid());
-    await saveQuoteMaterialChange(result.merged?'Množstvo existujúcej položky bolo navýšené.':'Materiál bol pridaný do ponuky.');
-  }catch(e){setQuoteMaterialStatus(e.message,true)}
+    const result=api.add(current,st,document.getElementById('quoteMaterialAddQty')?.value,window.SpektraQuoteStorage.uuid());
+    if(quoteRowsEditorActive){api.enableRows(current);if(result.item)result.item.visible=true;}
+    return await saveQuoteMaterialChange(result.merged?'Množstvo existujúcej položky bolo navýšené.':'Položka z katalógu bola pridaná.',true);
+  }catch(e){setQuoteMaterialStatus(e.message,true);}
+}
+async function setQuoteRowsDetailedPdf(value){
+  try{window.SpektraQuoteMaterials.setDetailedPdf(current,!!value);}
+  catch(e){setQuoteMaterialStatus(e.message,true);return;}
+  return saveQuoteMaterialChange('Rozpis PDF bol nastavený.');
+}
+async function saveQuoteRows(){
+  if(!window.SpektraQuoteMaterials.unlocked(current))return;
+  const invalid=document.querySelector('#bomItems [aria-invalid="true"]');
+  if(invalid){invalid.focus();setQuoteMaterialStatus('Opravte označené pole pred uložením.',true);return {ok:false};}
+  return saveQuoteMaterialChange('Ponuka bola prepočítaná.');
+}
+async function quoteRowsToFinal(){
+  const owner=current,result=await saveQuoteRows();
+  if(!result?.ok||current?.id!==owner.id)return;
+  renderFinal();go('step5');
+}
+async function copyQuoteForEditing(){
+  if(!current||!isQuotePriceLocked())return;
+  const original=current,copy=JSON.parse(JSON.stringify(original));
+  for(const key of Object.keys(copy))if(key.startsWith('_'))delete copy[key];
+  for(const key of ['remote_id','remote_customer_id','sync_version','warranty_consent','issued_on','valid_until'])delete copy[key];
+  copy.id=window.SpektraQuoteStorage.uuid();copy.quote_no='NÁVRH-'+String(Date.now()).slice(-6);
+  copy.status='draft';copy.created=Date.now();copy.updated=Date.now();copy._dirty=true;copy._server_quote_no=false;
+  window.SpektraQuoteMaterials.enableRows(copy);
+  current=copy;openQuoteRows();
+  return saveQuoteMaterialChange('Vytvorená upraviteľná kópia ponuky '+(original.quote_no||'')+'.',true);
 }
