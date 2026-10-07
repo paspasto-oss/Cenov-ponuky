@@ -49,3 +49,24 @@ html{scroll-padding-top:90px}
 
 .compactFilterViewport[hidden]{display:none!important}
 .compactListHeading .compactFilterToggle{min-height:28px;padding:4px 9px}
+
+/* One persistent bottom navigation on phones, tablets and desktop. */
+body.hasBottomToolbar{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+body > .homeToolbar{position:fixed;left:0;right:0;bottom:0;z-index:80;margin:0;border:0;border-top:1px solid #d3dee8;border-radius:0;background:#fff;padding:6px 12px calc(6px + env(safe-area-inset-bottom,0px));overflow:visible;box-shadow:0 -3px 14px #17324712}
+.homeToolbar .homeToolbarRow{display:grid;grid-template-columns:1fr 64px 64px 1fr;gap:8px;max-width:680px;margin:auto}
+.homeToolbar .homeToolbarButton{min-height:44px;font-size:14px;white-space:normal}
+.homeToolbarGroup{position:relative;min-width:0}
+.homeToolbar .homeToolbarToggle{width:100%;font-size:27px;line-height:1}
+.homeToolbarMenu{position:absolute;bottom:calc(100% + 12px);width:min(260px,calc(100vw - 24px));padding:6px;border:1px solid #c0d8e6;border-radius:12px;background:#fff;box-shadow:0 6px 24px #17324730;display:grid;gap:5px;max-height:60vh;overflow-y:auto}
+.homeToolbarMenu[hidden]{display:none!important}
+#homeCreateMenu{left:0}
+#homeSyncMenu{right:0}
+.homeToolbarMenu .homeToolbarButton{justify-content:flex-start;width:100%;padding:10px;text-align:left}
+html{scroll-padding-top:60px;scroll-padding-bottom:90px}
+@media(max-width:480px){
+ .homeToolbar .homeToolbarRow{grid-template-columns:1fr 48px 48px 1fr;gap:5px}
+ .homeToolbar .homeToolbarRow>.homeToolbarButton{flex-direction:column;gap:2px;padding:3px;font-size:12px}
+ #homeCreateMenu{left:-80px}
+ #homeSyncMenu{right:-80px}
+}
+@media print{body>.homeToolbar{display:none!important}body.hasBottomToolbar{padding-bottom:0}}

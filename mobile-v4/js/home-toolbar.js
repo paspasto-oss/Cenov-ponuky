@@ -10,14 +10,10 @@
     stock:'<path d="M3 8l9-5 9 5v11l-9 4-9-4zM3 8l9 5 9-5M12 13v10M7.5 5.5l9 5"/>',
     newInspection:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M12 9v8M8 13h8"/>'
   };
-  const entries=[
-    ['inspections','Obhliadky','Rozpracované a dokončené obhliadky'],
-    ['quotes','Cenové ponuky','Zobraziť databázu cenových ponúk'],
-    ['newQuote','Nová ponuka','Vytvoriť novú cenovú ponuku'],
-    ['sync','Synchronizovať','Synchronizovať cenové ponuky medzi zariadeniami'],
-    ['stock','Aktualizovať zásoby','Nahrať aktuálne zásoby z POHODY'],
-    ['newInspection','Nová obhliadka','Začať novú obhliadku u zákazníka']
-  ];
+  function closeMenus(){
+    root.document.querySelectorAll('.homeToolbarMenu').forEach(panel=>{panel.hidden=true;});
+    root.document.querySelectorAll('.homeToolbarToggle').forEach(button=>button.setAttribute('aria-expanded','false'));
+  }
   function compactFilters(prefix){
     const doc=root.document;
     if(doc.getElementById(prefix+'FilterBar'))return;
@@ -69,7 +65,8 @@
     const screen=doc.querySelector('.screen.on')?.id;
     // Keep navigation available in every quote and inspection step.
     bar.hidden=false;
-    const active=screen==='home'?'quotes':screen==='inspectionHome'?'inspections':null;
+    const active=screen?.startsWith('inspection')?'inspections':'quotes';
+    closeMenus();
     bar.querySelectorAll('[data-home-action]').forEach(button=>{
       if(button.dataset.homeAction===active)button.setAttribute('aria-current','page');
       else button.removeAttribute('aria-current');
@@ -98,35 +95,61 @@
     nav.setAttribute('aria-label','Hlavné menu');
     const row=doc.createElement('div');row.className='homeToolbarRow';
     nav.appendChild(row);
-    entries.forEach(([key,label,title])=>{
+    function styleButton(key,label){
       const button=buttons[key];
-      button.type='button';
-      button.classList.remove('big','primary');
-      button.classList.add('homeToolbarButton');
-      button.dataset.homeAction=key;button.title=title;
-      button.setAttribute('aria-label',key==='newQuote'?'Nová cenová ponuka':key==='sync'?'Synchronizovať ponuky':label);
-      // Static icon/label markup only, no user values are injected.
-      button.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">'+icons[key]+'</svg><span>'+label+'</span>';
-      row.appendChild(button);
+      button.type='button';button.className='homeToolbarButton';
+      button.dataset.homeAction=key;button.setAttribute('aria-label',label);
+      button.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+icons[key]+'</svg><span>'+label+'</span>';
+      return button;
+    }
+    function dropdown(id,symbol,label,items){
+      const group=doc.createElement('div');group.className='homeToolbarGroup';
+      const toggle=doc.createElement('button');toggle.type='button';toggle.className='homeToolbarButton homeToolbarToggle';
+      toggle.textContent=symbol;toggle.setAttribute('aria-label',label);
+      toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls',id);
+      const panel=doc.createElement('div');panel.id=id;panel.className='homeToolbarMenu';panel.hidden=true;
+      panel.setAttribute('aria-label',label);
+      items.forEach(button=>panel.appendChild(button));
+      toggle.onclick=()=>{const open=panel.hidden;closeMenus();panel.hidden=!open;toggle.setAttribute('aria-expanded',String(open));};
+      panel.addEventListener('click',event=>{if(event.target.closest('button'))closeMenus();});
+      group.append(toggle,panel);row.appendChild(group);
+    }
+    row.appendChild(styleButton('inspections','Obhliadky'));
+    dropdown('homeCreateMenu','＋','Vytvoriť novú obhliadku alebo ponuku',[
+      styleButton('newInspection','Nová obhliadka'),styleButton('newQuote','Nová ponuka')
+    ]);
+    buttons.sync.onclick=async()=>{
+      await root.syncQuotes(true,false);
+      await root.SpektraInspections.refresh();
+    };
+    const xml=doc.createElement('button');xml.type='button';xml.className='homeToolbarButton';xml.textContent='Export XML do POHODY';
+    xml.onclick=()=>{
+      if(doc.querySelector('.screen.on')?.id!=='step5'){
+        root.alert('Najprv otvorte ponuku a prejdite na jej finálny súhrn. Potom zvoľte Export XML.');return;
+      }
+      root.downloadPohodaIssuedOfferXml();
+    };
+    dropdown('homeSyncMenu','↻','Synchronizácia, zásoby a export XML',[
+      styleButton('sync','Synchronizácia'),styleButton('stock','Aktualizovať zásoby'),xml
+    ]);
+    row.appendChild(styleButton('quotes','Ponuky'));
+    doc.addEventListener('click',event=>{if(!nav.contains(event.target))closeMenus();});
+    doc.addEventListener('keydown',event=>{
+      if(event.key==='Escape'){
+        const toggle=nav.querySelector('[aria-expanded="true"]');closeMenus();toggle?.focus();
+      }
     });
     const header=doc.createElement('header');
     header.id='appStickyHeader';header.className='appStickyHeader';
     head.before(header);
-    header.appendChild(head);header.appendChild(nav);
+    header.appendChild(head);
+    doc.querySelector('body > nav.nav')?.remove();
+    doc.body.appendChild(nav);
+    doc.body.classList.add('hasBottomToolbar');
     hero.remove();
     compactFilters('quote');compactFilters('inspection');
-    // The shared toolbar also serves the inspection list. Retain its separate
-    // synchronization handler as a compact action next to the list heading.
-    const inspectionHero=doc.querySelector('#inspectionHome > .hero');
-    const refresh=inspectionHero?.querySelector('button[onclick*=".refresh("]');
-    const inspectionHeading=doc.querySelector('#inspectionHome .compactListHeading');
-    if(refresh&&inspectionHeading){
-      refresh.className='btn ghost small';refresh.type='button';
-      refresh.textContent='⟳ Synchronizovať obhliadky';
-      inspectionHeading.appendChild(refresh);
-      inspectionHero.remove();
-      doc.querySelector('#inspectionHome > .topline')?.remove();
-    }
+    doc.querySelector('#inspectionHome > .hero')?.remove();
+    doc.querySelector('#inspectionHome > .topline')?.remove();
     updateView();
     // Observe only screen visibility, not list rows, editable fields or saves.
     const observer=new root.MutationObserver(updateView);
