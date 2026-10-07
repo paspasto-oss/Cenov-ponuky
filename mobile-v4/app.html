@@ -3718,10 +3718,10 @@ async function printPDF(){
   // Otvoríme kartu synchronne, aby mobilný prehliadač nezablokoval popup.
   const previewWindow=window.open('about:blank','_blank');
   if(previewWindow){
-    previewWindow.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Pripravujem PDF…</title><link rel="stylesheet" href="js/contacts.css?v=20261007-contacts1">
-</head><body style="font-family:Arial;padding:30px">Pripravujem cenovú ponuku PDF…<script src="js/contacts.js?v=20261007-contacts1"></script>
-</body></html>');
-    previewWindow.document.close();
+    const previewDocument=previewWindow.document;
+    previewDocument.title='Pripravujem PDF…';
+    previewDocument.body.style.cssText='font-family:Arial;padding:30px';
+    previewDocument.body.textContent='Pripravujem cenovú ponuku PDF…';
   }
   try{
     const file=await createPdfFile();
