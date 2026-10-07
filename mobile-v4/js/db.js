@@ -385,6 +385,31 @@ window.SpektraDB = (() => {
     return data || [];
   }
 
+  // Shared, versioned HVAC templates and company pricing. The same active
+  // Spektra team membership as quotes is enforced by table RLS.
+  async function listQuoteLibrary() {
+    if (!client || !user) return [];
+    const {data,error}=await client.from('quote_library')
+      .select('key,kind,payload,revision,updated_at').order('key');
+    if(error)throw error;
+    return data||[];
+  }
+
+  async function saveQuoteLibrary(key,kind,payload,expectedRevision=null) {
+    if (!client || !user) throw new Error('Pre spoločné zostavy sa prihláste do aplikácie.');
+    if(!key||!['template','pricing','feedback'].includes(kind)||!payload||typeof payload!=='object'||Array.isArray(payload))throw new Error('Neplatná zostava alebo cenové pravidlá.');
+    const values={key,kind,payload,revision:(expectedRevision||0)+1,updated_by:user.id,updated_at:new Date().toISOString()};
+    let response;
+    if(expectedRevision==null)response=await client.from('quote_library').insert(values).select('key,kind,payload,revision,updated_at').single();
+    else response=await client.from('quote_library').update(values).eq('key',key).eq('revision',expectedRevision).select('key,kind,payload,revision,updated_at').maybeSingle();
+    if(response.error){
+      if(response.error.code==='23505')throw new Error('Zostava už bola uložená na inom zariadení. Obnovte knižnicu a zopakujte úpravu.');
+      throw response.error;
+    }
+    if(!response.data)throw new Error('Zostavu medzitým upravil iný používateľ. Obnovte knižnicu a skontrolujte novú verziu.');
+    return response.data;
+  }
+
   async function nextQuoteNo() {
     if (!client || !user) throw new Error('Online databáza nie je prihlásená.');
     const { data, error } = await client.rpc('next_quote_no');
@@ -727,5 +752,5 @@ window.SpektraDB = (() => {
     if(error)throw error;
   }
 
-  return { configured, init, signIn, signUp, signOut, isAuthenticated, getUser, getProfile, listStocks, upsertStocks, uploadProductImage, uploadQuoteImage, listPdfBanners, listCustomers, listQuotes, nextQuoteNo, saveQuote, listInspections, saveInspection, uploadInspectionPhoto, deleteInspectionPhoto, linkInspectionQuote, deleteDraftInspection };
+  return { configured, init, signIn, signUp, signOut, isAuthenticated, getUser, getProfile, listStocks, upsertStocks, uploadProductImage, uploadQuoteImage, listPdfBanners, listCustomers, listQuotes, listQuoteLibrary, saveQuoteLibrary, nextQuoteNo, saveQuote, listInspections, saveInspection, uploadInspectionPhoto, deleteInspectionPhoto, linkInspectionQuote, deleteDraftInspection };
 })();

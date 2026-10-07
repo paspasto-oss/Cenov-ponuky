@@ -45,12 +45,12 @@ test('existing non-trade export retains its separate warranty page',()=>{
 test('row boundaries, continued table headers and final totals are explicit',()=>{
  assert.ok(src.includes("row.setAttribute('data-pdf-row-index'"));
  assert.ok(src.includes("activeTable.querySelectorAll('tbody,tfoot,colgroup')"));
- assert.ok(!src.includes("querySelectorAll('thead"));
+ assert.ok(!/querySelectorAll\('thead'\)\.forEach\([^\n]*remove/.test(src));
  assert.ok(src.includes('rows.forEach(appendRow)'));
  assert.equal((app.match(/data-pdf-totals style/g)||[]).length,2);
 });
 test('no storage, catalog repricing, approval or signature writes in pagination module',()=>{
- assert.ok(!/localStorage|saveQuote|upsertCurrent|SpektraDB|\.from\(/.test(src));
+ assert.ok(!/localStorage|saveQuote|upsertCurrent|SpektraDB|(?:supabase|client|db)\.from\(/i.test(src));
  assert.ok(!/current\./.test(src));
 });
 test('render produces a page for each A4 node with constant physical width',async()=>{
@@ -98,4 +98,93 @@ test('very long scopes have a bounded split depth and very long rows fail safely
 test('all pagination and inline scripts compile',()=>{
  new vm.Script(src);
  for(const s of app.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))new vm.Script(s[1]);
+});
+
+// A deterministic measuring DOM exercises the actual pagination state machine.
+// Row heights are explicit; these tests do not pretend to verify browser fonts.
+class MeasureNode{
+ constructor(doc,tag){this.ownerDocument=doc;this.tagName=tag.toLowerCase();this.children=[];this.attrs={};this.style={};this._text='';this.height=null;}
+ appendChild(child){child.remove();this.children.push(child);child.parentNode=this;return child;}
+ append(...children){children.forEach(child=>this.appendChild(child));}
+ prepend(child){child.remove();this.children.unshift(child);child.parentNode=this;}
+ remove(){if(this.parentNode){const children=this.parentNode.children;children.splice(children.indexOf(this),1);this.parentNode=null;}}
+ setAttribute(key,value){this.attrs[key]=String(value);}
+ getAttribute(key){return this.attrs[key]??null;}
+ hasAttribute(key){return Object.hasOwn(this.attrs,key);}
+ removeAttribute(key){delete this.attrs[key];}
+ get className(){return this.attrs.class||'';}
+ set className(value){this.attrs.class=value;}
+ get textContent(){return this._text+this.children.map(x=>x.textContent).join('');}
+ set textContent(value){this._text=String(value);this.children.forEach(x=>x.parentNode=null);this.children=[];}
+ get firstElementChild(){return this.children[0]||null;}
+ get lastElementChild(){return this.children.at(-1)||null;}
+ get tBodies(){return this.children.filter(x=>x.tagName==='tbody');}
+ get rows(){return this.children.filter(x=>x.tagName==='tr');}
+ get cells(){return this.children.filter(x=>['td','th'].includes(x.tagName));}
+ get clientHeight(){return this.className==='quotePdfBody'?120:this.scrollHeight;}
+ get clientWidth(){return 190;}
+ get scrollWidth(){return 190;}
+ get scrollHeight(){
+  if(this.height!=null)return this.height;
+  if(this.className==='quotePdfContinuation')return 15;
+  if(this.tagName==='style'||this.tagName==='col'||this.tagName==='colgroup')return 0;
+  return this.children.length?this.children.reduce((sum,x)=>sum+x.scrollHeight,0):this._text?10:0;
+ }
+ matches(selector){
+  if(selector.startsWith('.'))return this.className.split(/\s+/).includes(selector.slice(1));
+  const match=selector.match(/^([\w-]+)?(?:\[([^\]]+)\])?$/);if(!match)return false;
+  return (!match[1]||this.tagName===match[1])&&(!match[2]||this.hasAttribute(match[2]));
+ }
+ querySelectorAll(selector){
+  if(selector.includes(','))return [...new Set(selector.split(',').flatMap(x=>this.querySelectorAll(x)))];
+  if(selector.startsWith(':scope > '))return this.children.filter(x=>x.matches(selector.slice(9)));
+  if(selector==='thead th')return this.querySelectorAll('thead').flatMap(x=>x.querySelectorAll('th'));
+  return this.children.flatMap(x=>[...(x.matches(selector)?[x]:[]),...x.querySelectorAll(selector)]);
+ }
+ querySelector(selector){return this.querySelectorAll(selector)[0]||null;}
+ cloneNode(deep){const node=new MeasureNode(this.ownerDocument,this.tagName);node.attrs={...this.attrs};node.style={...this.style};node.height=this.height;node._text=this._text;if(deep)this.children.forEach(x=>node.appendChild(x.cloneNode(true)));return node;}
+}
+function measuredDocument(){const doc={createElement:tag=>new MeasureNode(doc,tag)};doc.body=doc.createElement('body');return doc;}
+function measuredTable(doc,names,{columns=5,rowHeight=20,headingAt=-1}={}){
+ const table=doc.createElement('table');table.setAttribute('data-pdf-items','');
+ const head=doc.createElement('thead'),headRow=doc.createElement('tr');headRow.height=10;
+ for(let index=0;index<columns;index++){const cell=doc.createElement('th');cell.textContent='COLUMN_'+columns+'_'+index;headRow.appendChild(cell);}
+ head.appendChild(headRow);table.appendChild(head);
+ const body=doc.createElement('tbody');table.appendChild(body);
+ names.forEach((name,index)=>{const row=doc.createElement('tr');row.height=rowHeight;if(index===headingAt)row.setAttribute('data-pdf-group-heading','');const cell=doc.createElement('td');cell.textContent=name;row.appendChild(cell);body.appendChild(row);});
+ return table;
+}
+function measuredQuote(){
+ const doc=measuredDocument(),source=doc.createElement('div');source.setAttribute('data-pdf-layout','technical');
+ const title=doc.createElement('h1');title.textContent='Cenová ponuka';title.height=20;source.appendChild(title);
+ source.appendChild(measuredTable(doc,['MAIN_DEVICE','MAIN_MATERIAL'],{rowHeight:20}));
+ const total=doc.createElement('div');total.textContent='TOTAL';total.height=15;source.appendChild(total);
+ const section=doc.createElement('section');section.setAttribute('data-pdf-appendix','');section.setAttribute('data-pdf-page-break-before','');
+ const heading=doc.createElement('h2');heading.textContent='APPENDIX';heading.height=10;section.appendChild(heading);
+ section.appendChild(measuredTable(doc,Array.from({length:13},(_,i)=>'APPENDIX_ITEM_'+i),{columns:4}));source.appendChild(section);
+ const footer=doc.createElement('div');footer.setAttribute('data-pdf-footer','');footer.textContent='FOOTER';source.appendChild(footer);
+ return {doc,source};
+}
+test('appendix tables paginate whole rows with their own repeated headers and follow the main totals',()=>{
+ const {doc,source}=measuredQuote(),original=source.textContent;
+ const result=api.prepare(source,{customerName:'Zákazník',quoteNo:'26NA42',revision:'Revízia R2',variant:'Variant: Komfort'});
+ assert.equal(result.pages.length,5);
+ assert.match(result.pages[0].textContent,/MAIN_DEVICE.*MAIN_MATERIAL.*TOTAL/);
+ assert.doesNotMatch(result.pages[0].textContent,/APPENDIX/);
+ assert.ok(result.pages.slice(1).every(page=>page.textContent.includes('Revízia R2')&&page.textContent.includes('Variant: Komfort')));
+ const tables=result.pages.flatMap(page=>page.querySelectorAll('table[data-pdf-items]'));
+ assert.equal(tables.length,5);assert.equal(tables[0].querySelectorAll('thead th').length,5);
+ assert.ok(tables.slice(1).every(table=>table.querySelectorAll('thead th').length===4));
+ const labels=tables.flatMap(table=>table.tBodies.flatMap(body=>body.rows.map(row=>row.cells[0].textContent)));
+ assert.deepEqual(labels,['MAIN_DEVICE','MAIN_MATERIAL',...Array.from({length:13},(_,i)=>'APPENDIX_ITEM_'+i)]);
+ assert.equal(source.textContent,original);result.dispose();assert.equal(doc.body.children.length,0);
+});
+test('a group heading moves with its next item when the remaining page has space only for the heading',()=>{
+ const doc=measuredDocument(),source=doc.createElement('div');source.setAttribute('data-pdf-layout','technical');
+ const title=doc.createElement('div');title.textContent='TITLE';title.height=20;source.appendChild(title);
+ source.appendChild(measuredTable(doc,['A','B','C','GROUP','FIRST_CHILD'],{rowHeight:20,headingAt:3}));
+ const footer=doc.createElement('div');footer.setAttribute('data-pdf-footer','');source.appendChild(footer);
+ const result=api.prepare(source);
+ assert.equal(result.pages.length,2);assert.doesNotMatch(result.pages[0].textContent,/GROUP/);
+ assert.match(result.pages[1].textContent,/GROUP.*FIRST_CHILD/);result.dispose();
 });

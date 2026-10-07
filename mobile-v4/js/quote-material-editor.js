@@ -11,6 +11,7 @@ function openQuoteRows(){
   if(!window.SpektraQuoteMaterials.unlocked(current)){renderFinal();go('step5');return;}
   quoteRowsEditorActive=true;
   renderQuoteMaterialEditor();renderQuoteRowsSummary();go('quoteRows');
+  window.SpektraQuoteWorkbench?.onOpen();
 }
 function renderQuoteMaterialEditor(){
   if(!current)return;
@@ -31,6 +32,7 @@ function renderQuoteMaterialEditor(){
     setQuoteMaterialStatus('Zmeny sa ukladajú automaticky po opustení upraveného poľa.');
   }
   const target=document.getElementById('bomItems');if(!target)return;
+  const workbenchGroups=quoteRowsEditorActive&&window.SpektraQuoteWorkbench?SpektraQuoteAssemblies.groups(current):null;
   const input=(i,n,field,label,value,extra='')=>'<input aria-label="'+label+' – '+esc(i.name)+'" data-row-field="'+field+'" type="text" '+extra+' value="'+esc(value??'')+'" onchange="setQuoteItemField('+n+',\''+field+'\',this.value,this)">';
   const rows=(current.items||[]).map((i,n)=>{
     const textOnly=api.isText(i),meta=i.stored_metadata?.quote_material;
@@ -40,16 +42,17 @@ function renderQuoteMaterialEditor(){
     if(i.mapping_status==='catalog_item_missing')info+=' · skladová karta sa nenašla';
     const knownCost=i.cost!=null&&(Number(i.cost)>0||i.cost_override===true);
     const total=Number(i.qty)===0?0:i.price==null?null:Number(i.price)*Number(i.qty);
-    return '<tr data-quote-row="'+n+'" class="'+(textOnly?'quoteTextRow':'')+'"><td class="quoteRowName"><div class="quoteRowNameWrap"><span class="quoteRowNumber">'+(n+1)+'</span><div><textarea rows="2" aria-label="Názov položky '+(n+1)+'" data-row-field="name" onchange="setQuoteItemField('+n+',\'name\',this.value,this)">'+esc(i.name)+'</textarea><small>'+esc(info)+'</small></div></div></td>'+
+    return '<tr data-quote-row="'+n+'" class="'+(textOnly?'quoteTextRow':'')+'"><td class="quoteRowName"><div class="quoteRowNameWrap"><span class="quoteRowNumber">'+(n+1)+'</span><div><textarea rows="2" aria-label="Názov položky '+(n+1)+'" data-row-field="name" onchange="setQuoteItemField('+n+',\'name\',this.value,this)">'+esc(i.name)+'</textarea><small>'+esc(info)+'</small>'+(quoteRowsEditorActive&&window.SpektraQuoteWorkbench?SpektraQuoteWorkbench.rowGroupControl(n,workbenchGroups):'')+'</div></div></td>'+
       (textOnly?'<td colspan="5" class="quoteTextLabel">Text sa vytlačí bez množstva a ceny.</td>':
         '<td>'+input(i,n,'qty','Množstvo',i.qty,'inputmode="decimal"')+'</td>'+
         '<td>'+input(i,n,'unit','Merná jednotka',i.unit||'ks','maxlength="10"')+'</td>'+
         '<td>'+input(i,n,'price','Predajná cena',i.price,'inputmode="decimal" placeholder="doplniť"')+'</td>'+
         '<td>'+input(i,n,'cost','Nákupná cena',knownCost?i.cost:null,'inputmode="decimal" placeholder="doplniť"')+'</td>'+
         '<td class="quoteRowAmount" data-row-total="'+n+'">'+eur(total)+'</td>')+
-      '<td><button type="button" class="quoteRemoveMaterial" title="Vymazať položku" onclick="removeQuoteMaterial('+n+')" aria-label="Vymazať – '+esc(i.name)+'">×</button></td></tr>';
+      '<td class="wbRowActions">'+(quoteRowsEditorActive&&window.SpektraQuoteWorkbench?SpektraQuoteWorkbench.rowControls(n):'')+'<button type="button" class="quoteRemoveMaterial" title="Vymazať položku" onclick="removeQuoteMaterial('+n+')" aria-label="Vymazať – '+esc(i.name)+'">×</button></td></tr>';
   }).join('');
   target.innerHTML=rows?'<div class="quoteTableScroll" role="region" aria-label="Upraviteľné položky ponuky" tabindex="0"><table class="quoteRowsTable"><thead><tr><th scope="col">Položka / popis</th><th scope="col">Množstvo</th><th scope="col">MJ</th><th scope="col">Predaj / MJ<small>bez DPH</small></th><th scope="col">Nákup / MJ<small>bez DPH</small></th><th scope="col">Spolu<small>bez DPH</small></th><th scope="col"><span class="quoteSrOnly">Odstrániť</span></th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="notice">Ponuka zatiaľ nemá položky. Pridajte položku z katalógu alebo vlastný riadok.</div>';
+  if(quoteRowsEditorActive)window.SpektraQuoteWorkbench?.bindRows();
   const count=document.getElementById('quoteMaterialCount');
   if(count)count.textContent='Počet riadkov: '+(current.items||[]).length+' · Ceny sú za jednu mernú jednotku.';
   const detail=document.getElementById('quoteRowsDetailedPdf');if(detail)detail.checked=current.material_edits?.pdf_detail===true;
@@ -70,6 +73,8 @@ function renderQuoteRowsSummary(){
     else if(unpriced.length)message='Doplňte predajnú cenu pri '+unpriced.length+' položkách, prípadne nepotrebné riadky vymažte.';
     else if(result.inconsistent)message='Uložený súčet nesedí s riadkami. Skontrolujte položky a stlačte Uložiť zmeny.';
     else if(result.missingCost.length)message='Pri '+result.missingCost.length+' položkách chýba nákupná cena. Pre správny hrubý zisk doplňte aj náklady na prácu.';
+    const marginMessage=window.SpektraQuoteWorkbench?.marginWarning()||'';
+    if(marginMessage)message+=(message?' ':'')+marginMessage;
     hint.textContent=message;hint.classList.toggle('hidden',!message);
   }
 }
@@ -80,7 +85,7 @@ function setQuoteMaterialStatus(text,error=false){
 }
 function renderQuoteAfterMaterialChange(rerender=false){
   recalcQuoteTotalsFromItems();
-  if(quoteRowsEditorActive){if(rerender)renderQuoteMaterialEditor();renderQuoteRowsSummary();}
+  if(quoteRowsEditorActive){if(rerender)renderQuoteMaterialEditor();renderQuoteRowsSummary();window.SpektraQuoteWorkbench?.render();}
   else if(isTradeQuote(current))renderFinal();else renderRecommendation();
 }
 async function saveQuoteMaterialChange(message,rerender=false){
@@ -102,6 +107,7 @@ async function saveQuoteMaterialChange(message,rerender=false){
   }
 }
 async function setQuoteItemField(index,field,value,input=null){
+  if(quoteRowsEditorActive&&window.SpektraQuoteWorkbench)return SpektraQuoteWorkbench.changeRow(index,field,value,input);
   const api=window.SpektraQuoteMaterials;if(!api.unlocked(current))return;
   try{
     api.setField(current,index,field,value);
@@ -114,6 +120,7 @@ async function setQuoteItemField(index,field,value,input=null){
 }
 function setQuoteItemQuantity(index,value){return setQuoteItemField(index,'qty',value);}
 async function removeQuoteMaterial(index){
+  if(quoteRowsEditorActive&&window.SpektraQuoteWorkbench)return SpektraQuoteWorkbench.mutate('Položka bola odstránená. Úpravu možno vrátiť.',q=>SpektraQuoteAssemblies.removeRow(q,index));
   const api=window.SpektraQuoteMaterials;if(!api.unlocked(current)||!current.items?.[index])return;
   if(!confirm('Vymazať z ponuky položku „'+current.items[index].name+'“?'))return;
   try{api.remove(current,index);if(quoteRowsEditorActive)api.enableRows(current);}
@@ -136,6 +143,7 @@ function updateQuoteManualKind(){
   document.getElementById('quoteManualNumbers')?.classList.toggle('hidden',kind==='text');
 }
 async function addManualQuoteItem(){
+  if(quoteRowsEditorActive&&window.SpektraQuoteWorkbench)return SpektraQuoteWorkbench.addManual();
   const api=window.SpektraQuoteMaterials;if(!api.unlocked(current))return;
   const value=id=>document.getElementById(id)?.value;
   try{
@@ -166,6 +174,10 @@ function searchQuoteMaterials(query,more=false){
   },more?0:180);
 }
 async function addQuoteMaterialFromStock(index){
+  if(quoteRowsEditorActive&&window.SpektraQuoteWorkbench){
+    if(quoteMaterialSearchOwner!==current?.id)return;
+    return SpektraQuoteWorkbench.addCatalog(quoteMaterialSearchRows[index],document.getElementById('quoteMaterialAddQty')?.value);
+  }
   const api=window.SpektraQuoteMaterials;
   if(!api.unlocked(current)||quoteMaterialSearchOwner!==current.id)return;
   const selected=quoteMaterialSearchRows[index];if(!selected)return;
@@ -187,12 +199,42 @@ async function saveQuoteRows(){
   if(invalid){invalid.focus();setQuoteMaterialStatus('Opravte označené pole pred uložením.',true);return {ok:false};}
   return saveQuoteMaterialChange('Ponuka bola prepočítaná.');
 }
+async function prepareQuoteRowsForIssue(){
+  const owner=current;
+  if(!owner)return {ok:false,error:'Nie je otvorená ponuka.'};
+  // A repeated print is read-only. Never downgrade an already issued or
+  // approved snapshot, and never create a revision just to print it again.
+  if(!window.SpektraQuoteMaterials.unlocked(owner))return {ok:true};
+  const draft=!owner.status||owner.status==='draft';
+  if(!draft&&!owner._dirty&&!owner._outbox)return {ok:true};
+  const invalid=document.querySelector('#bomItems [aria-invalid="true"]');
+  if(invalid){
+    invalid.focus();const error='Opravte označené pole pred vydaním ponuky.';
+    setQuoteMaterialStatus(error,true);return {ok:false,error};
+  }
+  recalcQuoteTotalsFromItems();
+  if(!owner.price_complete||!owner.items?.length){
+    const error='Pred vydaním ponuky doplňte predajné ceny všetkých položiek.';
+    setQuoteMaterialStatus(error,true);return {ok:false,error};
+  }
+  if(draft)owner.status='ready';
+  // Stage the immutable issued version through the durable outbox BEFORE an
+  // asynchronous PDF render. The next edit must therefore create a revision.
+  // Keep a pending ready state on an ambiguous network failure: that exact
+  // request may already have committed and must not be silently downgraded.
+  const pending=saveQuoteMaterialChange('Ponuka bola pripravená na vydanie.');
+  const token=owner._edit_token,result=await pending;
+  if(current!==owner||owner._edit_token!==token)return {...result,ok:false,stale:true,error:'Ponuka sa počas prípravy zmenila. Spustite vydanie znova z otvorenej ponuky.'};
+  if(!result?.ok)return {...result,ok:false,error:result?.error||'Ponuku sa pred vydaním nepodarilo uložiť.'};
+  return result;
+}
 async function quoteRowsToFinal(){
-  const owner=current,result=await saveQuoteRows();
-  if(!result?.ok||current?.id!==owner.id)return;
-  renderFinal();go('step5');
+  const owner=current,result=await prepareQuoteRowsForIssue();
+  if(!result?.ok||current!==owner)return result;
+  renderFinal();go('step5');return result;
 }
 async function copyQuoteForEditing(){
+  if(window.SpektraQuoteWorkbench)return SpektraQuoteWorkbench.beginRevision();
   if(!current||!isQuotePriceLocked())return;
   const original=current,copy=JSON.parse(JSON.stringify(original));
   for(const key of Object.keys(copy))if(key.startsWith('_'))delete copy[key];

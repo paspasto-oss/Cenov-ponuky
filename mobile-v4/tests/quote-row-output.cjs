@@ -2,6 +2,8 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const api=require('../js/quote-row-output.js');
+const assemblies=require('../js/quote-assemblies.js');
+const workbenchOutput=require('../js/quote-workbench-output.js');
 const app=fs.readFileSync(path.join(__dirname,'../app.html'),'utf8');
 const declarations=[...app.matchAll(/^(?:async )?function (\w+)\(/gm)];
 function source(name){
@@ -19,12 +21,12 @@ function quote(patch={}){
     items:[],net:100,vat:23,total:123,vat_pct:23,price_complete:true,pdf_banner_mode:'none',pdf_images_enabled:false,pdf_images:[],...patch};
 }
 function context(q){
-  const c=vm.createContext({current:q,console,Date,File,Blob,SpektraQuoteRowOutput:api,
+  const c=vm.createContext({current:q,console,Date,File,Blob,SpektraQuoteRowOutput:api,SpektraQuoteAssemblies:assemblies,SpektraQuoteWorkbenchOutput:workbenchOutput,
     POHODA_COMPANY_ICO:'53690036',SPEKTRA_WARRANTY:'Záruka Spektra',SPEKTRA_WARRANTY_TERMS_VERSION:'2026-09-28-v1',
     SPEKTRA_CONSENT:'Súhlasím s podmienkami uvedenými na 2. strane tejto ponuky.',
     ensureHeatPumpInstallationItem(){},recalcQuoteTotalsFromItems(){},ensurePdfTemplateState(){},ensurePdfImagesState(){},
     customerMaterialBundleName:()=> 'Montážny materiál',quoteRowIllustration:()=>'',stockImageUrls:()=>[],
-    getPdfBannerUrl:()=>'',getPdfBannerType:()=> 'gas_boiler',pdfPresentationSubtitle:()=> 'Riešenie',
+    getPdfBannerUrl:()=>'',getPdfBannerType:()=> 'gas_boiler',pdfPresentationSubtitle:()=> 'Riešenie',absolutePdfUrl:url=>url,
     customerText:x=>String(x??'').replace(/POHODA/g,'').trim(),
     esc:x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
     eur:x=>x==null?'—':Number(x).toFixed(2)+' €',calculateSubsidy:()=>({program:'none'}),
@@ -87,6 +89,54 @@ test('detailed warranty identifies its last page and edited row snapshot',()=>{
   c.current.material_edits.pdf_detail=false;
   assert.match(c.warrantyConsentHtml(),/na 2\. strane/);assert.match(c.warrantyTermsHtml(),/Strana 2\/2/);
 });
+
+function assembledQuote(output){
+  const q=quote({net:1950,vat:448.5,total:2398.5,pdf_images_enabled:true,items:[
+    bill('Kotol podľa výberu',{role:'device',price:1000,pohoda:{code:'NEW-CODE',image_url:'https://example.invalid/device.png'}}),
+    bill('Rúrka <A>',{qty:3,unit:'m',price:10,note:'PRIVATE_ROW_NOTE'}),
+    bill('Ventil & prípojka',{qty:2,price:5,cost:777.1234}),
+    bill('Dohodnutá montáž',{role:'installation',price:850,work_scope:['Zameranie na mieste','Vŕtanie','Skúška zariadenia']}),
+    bill('Doprava',{role:'transport',price:60}),manual('Poznámka\nDruhý riadok <script>','text')
+  ]});
+  assemblies.init(q);assemblies.setOutput(q,output);
+  q.material_edits.assemblies.revision={number:2,root_quote_no:'26NA0000'};
+  q.material_edits.assemblies.variants=[{id:'selected',name:'Komfort <A>'},{id:'alternative',name:'NOT_SELECTED_VARIANT'}];
+  q.material_edits.assemblies.active_variant_id='selected';
+  return q;
+}
+for(const template of ['offerHtmlTechnical','offerHtmlPresentation']){
+  for(const profile of [
+    {name:'summary',material:'summary',labor:'summary',appendix:false},
+    {name:'detail',material:'detail',labor:'contents',appendix:false},
+    {name:'appendix',material:'detail',labor:'contents',appendix:true}
+  ]){
+    test(template+' integrates assembly '+profile.name+' safely with images, revision and unchanged totals',()=>{
+      const {name,...settings}=profile,q=assembledQuote(settings),c=context(q),before=JSON.stringify(q);
+      c.ensureHeatPumpInstallationItem=()=>{throw Error('PDF must not rebuild assemblies');};
+      c.recalcQuoteTotalsFromItems=()=>{throw Error('PDF must not mutate saved totals');};
+      c.stockImageUrls=stock=>stock?.image_url?[stock.image_url]:[];
+      const html=c[template](),bodies=[...html.matchAll(/<tbody>([\s\S]*?)<\/tbody>/g)].map(match=>match[1]);
+      assert.match(html,/2398\.50 €/);assert.match(html,/1950\.00 €/);assert.match(html,/448\.50 €/);
+      assert.match(html,/data-pdf-revision[^>]*>Revízia R2/);assert.match(html,/26NA0000/);
+      assert.match(html,/Variant: Komfort &lt;A&gt;/);assert.doesNotMatch(html,/NOT_SELECTED_VARIANT/);
+      assert.match(bodies[0],/https:\/\/example.invalid\/device.png/);
+      assert.match(html,/Poznámka\nDruhý riadok &lt;script&gt;/);
+      assert.doesNotMatch(html,/PRIVATE_ROW_NOTE|777\.1234|NEAKTUALNY_VARIANT|999 kW|adaptér A1K|Rozsah materiálu|Rozsah montáže/);
+      assert.match(html,/na poslednej strane/);
+      if(name==='summary'){
+        assert.equal(bodies.length,1);assert.doesNotMatch(html,/Rúrka &lt;A&gt;|Zameranie na mieste/);
+      }else if(name==='detail'){
+        assert.equal(bodies.length,1);assert.match(bodies[0],/Rúrka &lt;A&gt;/);assert.match(bodies[0],/Zameranie na mieste/);
+      }else{
+        assert.equal(bodies.length,2);assert.doesNotMatch(bodies[0],/Rúrka &lt;A&gt;|Zameranie na mieste/);
+        assert.match(bodies[1],/Rúrka &lt;A&gt;/);assert.match(bodies[1],/Zameranie na mieste/);
+        assert.ok(html.indexOf('data-pdf-appendix')>html.indexOf('data-pdf-totals'));
+      }
+      assert.equal(JSON.stringify(q),before);
+      assert.match(c.warrantyTermsHtml(),/Posledná strana/);assert.match(c.warrantyTermsHtml(),/Revízia R2/);
+    });
+  }
+}
 test('PDF preserves the signature of an unchanged saved offer with fractional item prices',()=>{
   for(const values of [{qty:3,price:0.3333,net:1,total:1.23},{qty:1,price:1.005,net:1.01,total:1.24}]){
    for(const template of ['offerHtmlTechnical','offerHtmlPresentation']){
@@ -131,8 +181,9 @@ test('XML zero VAT is explicit and malformed prices cannot export',()=>{
     c.current.items[0].price=price;assert.throws(()=>c.createPohodaIssuedOfferXml(),/cena/);
   }
 });
-test('detailed nontrade PDF adds warranty after all paginated offer pages',async()=>{
-  const q=quote(),c=context(q),calls={warranty:0,removed:0,disposed:0};
+test('detailed and assembly-summary PDFs add warranty after all paginated offer pages',async()=>{
+ for(const q of [quote(),assembledQuote({material:'summary',labor:'summary',appendix:false})]){
+  const c=context(q),calls={warranty:0,removed:0,disposed:0};
   const offer={name:'offer'},termsLabel={textContent:''};
   const terms={name:'terms',scrollWidth:794,scrollHeight:1123,querySelector:()=>termsLabel};
   const pages=Array.from({length:3},()=>{const folio={textContent:''};return {folio,querySelector:()=>folio}});
@@ -149,4 +200,5 @@ test('detailed nontrade PDF adds warranty after all paginated offer pages',async
   assert.equal(file.name,'26NA0001.pdf');assert.equal(pdf.pages,4);assert.equal(calls.warranty,1);
   assert.equal(termsLabel.textContent,'Strana 4 / 4');assert.equal(pages[0].folio.textContent,'Strana 1 / 4');
   assert.equal(calls.removed,1);assert.equal(calls.disposed,1);
+ }
 });

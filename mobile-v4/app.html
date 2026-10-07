@@ -20,23 +20,27 @@
 @media(max-width:720px){.wrap{padding:9px}.actions{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.choiceGrid{grid-template-columns:repeat(2,1fr)}.priceBox{grid-template-columns:1fr}.sendgrid{grid-template-columns:1fr}.hero h1{font-size:21px}.quoteBackBar{bottom:calc(62px + env(safe-area-inset-bottom));width:calc(100% - 12px);border-radius:12px;padding:6px}#step1,#step2,#step3,#step4,#step5{padding-bottom:92px}}
 </style>
 <link rel="stylesheet" href="js/quote-list-summary.css?v=20261005-list1">
-<script src="js/quote-list-summary.js?v=20261007-rows1"></script>
+<script src="js/quote-list-summary.js?v=20261007-hvac1"></script>
 <script src="js/pdf-banners.js?v=20261005-universal1"></script>
-<script src="js/pdf-pagination.js?v=20261006-a4-1"></script>
+<script src="js/pdf-pagination.js?v=20261007-hvac1"></script>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <link rel="stylesheet" href="js/quote-material-editor.css?v=20261007-rows1">
 <script src="js/quote-materials.js?v=20261007-rows1"></script>
-<script src="js/quote-row-output.js?v=20261007-rows1"></script>
+<script src="js/quote-assemblies.js?v=20261007-hvac1"></script>
+<script src="js/hvac-scenarios.js?v=20261007-hvac1"></script>
+<script src="js/quote-row-output.js?v=20261007-hvac1"></script>
+<script src="js/quote-workbench-output.js?v=20261007-hvac1"></script>
 <script src="js/quote-storage.js?v=20261005-atomic1"></script>
-<script src="js/db.js?v=20261007-contacts1"></script>
+<script src="js/db.js?v=20261007-hvac1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 <link rel="stylesheet" href="js/home-toolbar.css?v=20261007-bottom1">
 <link rel="stylesheet" href="js/visual-refresh.css?v=20261006-clean2">
 <link rel="stylesheet" href="js/contacts.css?v=20261007-contacts1">
+<link rel="stylesheet" href="js/quote-workbench.css?v=20261007-hvac1">
 </head>
 <body>
 <div class="wrap">
@@ -98,7 +102,7 @@
       <div class="field"><label>Adresa realizácie *</label><input id="cAddress" placeholder="Ulica, obec"></div>
       <div class="field"><label>Poznámka</label><textarea id="cNote" placeholder="Čokoľvek dôležité od zákazníka…"></textarea></div>
     </div>
-    <button class="btn primary full" onclick="nextBuilding()">Pokračovať →</button>
+    <div class="grid2"><button class="btn primary full" type="button" onclick="SpektraQuoteWorkbench.quickStart()">Rýchla ponuka zo scenára →</button><button class="btn ghost full" type="button" onclick="nextBuilding()">Výber podľa budovy →</button></div>
       <div class="quoteBackBar"><button class="btn ghost" type="button" onclick="go('home')">← Späť na prehľad</button></div>
   </section>
 
@@ -362,7 +366,7 @@
 
   <section id="quoteRows" class="screen">
     <div class="topline quoteRowsHeading">
-      <div><div class="quoteRowsKicker">Položky ponuky</div><h1 id="quoteRowsTitle">Cenová ponuka</h1><div id="quoteRowsCustomer" class="sub"></div></div>
+      <div><div class="quoteRowsKicker">Položky ponuky</div><h1 id="quoteRowsTitle">Cenová ponuka</h1><div id="quoteRowsCustomer" class="sub"></div><div id="quoteRowsRevision" class="sub"></div></div>
       <div class="quoteRowsActions"><button class="btn ghost" type="button" onclick="saveQuoteRows()">Uložiť zmeny</button><button class="btn primary" type="button" onclick="quoteRowsToFinal()">PDF a odoslanie →</button></div>
     </div>
     <div class="quoteRowsMetrics" aria-label="Súčet ponuky">
@@ -372,6 +376,7 @@
       <div class="quoteRowsMetric"><small>Hrubý zisk bez DPH</small><strong id="quoteRowsProfit">—</strong></div>
     </div>
     <div id="quoteRowsWarning" class="notice warn hidden" style="margin-bottom:12px"></div>
+    <div id="quoteWorkbench"></div>
     <div id="rowMaterialEditorSlot"></div>
     <div class="quoteRowsActions"><button class="btn ghost" type="button" onclick="go('home')">← Zoznam ponúk</button><button class="btn ghost" type="button" onclick="refreshQuoteFromCatalog(this)">↻ Obnoviť ceny z katalógu</button></div>
   </section>
@@ -2497,6 +2502,9 @@ function renderRecommendation(){
 }
 async function refreshQuoteFromCatalog(button=null){
   if(!current)return;
+  if(window.SpektraQuoteWorkbench&&((typeof quoteRowsEditorActive!=='undefined'&&quoteRowsEditorActive)||current.material_edits?.assemblies||['ready','sent','approved'].includes(current.status))){
+    return SpektraQuoteWorkbench.priceDialog().catch(e=>alert('Aktualizáciu cien sa nepodarilo pripraviť: '+e.message));
+  }
   const owner=current;
   if(isQuotePriceLocked()){
     alert('Schválená ponuka má uzamknuté ceny a názvy položiek. Aktualizácia skladu ju nemení. Pre nové ceny vytvor novú ponuku.');
@@ -2743,7 +2751,7 @@ function warrantySignature(){
 function warrantyConsentHtml(compact=false){
   const signed=warrantySignature(),size=compact?'7.8px':'9px';
   const date=signed?.signed_at?new Date(signed.signed_at).toLocaleDateString('sk-SK'):null;
-  const consentText=SpektraQuoteRowOutput.detailed(current)?SPEKTRA_CONSENT.replace('2. strane','poslednej strane'):SPEKTRA_CONSENT;
+  const consentText=SpektraQuoteRowOutput.configured(current)||SpektraQuoteRowOutput.detailed(current)?SPEKTRA_CONSENT.replace('2. strane','poslednej strane'):SPEKTRA_CONSENT;
   return '<div style="margin-top:10px;padding:8px 10px;border:1px solid #a9cadb;border-radius:6px;page-break-inside:avoid;font-size:'+size+';line-height:1.4">'+
     '<div style="display:flex;align-items:flex-start;gap:7px">'+
       '<span style="display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;min-width:13px;border:1.5px solid #173247;background:#fff">'+(signed?'✓':'')+'</span>'+
@@ -2765,7 +2773,7 @@ function clearWarrantySignaturePad(){
 }
 function openWarrantySignature(){
   const label=document.getElementById('warrantyConsentLabel');
-  if(label)label.textContent='Súhlasím s podmienkami 5-ročnej záruky Spektra uvedenými na '+(current.material_edits?.pdf_detail?'poslednej':'2.')+' strane ponuky a s pravidelným ročným servisom počas 5 rokov.';
+  if(label)label.textContent='Súhlasím s podmienkami 5-ročnej záruky Spektra uvedenými na '+(SpektraQuoteRowOutput.configured(current)||SpektraQuoteRowOutput.detailed(current)?'poslednej':'2.')+' strane ponuky a s pravidelným ročným servisom počas 5 rokov.';
   const dialog=document.getElementById('warrantySignatureDialog');
   const canvas=document.getElementById('warrantySignatureCanvas');
   dialog.classList.remove('hidden');
@@ -3002,23 +3010,37 @@ async function shareWA(){
 }
 
 function offerHtmlTechnical(){
-  ensureHeatPumpInstallationItem();
-  recalcQuoteTotalsFromItems();
   const rowOutput=SpektraQuoteRowOutput;
+  const assembled=rowOutput.configured(current);
+  if(!assembled){ensureHeatPumpInstallationItem();recalcQuoteTotalsFromItems();}
+  const outputModel=assembled?rowOutput.customerModel(current,{bundleName:customerMaterialBundleName()}):null;
+  const documentInfo=assembled?SpektraQuoteWorkbenchOutput.documentInfo(current):{};
   const issueDate=current.issued_on?new Date(current.issued_on+'T12:00:00'):new Date(current.created||Date.now());
   const validDate=current.valid_until?new Date(current.valid_until+'T12:00:00'):new Date(issueDate.getTime()+14*24*60*60*1000);
   const issue=issueDate.toLocaleDateString('sk-SK');
   const valid=validDate.toLocaleDateString('sk-SK');
-  const net=current.net||0;
-  const vat=current.vat||0;
-  const total=current.total||0;
+  const net=assembled?outputModel.totals.net:current.net||0;
+  const vat=assembled?outputModel.totals.vat:current.vat||0;
+  const total=assembled?outputModel.totals.total:current.total||0;
+  const priceComplete=assembled?outputModel.totals.complete:current.price_complete;
 
   const deviceItem=current.items.find(i=>i.role==='device');
   const installationItem=current.items.find(i=>i.role==='installation_service'||i.role==='installation');
-  const customerRows=rowOutput.customerRows(current,customerMaterialBundleName());
+  const customerRows=assembled?outputModel.rows:rowOutput.customerRows(current,customerMaterialBundleName());
 
   const showProductImages=!!current.pdf_images_enabled;
-  const rows=customerRows.map(i=>{
+  const getAssemblyImage=row=>{
+    if(!showProductImages)return '';
+    const i=current.items[row._quote_output?.source_index]||row;
+    const illustrationItem=row._quote_output?.type==='summary'&&row._quote_output?.group_kind==='labor'?{role:'installation'}:i;
+    const illustration=quoteRowIllustration(illustrationItem,installationItem);
+    if(illustration)return illustration;
+    const urls=stockImageUrls(i.pohoda);
+    if(urls.length)return urls[0];
+    if(i===deviceItem)return current.device?.image_url||current.pdf_images?.[0]?.url||'';
+    return '';
+  };
+  const rows=assembled?SpektraQuoteWorkbenchOutput.renderRows(current,{model:outputModel,layout:'technical',formatMoney:eur,getImage:getAssemblyImage}):customerRows.map(i=>{
     const name=rowOutput.itemName(current,i,customerText);
     if(rowOutput.isText(i))return '<tr data-pdf-text-row style="page-break-inside:avoid"><td colspan="5" style="padding:9px 5px;border-bottom:1px solid #d7dce3;white-space:pre-wrap;overflow-wrap:anywhere"><div data-pdf-item-name style="font-size:10px;line-height:1.4">'+esc(name)+'</div></td></tr>';
     const {unit,amount,gross}=rowOutput.amounts(i,current);
@@ -3065,7 +3087,7 @@ function offerHtmlTechnical(){
   }).join('');
 
   const install=current.items.find(i=>i.role==='installation_service'||i.role==='installation');
-  const scope=install?.work_scope?.length
+  const scope=!assembled&&install?.work_scope?.length
     ? '<div style="margin-top:18px"><div style="font-weight:700;margin-bottom:6px">Rozsah montáže</div><ul style="margin:0 0 0 18px;padding:0;line-height:1.45">'+install.work_scope.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>'
     : '';
 
@@ -3110,11 +3132,11 @@ function offerHtmlTechnical(){
     materialScopeParts.push('TÚV armatúry, expanzná nádoba, poistný ventil, prepínací ventil a servo');
   }
   if(rowOutput.rowsMode(current))materialScopeParts.splice(0,materialScopeParts.length,'Materiál podľa uložených položiek a dohodnutého rozsahu tejto ponuky.');
-  const materialScope='<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:5px">Rozsah materiálu</div><div style="color:#444;line-height:1.45">'+esc(materialScopeParts.join(' · '))+'</div></div>';
+  const materialScope=assembled?'':'<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:5px">Rozsah materiálu</div><div style="color:#444;line-height:1.45">'+esc(materialScopeParts.join(' · '))+'</div></div>';
 
   const service=annualServiceInfo();
   const annual=isTradeQuote(current)?'':'<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:4px">Servis a záruka</div><div><b>'+esc(SPEKTRA_WARRANTY)+'</b>'+
-    (service&&current.optional_services?.annual_service!==false
+    (!assembled&&service&&current.optional_services?.annual_service!==false
       ? '<br><span style="color:#555">'+esc(annualServiceText())+' Servis sa účtuje samostatne a nezvyšuje cenu montáže.</span>'
       : '')+'</div></div>';
 
@@ -3138,7 +3160,7 @@ function offerHtmlTechnical(){
         '</div>'
       : '';
 
-  ensurePdfImagesState();
+  if(!assembled)ensurePdfImagesState();
   const enabledPdfImages=current.pdf_images_enabled?(current.pdf_images||[]):[];
   const heroImage=enabledPdfImages.length
     ? '<div style="height:42mm;margin:0 0 18px;background:#f7f7f7;border:1px solid #e5e5e5;overflow:hidden;display:flex;align-items:center;justify-content:center"><img crossorigin="anonymous" src="'+esc(enabledPdfImages[0].url)+'" style="width:100%;height:100%;object-fit:contain;display:block"></div>'
@@ -3168,6 +3190,8 @@ function offerHtmlTechnical(){
       '</div>'+
       '<div style="display:grid;grid-template-columns:auto auto;gap:2px 14px;justify-content:end">'+
         '<div style="font-size:9px">Číslo ponuky:</div><div style="font-weight:700;text-align:right">'+esc(current.quote_no||'')+'</div>'+
+        (documentInfo.revision?'<div data-pdf-revision style="grid-column:1/-1;font-weight:700;text-align:right">'+esc(documentInfo.revision)+(documentInfo.original_quote_no?'<br><span style="font-weight:400;font-size:8px">Pôvodná '+esc(documentInfo.original_quote_no)+'</span>':'')+'</div>':'')+
+        (documentInfo.variant?'<div data-pdf-variant style="grid-column:1/-1;text-align:right">'+esc(documentInfo.variant)+'</div>':'')+
         '<div style="font-size:9px">Dátum vystavenia:</div><div style="font-weight:700;text-align:right">'+issue+'</div>'+
         '<div style="font-size:9px">Platnosť do:</div><div style="font-weight:700;text-align:right">'+valid+'</div>'+
       '</div>'+
@@ -3177,7 +3201,7 @@ function offerHtmlTechnical(){
       '<div style="background:#c20000;color:#fff;padding:9px 11px"><div style="font-size:8px;opacity:.9">Číslo ponuky</div><div style="font-size:14px">'+esc(current.quote_no||'')+'</div></div>'+
       '<div style="background:#c20000;color:#fff;padding:9px 11px;border-left:1px solid rgba(255,255,255,.4)"><div style="font-size:8px;opacity:.9">Dátum</div><div style="font-size:14px">'+issue+'</div></div>'+
       '<div style="background:#c20000;color:#fff;padding:9px 11px;border-left:1px solid rgba(255,255,255,.4)"><div style="font-size:8px;opacity:.9">Platnosť</div><div style="font-size:14px">'+valid+'</div></div>'+
-      '<div style="background:#333;color:#fff;padding:9px 11px"><div style="font-size:8px;opacity:.9">Cena spolu s DPH</div><div style="font-size:14px;font-weight:700">'+(current.price_complete?eur(total):'—')+'</div></div>'+
+      '<div style="background:#333;color:#fff;padding:9px 11px"><div style="font-size:8px;opacity:.9">Cena spolu s DPH</div><div style="font-size:14px;font-weight:700">'+(priceComplete?eur(total):'—')+'</div></div>'+
     '</div>'+
 
     '<div style="font-size:22px;color:#00539B;font-weight:700;margin:2px 0 12px">Cenová ponuka</div>'+
@@ -3196,11 +3220,12 @@ function offerHtmlTechnical(){
       '<div style="width:255px">'+
         '<div style="display:flex;justify-content:space-between;padding:3px 0"><span>Základ dane:</span><b>'+eur(net)+'</b></div>'+
         '<div style="display:flex;justify-content:space-between;padding:3px 0"><span>DPH '+(current.vat_pct??23)+' %:</span><b>'+eur(vat)+'</b></div>'+
-        '<div style="display:flex;justify-content:space-between;padding:7px 0 3px;border-top:2px solid #111;font-size:14px"><span>SPOLU:</span><b>'+(current.price_complete?eur(total):'—')+'</b></div>'+
+        '<div style="display:flex;justify-content:space-between;padding:7px 0 3px;border-top:2px solid #111;font-size:14px"><span>SPOLU:</span><b>'+(priceComplete?eur(total):'—')+'</b></div>'+
       '</div>'+
     '</div>'+
 
     subsidyBlock+extraImages+note+materialScope+scope+annual+(isTradeQuote(current)?'':warrantyConsentHtml())+
+    (assembled?SpektraQuoteWorkbenchOutput.renderAppendix(current,{model:outputModel,layout:'technical',formatMoney:eur}):'')+
 
     '<div data-pdf-footer style="position:absolute;left:9mm;right:9mm;bottom:8mm;border-top:1px solid #888;padding-top:5px;display:flex;justify-content:space-between;color:#555;font-size:8px">'+
       '<div>Spektra Install s.r.o.<br>Hollého 210, 015 01 Rajec</div>'+
@@ -3211,23 +3236,25 @@ function offerHtmlTechnical(){
 
 
 function offerHtmlPresentation(){
-  ensurePdfTemplateState();
-  ensureHeatPumpInstallationItem();
-  recalcQuoteTotalsFromItems();
   const rowOutput=SpektraQuoteRowOutput;
+  const assembled=rowOutput.configured(current);
+  if(!assembled){ensurePdfTemplateState();ensureHeatPumpInstallationItem();recalcQuoteTotalsFromItems();}
+  const outputModel=assembled?rowOutput.customerModel(current,{bundleName:customerMaterialBundleName()}):null;
+  const documentInfo=assembled?SpektraQuoteWorkbenchOutput.documentInfo(current):{};
 
   const issueDate=current.issued_on?new Date(current.issued_on+'T12:00:00'):new Date(current.created||Date.now());
   const validDate=current.valid_until?new Date(current.valid_until+'T12:00:00'):new Date(issueDate.getTime()+14*24*60*60*1000);
   const issue=issueDate.toLocaleDateString('sk-SK');
   const valid=validDate.toLocaleDateString('sk-SK');
-  const net=Number(current.net||0);
-  const vat=Number(current.vat||0);
-  const total=Number(current.total||0);
+  const net=assembled?outputModel.totals.net:Number(current.net||0);
+  const vat=assembled?outputModel.totals.vat:Number(current.vat||0);
+  const total=assembled?outputModel.totals.total:Number(current.total||0);
+  const priceComplete=assembled?outputModel.totals.complete:current.price_complete;
   const vatPct=Number(current.vat_pct??23);
 
   const deviceItem=current.items.find(i=>i.role==='device');
   const installationItem=current.items.find(i=>i.role==='installation_service'||i.role==='installation');
-  const rows=rowOutput.customerRows(current,customerMaterialBundleName());
+  const rows=assembled?outputModel.rows:rowOutput.customerRows(current,customerMaterialBundleName());
 
   const getRowImage=i=>{
     if(!current.pdf_images_enabled)return '';
@@ -3242,7 +3269,11 @@ function offerHtmlPresentation(){
     return '';
   };
 
-  const rowHtml=rows.map(i=>{
+  const getAssemblyImage=row=>{
+    const i=current.items[row._quote_output?.source_index]||row;
+    return getRowImage(row._quote_output?.type==='summary'&&row._quote_output?.group_kind==='labor'?{role:'installation'}:i);
+  };
+  const rowHtml=assembled?SpektraQuoteWorkbenchOutput.renderRows(current,{model:outputModel,layout:'presentation',formatMoney:eur,getImage:getAssemblyImage}):rows.map(i=>{
     const name=rowOutput.itemName(current,i,customerText);
     if(rowOutput.isText(i))return '<tr data-pdf-text-row style="page-break-inside:avoid;background:#fff"><td colspan="4" style="padding:9px 7px;border-bottom:1px solid #dbe6ee;white-space:pre-wrap;overflow-wrap:anywhere"><div data-pdf-item-name style="font-size:9.8px;line-height:1.4;color:#173247">'+esc(name)+'</div></td></tr>';
     const {amount,gross}=rowOutput.amounts(i,current);
@@ -3390,6 +3421,8 @@ function offerHtmlPresentation(){
         '</div>'+
         '<div style="font-size:8px;line-height:1.75">'+
           '<div style="display:flex;justify-content:space-between;gap:8px"><span>Číslo:</span><b>'+esc(current.quote_no||'')+'</b></div>'+
+          (documentInfo.revision?'<div data-pdf-revision style="font-weight:700">'+esc(documentInfo.revision)+(documentInfo.original_quote_no?'<br><span style="font-weight:400">Pôvodná ponuka '+esc(documentInfo.original_quote_no)+'</span>':'')+'</div>':'')+
+          (documentInfo.variant?'<div data-pdf-variant>'+esc(documentInfo.variant)+'</div>':'')+
           '<div style="display:flex;justify-content:space-between;gap:8px"><span>Dátum:</span><b>'+issue+'</b></div>'+
           '<div style="display:flex;justify-content:space-between;gap:8px"><span>Platnosť:</span><b>'+valid+'</b></div>'+
         '</div>'+
@@ -3412,7 +3445,7 @@ function offerHtmlPresentation(){
           '<div style="display:flex;justify-content:space-between;margin-bottom:5px;font-size:8.5px"><span>DPH '+vatPct+' %:</span><b>'+eur(vat)+'</b></div>'+
           '<div style="border-top:1px solid #78a6c4;padding-top:5px;display:flex;justify-content:space-between;align-items:end;color:#00539B">'+
             '<span style="font-size:14px;font-weight:900">SPOLU:</span>'+
-            '<b style="font-size:19px;line-height:1">'+(current.price_complete?eur(total):'—')+'</b>'+
+            '<b style="font-size:19px;line-height:1">'+(priceComplete?eur(total):'—')+'</b>'+
           '</div>'+
         '</div>'+
       '</div>'+
@@ -3420,11 +3453,13 @@ function offerHtmlPresentation(){
       (current.customer?.note
         ?'<div data-pdf-note style="margin-top:4mm;padding:3mm;background:#f8fafb;border-left:2px solid #c20000;font-size:8px">'+esc(current.customer.note)+'</div>'
         :'')+
+      (assembled&&!isTradeQuote(current)?'<div style="margin-top:12px;font-size:9px"><b>'+esc(SPEKTRA_WARRANTY)+'</b></div>':'')+
       (isTradeQuote(current)?'':warrantyConsentHtml(true))+
+      (assembled?SpektraQuoteWorkbenchOutput.renderAppendix(current,{model:outputModel,layout:'presentation',formatMoney:eur}):'')+
     '</div>'+
 
     '<div data-pdf-footer style="position:absolute;left:7mm;right:7mm;bottom:4mm;background:#fff">'+
-      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4mm;padding-top:4mm;border-top:1px solid #dbe3e9">'+
+      (assembled?'':'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4mm;padding-top:4mm;border-top:1px solid #dbe3e9">'+
         '<div style="padding-right:2mm">'+
           '<div style="display:flex;align-items:center;gap:5px;font-size:11.3px;color:#00539B;font-weight:900;margin-bottom:5px"><span style="color:#c20000;font-size:14px">◇</span>Rozsah materiálu</div>'+
           '<div style="font-size:7.8px;line-height:1.5">'+materialParts.slice(0,6).map(x=>'✓ '+esc(x)).join('<br>')+'</div>'+
@@ -3438,7 +3473,7 @@ function offerHtmlPresentation(){
             ? '<div style="display:flex;align-items:center;gap:5px;font-size:10.7px;color:#00539B;font-weight:900;margin-bottom:5px"><span style="color:#c20000;font-size:14px">◇</span>Ponuka podľa obhliadky</div><div style="font-size:7.8px;line-height:1.5">✓ Materiál a práca podľa zaznamenaného rozsahu<br>✓ Konečná cena sa potvrdí pred realizáciou</div>'
             : '<div style="display:flex;align-items:center;gap:5px;font-size:10.7px;color:#00539B;font-weight:900;margin-bottom:5px"><span style="color:#c20000;font-size:14px">◇</span>Servis a záruka</div><div style="font-size:7.8px;line-height:1.5">✓ '+esc(SPEKTRA_WARRANTY)+(annual?'<br>✓ '+esc(annual):'')+'</div>')+
         '</div>'+
-      '</div>'+
+      '</div>')+
       '<div style="margin-top:6mm;padding:3mm 0 0;border-top:1px solid #cfdbe3;display:grid;grid-template-columns:1fr 1fr 1fr;align-items:end;color:#516474;font-size:7.3px">'+
         '<div><b style="color:#173247">Spektra Install s.r.o.</b><br>Hollého 210, 015 01 Rajec</div>'+
         '<div style="text-align:center"><a data-pdf-link href="https://www.spektrainstall.sk/" target="_blank" style="color:#00539B;text-decoration:none;font-weight:700">www.spektrainstall.sk</a><br><a data-pdf-link href="https://www.spektrashop.sk/" target="_blank" style="color:#00539B;text-decoration:none;font-weight:700">www.spektrashop.sk</a></div>'+
@@ -3449,13 +3484,15 @@ function offerHtmlPresentation(){
 }
 
 function warrantyTermsHtml(){
-  const device=SpektraQuoteRowOutput.rowsMode(current)?'Zariadenia uvedené v položkách ponuky':[current?.device?.brand,current?.device?.model,current?.device?.variant].filter(Boolean).join(' ');
+  const assembled=SpektraQuoteRowOutput.configured(current);
+  const documentInfo=assembled?SpektraQuoteWorkbenchOutput.documentInfo(current):{};
+  const device=assembled||SpektraQuoteRowOutput.rowsMode(current)?'Zariadenia uvedené v položkách ponuky':[current?.device?.brand,current?.device?.model,current?.device?.variant].filter(Boolean).join(' ');
   const row=(n,title,body)=>'<div style="display:grid;grid-template-columns:7mm 1fr;gap:2mm;margin:0 0 4.2mm;break-inside:avoid">'+
     '<div style="color:#c20000;font-size:11px;font-weight:900">'+n+'.</div><div><div style="color:#00539B;font-size:10.5px;font-weight:800;margin-bottom:1.5mm">'+title+'</div><div style="font-size:9px;line-height:1.45">'+body+'</div></div></div>';
   return '<div style="box-sizing:border-box;width:210mm;height:297mm;padding:15mm 16mm 13mm;font-family:Arial,sans-serif;color:#173247;background:#fff;position:relative;overflow:hidden">'+
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:5mm;border-bottom:2px solid #00539B">'+
       '<div><div style="color:#c20000;font-size:8px;font-weight:900;letter-spacing:1px">SPEKTRA INSTALL</div><div style="font-size:21px;line-height:1.1;font-weight:900;color:#00539B;margin-top:2mm">Podmienky 5-ročnej záruky</div><div style="font-size:9px;margin-top:2mm">ZÁRUKA SPEKTRA na zariadenie pri pravidelnom ročnom servise</div></div>'+
-      '<div style="text-align:right;font-size:8px;line-height:1.45;color:#516474"><span data-pdf-warranty-folio>'+(SpektraQuoteRowOutput.detailed(current)?'Posledná strana':'Strana 2/2')+'</span><br>Č. ponuky: <b>'+esc(current.quote_no||'—')+'</b></div>'+
+      '<div style="text-align:right;font-size:8px;line-height:1.45;color:#516474"><span data-pdf-warranty-folio>'+(assembled||SpektraQuoteRowOutput.detailed(current)?'Posledná strana':'Strana 2/2')+'</span><br>Č. ponuky: <b>'+esc(current.quote_no||'—')+'</b>'+(documentInfo.revision?'<br>'+esc(documentInfo.revision):'')+(documentInfo.variant?'<br>'+esc(documentInfo.variant):'')+'</div>'+
     '</div>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4mm;background:#f2f7fa;padding:3.5mm 4mm;margin:5mm 0 6mm;font-size:8.5px;line-height:1.45">'+
       '<div><b>Poskytovateľ záruky</b><br>Spektra Install s.r.o.<br>Hollého 210, 015 01 Rajec<br>IČO: 53690036</div>'+
@@ -3515,6 +3552,10 @@ async function inlineImagesForPdf(root){
 async function createPdfFile(){
   if(!window.html2canvas)throw new Error('Renderovanie PDF sa nenačítalo.');
   if(!window.jspdf?.jsPDF)throw new Error('PDF knižnica sa nenačítala.');
+  if((current?.material_edits?.rows_mode||SpektraQuoteRowOutput.configured(current))&&typeof prepareQuoteRowsForIssue==='function'){
+    const issued=await prepareQuoteRowsForIssue();
+    if(!issued?.ok)throw new Error(issued?.error||'Ponuku sa nepodarilo pripraviť na vydanie.');
+  }
 
   // PDF 1/2 sa najprv vyrenderuje presne rovnako ako náhľad a až potom sa
   // hotová stránka vloží do PDF ako obraz. Tým odstránime rozdiely medzi
@@ -3530,8 +3571,9 @@ async function createPdfFile(){
   holder.style.background='#fff';
   holder.style.overflow='visible';
   holder.innerHTML=offerHtml();
-  const paginateTradeOffer=isTradeQuote(current)||SpektraQuoteRowOutput.detailed(current);
-  const pdfIdentity={quoteNo:current.quote_no||'',customerName:current.customer?.name||''};
+  const paginateTradeOffer=isTradeQuote(current)||SpektraQuoteRowOutput.configured(current)||SpektraQuoteRowOutput.detailed(current);
+  const pdfIdentity={quoteNo:current.quote_no||'',customerName:current.customer?.name||'',
+    ...(SpektraQuoteRowOutput.configured(current)?SpektraQuoteWorkbenchOutput.documentInfo(current):{})};
   document.body.appendChild(holder);
 
   try{
@@ -3910,7 +3952,8 @@ window.addEventListener('online',()=>syncQuotes(true,true));
 window.addEventListener('focus',()=>syncQuotes(false,true));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncQuotes(false,true)});
 </script>
-<script src="js/quote-material-editor.js?v=20261007-rows1"></script>
+<script src="js/quote-material-editor.js?v=20261007-hvac1"></script>
+<script src="js/quote-workbench.js?v=20261007-hvac1"></script>
 <script src="js/inspections.js?v=20261006-clean1"></script>
 <script src="js/home-toolbar.js?v=20261007-bottom1"></script>
 <script src="js/contacts.js?v=20261007-contacts1"></script>

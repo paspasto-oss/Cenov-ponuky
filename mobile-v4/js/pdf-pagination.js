@@ -59,7 +59,7 @@
     stage.style.cssText='position:fixed;left:0;top:0;width:210mm;z-index:-2147483000;pointer-events:none;background:#fff;';
     const style=doc.createElement('style');style.textContent=stylesheet;stage.appendChild(style);
     doc.body.appendChild(stage);
-    let page,body,activeTable,activeTbody,used=0;
+    let page,body,activeTable,activeTbody,templateTable=s.table,used=0;
     const hasContent=()=>used>0;
     const fits=()=>body.scrollHeight<=body.clientHeight+1&&body.scrollWidth<=body.clientWidth+1;
     const fail=text=>{throw Error(text);};
@@ -78,7 +78,7 @@
         const head=doc.createElement('div');head.className='quotePdfContinuation';
         const left=doc.createElement('div'),title=doc.createElement('strong');title.textContent='Cenová ponuka – pokračovanie';
         const name=doc.createElement('div');name.textContent=String(meta.customerName||'');left.append(title,name);
-        const right=doc.createElement('div');right.textContent=String(meta.quoteNo||'');head.append(left,right);body.appendChild(head);
+        const right=doc.createElement('div');right.style.whiteSpace='pre-line';right.textContent=[meta.quoteNo,meta.revision,meta.variant].filter(Boolean).map(String).join('\n');head.append(left,right);body.appendChild(head);
         if(!fits())fail('Údaje zákazníka sú príliš dlhé pre hlavičku A4.');
       }
     }
@@ -98,6 +98,14 @@
     }
     function appendBlock(original,depth=0){
       if(depth>8)fail('Blok ponuky sa nedá bezpečne rozdeliť na A4. Skráťte jeho opis.');
+      if(original.hasAttribute('data-pdf-page-break-before')&&hasContent())newPage();
+      // Appendices contain another real item table. Paginate its rows with its
+      // own repeated column headings instead of flattening the table as text.
+      if(original.matches('table[data-pdf-items]')){appendTable(original);return;}
+      if(original.hasAttribute('data-pdf-appendix')){
+        for(const child of original.children)appendBlock(child,depth+1);
+        return;
+      }
       const node=original.cloneNode(true);addPlain(node);
       if(fits()){used++;return;}
       node.remove();
@@ -128,25 +136,34 @@
     }
     function tableForPage(){
       if(activeTable)return;
-      activeTable=s.table.cloneNode(true);
+      activeTable=templateTable.cloneNode(true);
       activeTable.querySelectorAll('tbody,tfoot,colgroup').forEach(n=>n.remove());
-      const widths=s.layout==='technical'?[45,11,14,14,16]:[52,12,18,18];
+      const columnCount=activeTable.querySelectorAll('thead th').length;
+      const widths=columnCount===5?[45,11,14,14,16]:columnCount===4?[52,12,18,18]:Array.from({length:columnCount},()=>100/columnCount);
       const cols=doc.createElement('colgroup');
       widths.forEach(w=>{const c=doc.createElement('col');c.style.width=w+'%';cols.appendChild(c);});
       activeTable.prepend(cols);activeTable.querySelectorAll('th').forEach(th=>th.style.width='auto');
       activeTbody=doc.createElement('tbody');activeTable.appendChild(activeTbody);body.appendChild(activeTable);
     }
-    function appendRow(original,index){
+    function appendRow(original,index,rows){
       tableForPage();const row=original.cloneNode(true);row.setAttribute('data-pdf-row-index',String(index));activeTbody.appendChild(row);
-      if(fits()){used++;return;}
+      let rowFits=fits();
+      if(rowFits&&original.hasAttribute('data-pdf-group-heading')&&rows[index+1]){
+        const next=rows[index+1].cloneNode(true);activeTbody.appendChild(next);rowFits=fits();next.remove();
+      }
+      if(rowFits){used++;return;}
       row.remove();if(!activeTbody.children.length)activeTable.remove();
       newPage();tableForPage();activeTbody.appendChild(row);
       if(!fits())fail('Položka „'+original.cells[0].textContent.trim().slice(0,100)+'“ je vyššia než strana A4. Skráťte jej názov alebo opis.');
       used++;
     }
+    function appendTable(original){
+      templateTable=original;activeTable=null;activeTbody=null;
+      const rows=[...original.tBodies].flatMap(b=>[...b.rows]);rows.forEach(appendRow);
+    }
     try{
       newPage(true);s.header.forEach(n=>appendBlock(n));
-      const rows=[...s.table.tBodies].flatMap(b=>[...b.rows]);rows.forEach(appendRow);
+      appendTable(s.table);
       s.after.forEach(n=>appendBlock(n));
       pages.forEach((p,i)=>{p.querySelector('.quotePdfFolio').textContent='Strana '+(i+1)+' / '+pages.length;});
       return {stage,pages,dispose:()=>stage.remove()};

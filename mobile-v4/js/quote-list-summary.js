@@ -11,6 +11,10 @@
     return Number.isFinite(n)?n:null;
   }
   function itemGroup(item){
+    const kind=item?.stored_metadata?.quote_assembly?.kind;
+    if(kind==='equipment')return 'equipment';
+    if(['labor','transport','revision','pressure','service'].includes(kind))return 'installation';
+    if(kind==='material')return 'material';
     if(equipmentRoles.has(item?.role))return 'equipment';
     if(serviceRoles.has(item?.role))return 'installation';
     return 'material';
