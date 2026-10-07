@@ -95,3 +95,23 @@ test('new scripts compile and hooks use atomic storage without schema changes',(
  const html=fs.readFileSync(path.join(__dirname,'../app.html'),'utf8');assert.match(html,/SpektraQuoteMaterials\.capture\(edited\)/);assert.match(html,/SpektraQuoteMaterials\.apply/);
  assert.match(html,/finalMaterialEditorSlot/);assert.match(html,/quote-material-editor\.js/);
 });
+test('inspection price refresh preserves quantities, labor and manual overrides',()=>{
+ const q={category:'other',status:'draft',items:[
+  {name:'Radiátor',qty:3,unit:'ks',pohoda_code:'K1',pohoda_stock_id:123,price:200,cost:100},
+  {name:'Ručná cena',qty:2,pohoda_code:'K2',price:50,cost:20,price_override:true,cost_override:true},
+  {name:'Práca',qty:8,unit:'hod',price:25,cost:15,mapping_status:'service'}]};
+ const labor=clone(q.items[2]);
+ assert.deepEqual(M.refreshExisting(q,[stock({code:'K1',pohoda_stock_id:123,sell_price_ex_vat:150,purchase_price_ex_vat:90}),stock({code:'K2',sell_price_ex_vat:70,purchase_price_ex_vat:30})]),{updated:2,missing:[]});
+ assert.equal(q.items[0].price,150);assert.equal(q.items[0].cost,90);assert.equal(q.items[0].qty,3);
+ assert.equal(q.items[1].price,50);assert.equal(q.items[1].cost,20);assert.deepEqual(q.items[2],labor);
+});
+test('inspection refresh refuses ambiguous or missing exact cards and exposes missing prices',()=>{
+ const q={status:'draft',items:[{name:'Missing',pohoda_stock_id:123,pohoda_code:'K',price:20},{name:'Duplicate',pohoda_code:'D',price:30},{name:'No price',pohoda_code:'N',price:40}]};
+ const result=M.refreshExisting(q,[stock({code:'K',pohoda_stock_id:999}),stock({code:'D'}),stock({code:'D',id:'second'}),stock({code:'N',sell_price_ex_vat:null})]);
+ assert.deepEqual(result,{updated:1,missing:['Missing','Duplicate']});assert.equal(q.items[0].price,20);assert.equal(q.items[1].price,30);assert.equal(q.items[2].price,null);
+});
+test('approved inspection cannot refresh prices, including stale local status',()=>{
+ for(const flags of [{status:'approved'},{status:'draft',_server_status:'approved'}]){
+ const q={...flags,items:[material()]},before=clone(q);assert.throws(()=>M.refreshExisting(q,[stock({sell_price_ex_vat:1})]));assert.deepEqual(q,before);
+ }
+});

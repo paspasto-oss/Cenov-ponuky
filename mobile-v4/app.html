@@ -26,10 +26,10 @@
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<link rel="stylesheet" href="js/quote-material-editor.css?v=20261005-material1">
-<script src="js/quote-materials.js?v=20261005-material1"></script>
+<link rel="stylesheet" href="js/quote-material-editor.css?v=20261007-price-refresh1">
+<script src="js/quote-materials.js?v=20261007-price-refresh1"></script>
 <script src="js/quote-storage.js?v=20261005-atomic1"></script>
-<script src="js/db.js?v=20261005-material1"></script>
+<script src="js/db.js?v=20261007-price-refresh1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
@@ -345,6 +345,7 @@
 
   <section id="step5" class="screen">
     <div class="topline"><h1>5. Ponuka zákazníkovi</h1></div>
+    <button id="finalRefreshPriceBtn" class="btn ghost full" style="margin-bottom:10px" onclick="refreshQuoteFromCatalog(this)">↻ Načítať aktuálne ceny z POHODY</button>
     <div class="steps"><div class="step on"></div><div class="step on"></div><div class="step on"></div><div class="step on"></div><div class="step on"></div></div>
     <div class="card">
       <h2>Vzhľad PDF</h2>
@@ -2464,6 +2465,20 @@ async function refreshQuoteFromCatalog(button=null){
       rebuildStockIndexes();
     }
 
+    if(isTradeQuote(current)){
+      const result=SpektraQuoteMaterials.refreshExisting(current,stocks);
+      recalcQuoteTotalsFromItems();
+      renderFinal();
+      const saved=await upsertCurrent();
+      if(!saved?.ok)throw new Error(saved?.error||'Uloženie ponuky nebolo potvrdené.');
+      const missingPrices=current.items.filter(i=>i.price==null);
+      alert('Aktuálne ceny boli načítané pre '+result.updated+' položiek. Množstvá a ručné ceny zostali zachované.'+
+        (result.missing.length?'\n\nSkladová karta sa nenašla: '+result.missing.join(', '):'')+
+        (missingPrices.length?'\n\nChýba cena: '+missingPrices.map(i=>i.name).join(', '):'')+
+        (!saved.synced?'\n\nPonuka je uložená v tomto zariadení a čaká na synchronizáciu.':''));
+      return;
+    }
+
     try{
       const [dc,br]=await Promise.all([
         fetch('data/device-catalog.json?t='+Date.now(),{cache:'no-store'}),
@@ -2775,6 +2790,8 @@ function renderFinal(){
  syncPdfTemplateUI();
  const priceLockNotice=document.getElementById('approvedPriceNotice');
  if(priceLockNotice)priceLockNotice.classList.toggle('hidden',!isQuotePriceLocked());
+ const finalRefresh=document.getElementById('finalRefreshPriceBtn');
+ if(finalRefresh)finalRefresh.classList.toggle('hidden',isQuotePriceLocked()||!isTradeQuote(current));
  const tradeQuote=isTradeQuote(current);
  const warrantyCard=document.getElementById('warrantyCard');if(warrantyCard)warrantyCard.classList.toggle('hidden',tradeQuote);
  if(!tradeQuote)renderWarrantySignatureStatus();
@@ -3882,7 +3899,7 @@ window.addEventListener('online',()=>syncQuotes(true,true));
 window.addEventListener('focus',()=>syncQuotes(false,true));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncQuotes(false,true)});
 </script>
-<script src="js/quote-material-editor.js?v=20261005-material1"></script>
+<script src="js/quote-material-editor.js?v=20261007-price-refresh1"></script>
 <script src="js/inspections.js?v=20261006-clean1"></script>
 <script src="js/home-toolbar.js?v=20261006-menu5"></script>
 </body>

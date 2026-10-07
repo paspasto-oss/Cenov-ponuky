@@ -54,6 +54,36 @@
     const found=rows.filter(x=>ref.code&&fold(x.code)===fold(ref.code)&&(!ref.storage_ref||String(x.storage_ref||'')===String(ref.storage_ref)));
     return found.length===1?found[0]:null;
   }
+  function refreshExisting(q,stocks){
+    if(!unlocked(q))throw new Error('Schválená ponuka má uzamknuté ceny.');
+    const missing=[];let updated=0;
+    for(const i of q.items||[]){
+      const saved=metadata(i).catalog_ref;
+      const stockId=i.pohoda_stock_id;
+      const code=i.pohoda_code||i.pohoda?.code;
+      if(!saved&&!stockId&&!code&&!i.pohoda)continue;
+      let st;
+      if(saved)st=findStock(saved,stocks);
+      else if(stockId){
+        const found=(stocks||[]).filter(x=>x.active!==false&&String(x.pohoda_stock_id??'')===String(stockId)&&(!code||String(x.code)===String(code)));
+        st=found.length===1?found[0]:null;
+      }else if(i.pohoda?.id||i.pohoda?.fingerprint)st=findStock(reference(i.pohoda),stocks);
+      else{
+        const found=(stocks||[]).filter(x=>x.active!==false&&code&&String(x.code)===String(code));
+        st=found.length===1?found[0]:null;
+      }
+      if(!st){missing.push(i.name);continue;}
+      i.pohoda=st;
+      for(const [field,source,override] of [['price','sell_price_ex_vat','price_override'],['cost','purchase_price_ex_vat','cost_override']]){
+        if(i[override])continue;
+        const value=st[source];
+        i[field]=value==null||!Number.isFinite(Number(value))?null:Number(value);
+      }
+      updated++;
+    }
+    capture(q);
+    return {updated,missing};
+  }
   function snapshot(i){
     const out={};
     for(const k of ['role','name','qty','unit','pohoda_code','pohoda_stock_id','price','cost','visible','mapping_status','customer_group','note','work_scope','price_override','cost_override','stored_metadata']){
@@ -172,7 +202,7 @@
     found.sort((a,b)=>a.rank-b.rank||String(a.st.name).localeCompare(String(b.st.name),'sk')||String(a.st.id||a.st.plu||'').localeCompare(String(b.st.id||b.st.plu||'')));
     return {rows:found.slice(0,limit).map(x=>x.st),total:found.length};
   }
-  const api={editable,unlocked,scope,key,quantity,capture,apply,setQuantity,remove,add,search,findStock,snapshot};
+  const api={editable,unlocked,scope,key,quantity,capture,apply,setQuantity,remove,add,search,findStock,snapshot,refreshExisting};
   root.SpektraQuoteMaterials=api;
   if(typeof module==='object'&&module.exports)module.exports=api;
 })(typeof window==='object'?window:globalThis);
