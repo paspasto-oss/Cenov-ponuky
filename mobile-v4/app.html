@@ -29,12 +29,13 @@
 <link rel="stylesheet" href="js/quote-material-editor.css?v=20261007-price-refresh1">
 <script src="js/quote-materials.js?v=20261007-price-refresh1"></script>
 <script src="js/quote-storage.js?v=20261005-atomic1"></script>
-<script src="js/db.js?v=20261007-price-refresh1"></script>
+<script src="js/db.js?v=20261007-contacts1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 <link rel="stylesheet" href="js/home-toolbar.css?v=20261007-bottom1">
 <link rel="stylesheet" href="js/visual-refresh.css?v=20261006-clean2">
+<link rel="stylesheet" href="js/contacts.css?v=20261007-contacts1">
 </head>
 <body>
 <div class="wrap">
@@ -3717,7 +3718,9 @@ async function printPDF(){
   // Otvoríme kartu synchronne, aby mobilný prehliadač nezablokoval popup.
   const previewWindow=window.open('about:blank','_blank');
   if(previewWindow){
-    previewWindow.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Pripravujem PDF…</title></head><body style="font-family:Arial;padding:30px">Pripravujem cenovú ponuku PDF…</body></html>');
+    previewWindow.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Pripravujem PDF…</title><link rel="stylesheet" href="js/contacts.css?v=20261007-contacts1">
+</head><body style="font-family:Arial;padding:30px">Pripravujem cenovú ponuku PDF…<script src="js/contacts.js?v=20261007-contacts1"></script>
+</body></html>');
     previewWindow.document.close();
   }
   try{
@@ -3902,5 +3905,6 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncQuotes
 <script src="js/quote-material-editor.js?v=20261007-price-refresh1"></script>
 <script src="js/inspections.js?v=20261006-clean1"></script>
 <script src="js/home-toolbar.js?v=20261007-bottom1"></script>
+<script src="js/contacts.js?v=20261007-contacts1"></script>
 </body>
 </html>

@@ -362,6 +362,19 @@ window.SpektraDB = (() => {
     return data || [];
   }
 
+  // Existing customer records follow the same authenticated RLS as offers.
+  async function listCustomers() {
+    if (!client || !user) return [];
+    const rows=[];
+    for(let offset=0;;offset+=500){
+      const {data,error}=await client.from('customers')
+        .select('id,name,phone,email,address').order('id').range(offset,offset+499);
+      if(error)throw error;
+      rows.push(...(data||[]));
+      if(!data||data.length<500)return rows;
+    }
+  }
+
   async function listQuotes() {
     if (!client || !user) return [];
     const { data, error } = await client.from('quotes')
@@ -714,5 +727,5 @@ window.SpektraDB = (() => {
     if(error)throw error;
   }
 
-  return { configured, init, signIn, signUp, signOut, isAuthenticated, getUser, getProfile, listStocks, upsertStocks, uploadProductImage, uploadQuoteImage, listPdfBanners, listQuotes, nextQuoteNo, saveQuote, listInspections, saveInspection, uploadInspectionPhoto, deleteInspectionPhoto, linkInspectionQuote, deleteDraftInspection };
+  return { configured, init, signIn, signUp, signOut, isAuthenticated, getUser, getProfile, listStocks, upsertStocks, uploadProductImage, uploadQuoteImage, listPdfBanners, listCustomers, listQuotes, nextQuoteNo, saveQuote, listInspections, saveInspection, uploadInspectionPhoto, deleteInspectionPhoto, linkInspectionQuote, deleteDraftInspection };
 })();
