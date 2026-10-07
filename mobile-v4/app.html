@@ -20,14 +20,15 @@
 @media(max-width:720px){.wrap{padding:9px}.actions{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.choiceGrid{grid-template-columns:repeat(2,1fr)}.priceBox{grid-template-columns:1fr}.sendgrid{grid-template-columns:1fr}.hero h1{font-size:21px}.quoteBackBar{bottom:calc(62px + env(safe-area-inset-bottom));width:calc(100% - 12px);border-radius:12px;padding:6px}#step1,#step2,#step3,#step4,#step5{padding-bottom:92px}}
 </style>
 <link rel="stylesheet" href="js/quote-list-summary.css?v=20261005-list1">
-<script src="js/quote-list-summary.js?v=20261006-clean1"></script>
+<script src="js/quote-list-summary.js?v=20261007-rows1"></script>
 <script src="js/pdf-banners.js?v=20261005-universal1"></script>
 <script src="js/pdf-pagination.js?v=20261006-a4-1"></script>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<link rel="stylesheet" href="js/quote-material-editor.css?v=20261007-price-refresh1">
-<script src="js/quote-materials.js?v=20261007-price-refresh1"></script>
+<link rel="stylesheet" href="js/quote-material-editor.css?v=20261007-rows1">
+<script src="js/quote-materials.js?v=20261007-rows1"></script>
+<script src="js/quote-row-output.js?v=20261007-rows1"></script>
 <script src="js/quote-storage.js?v=20261005-atomic1"></script>
 <script src="js/db.js?v=20261007-contacts1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -200,18 +201,33 @@
       <summary style="cursor:pointer;font-weight:900;font-size:17px;color:#173247;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px">
         <span>Montážny materiál a položky</span><span style="font-size:13px;color:#607787">Rozbaliť ▾</span>
       </summary>
-      <div class="sub" style="margin:9px 0">Tieto položky sa použijú pre POHODU. Zákazník ich v PDF môže vidieť zoskupené.</div>
-      <div class="sub" id="quoteMaterialCount"></div>
-      <div class="quoteMaterialTools">
-        <b>+ Doplniť materiál zo zásob</b>
+      <div class="quoteEditorIntro"><div class="sub" id="quoteMaterialCount"></div><div class="sub">Prepíšte ľubovoľný názov, množstvo, jednotku alebo cenu. Nákupné ceny slúžia iba na výpočet zisku.</div><div class="sub quoteScrollHint">Tabuľku posuniete prstom do strán.</div></div>
+      <div class="quoteAddActions"><button class="btn" type="button" onclick="toggleQuoteAddPanel('catalog')">+ Z katalógu</button><button class="btn ghost" type="button" onclick="toggleQuoteAddPanel('manual')">+ Vlastná / textová položka</button></div>
+      <div id="quoteCatalogPanel" class="quoteMaterialTools hidden">
+        <h3>Pridať položku z katalógu</h3>
         <div class="quoteMaterialSearchGrid" style="margin-top:9px">
           <div class="field"><label for="quoteMaterialSearch">Hľadať v katalógu POHODA</label><input id="quoteMaterialSearch" type="search" autocomplete="off" placeholder="Názov, kód, PLU alebo EAN…" oninput="searchQuoteMaterials(this.value)"></div>
           <div class="field"><label for="quoteMaterialAddQty">Množstvo</label><input id="quoteMaterialAddQty" type="text" inputmode="decimal" value="1" aria-label="Množstvo na pridanie"></div>
         </div>
         <div id="quoteMaterialResults" class="quoteMaterialResults"></div>
       </div>
+      <div id="quoteManualPanel" class="quoteMaterialTools hidden">
+        <h3>Pridať vlastný riadok</h3>
+        <div class="quoteManualTop">
+          <div class="field"><label for="quoteManualKind">Druh položky</label><select id="quoteManualKind" onchange="updateQuoteManualKind()"><option value="material">Materiál / výrobok</option><option value="service">Práca / služba</option><option value="text">Poznámka bez ceny</option></select></div>
+          <div class="field"><label for="quoteManualName">Názov alebo text položky</label><textarea id="quoteManualName" rows="2" placeholder="Napíšte položku alebo poznámku pre zákazníka…"></textarea></div>
+        </div>
+        <div id="quoteManualNumbers" class="quoteManualNumbers">
+          <div class="field"><label for="quoteManualQty">Množstvo</label><input id="quoteManualQty" type="text" inputmode="decimal" value="1"></div>
+          <div class="field"><label for="quoteManualUnit">Merná jednotka</label><input id="quoteManualUnit" type="text" maxlength="10" value="ks" placeholder="ks, m, hod…"></div>
+          <div class="field"><label for="quoteManualPrice">Predaj / MJ bez DPH</label><input id="quoteManualPrice" type="text" inputmode="decimal" placeholder="doplniť"></div>
+          <div class="field"><label for="quoteManualCost">Nákup / MJ bez DPH</label><input id="quoteManualCost" type="text" inputmode="decimal" placeholder="doplniť"></div>
+        </div>
+        <button type="button" class="btn" onclick="addManualQuoteItem()">Pridať do ponuky</button>
+      </div>
       <div id="quoteMaterialStatus" role="status" aria-live="polite"></div>
       <div id="bomItems" class="items"></div>
+      <label class="quotePdfDetail"><input id="quoteRowsDetailedPdf" type="checkbox" onchange="setQuoteRowsDetailedPdf(this.checked)"><span><b>Podrobný rozpis položiek v PDF</b><small>Každá položka bude v PDF samostatne. Bez zaškrtnutia zostane montážny materiál zoskupený.</small></span></label>
     </details>
     </div>
     <div id="installationTierCard" class="card">
@@ -344,6 +360,22 @@
       <div class="quoteBackBar"><button class="btn ghost" type="button" onclick="backToTypeBrand()">← Späť / upraviť typ a značku</button></div>
   </section>
 
+  <section id="quoteRows" class="screen">
+    <div class="topline quoteRowsHeading">
+      <div><div class="quoteRowsKicker">Položky ponuky</div><h1 id="quoteRowsTitle">Cenová ponuka</h1><div id="quoteRowsCustomer" class="sub"></div></div>
+      <div class="quoteRowsActions"><button class="btn ghost" type="button" onclick="saveQuoteRows()">Uložiť zmeny</button><button class="btn primary" type="button" onclick="quoteRowsToFinal()">PDF a odoslanie →</button></div>
+    </div>
+    <div class="quoteRowsMetrics" aria-label="Súčet ponuky">
+      <div class="quoteRowsMetric"><small>Celkom bez DPH</small><strong id="quoteRowsNet">—</strong></div>
+      <div class="quoteRowsMetric"><small id="quoteRowsVatLabel">DPH</small><strong id="quoteRowsVat">—</strong></div>
+      <div class="quoteRowsMetric total"><small>Celkom s DPH</small><strong id="quoteRowsTotal">—</strong></div>
+      <div class="quoteRowsMetric"><small>Hrubý zisk bez DPH</small><strong id="quoteRowsProfit">—</strong></div>
+    </div>
+    <div id="quoteRowsWarning" class="notice warn hidden" style="margin-bottom:12px"></div>
+    <div id="rowMaterialEditorSlot"></div>
+    <div class="quoteRowsActions"><button class="btn ghost" type="button" onclick="go('home')">← Zoznam ponúk</button><button class="btn ghost" type="button" onclick="refreshQuoteFromCatalog(this)">↻ Obnoviť ceny z katalógu</button></div>
+  </section>
+
   <section id="step5" class="screen">
     <div class="topline"><h1>5. Ponuka zákazníkovi</h1></div>
     <button id="finalRefreshPriceBtn" class="btn ghost full" style="margin-bottom:10px" onclick="refreshQuoteFromCatalog(this)">↻ Načítať aktuálne ceny z POHODY</button>
@@ -378,7 +410,9 @@
         </div>
       </div>
     </div>
-    <div id="approvedPriceNotice" class="notice hidden" style="margin-bottom:10px">Schválená ponuka – ceny a názvy položiek sú uzamknuté. Aktualizácia skladu ich nemení.</div>
+    <div id="approvedPriceNotice" class="notice hidden" style="margin-bottom:10px">Schválená ponuka je uzamknutá. Pre ďalšie úpravy vytvorte kópiu s novým číslom.</div>
+    <button id="editQuoteRowsButton" type="button" class="btn ghost full" style="margin-bottom:10px" onclick="openQuoteRows()">≡ Upraviť položky ponuky</button>
+    <button id="copyApprovedQuoteButton" type="button" class="btn ghost full hidden" style="margin-bottom:10px" onclick="copyQuoteForEditing()">+ Vytvoriť upraviteľnú kópiu</button>
     <div id="finalMaterialEditorSlot"></div>
     <div id="finalSummary" class="card"></div>
     <div id="warrantyCard" class="card">
@@ -393,7 +427,7 @@
         <h2 style="margin-top:0">Podpis zákazníka</h2>
         <label style="display:flex;gap:9px;align-items:flex-start;margin-bottom:13px">
           <input id="warrantyConsentCheck" type="checkbox" style="width:23px;height:23px;flex:none">
-          <span>Súhlasím s podmienkami 5-ročnej záruky Spektra uvedenými na 2. strane ponuky a s pravidelným ročným servisom počas 5 rokov.</span>
+          <span id="warrantyConsentLabel">Súhlasím s podmienkami 5-ročnej záruky Spektra uvedenými na 2. strane ponuky a s pravidelným ročným servisom počas 5 rokov.</span>
         </label>
         <canvas id="warrantySignatureCanvas" style="display:block;width:100%;height:190px;background:#fff;border:1px solid #9fc6da;border-radius:8px;touch-action:none"></canvas>
         <div class="sub" style="margin:8px 0 12px">Zákazník sa podpíše prstom alebo myšou.</div>
@@ -530,6 +564,7 @@ function setActiveContext(type,name,detail=''){
   el.classList.remove('hidden');
 }
 function quoteContextName(){
+  if(typeof quoteRowsEditorActive!=='undefined'&&quoteRowsEditorActive)return s(current?.customer?.name||'');
   const input=document.getElementById('cName');
   return s(input?.value||current?.customer?.name||'');
 }
@@ -538,7 +573,9 @@ function updateActiveContext(screenId){
     setActiveContext(null);
     return;
   }
-  if(current&&/^step[1-5]$/.test(screenId||'')){
+  if(current&&screenId==='quoteRows'){
+    setActiveContext('Ponuka',current.customer?.name||'',current.quote_no||'rozpracovaná');
+  }else if(current&&/^step[1-5]$/.test(screenId||'')){
     setActiveContext('Ponuka',quoteContextName(),current.quote_no||'rozpracovaná');
   }
 }
@@ -550,9 +587,10 @@ function draftQuoteNameChanged(){
   }
 }
 window.SpektraSetActiveContext=setActiveContext;
-function isQuotePriceLocked(q=current){return q?.status==='approved'}
+function isQuotePriceLocked(q=current){return q?.status==='approved'||q?._server_status==='approved'}
 function go(id){
-  if(isQuotePriceLocked()&&/^step[1-4]$/.test(id)){
+  if((id==='home'||id==='inspectionHome')&&typeof quoteRowsEditorActive!=='undefined')quoteRowsEditorActive=false;
+  if(isQuotePriceLocked()&&(/^step[1-4]$/.test(id)||id==='quoteRows')){
     renderFinal();
     id='step5';
   }
@@ -920,7 +958,7 @@ function filterHeatPumpDhwDevices(devices){
   return devices;
 }
 
-function startWizard(){current={id:SpektraQuoteStorage.uuid(),quote_no:'NÁVRH-'+String(Date.now()).slice(-6),_server_quote_no:false,_dirty:true,status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_template:'presentation',pdf_banner_mode:'auto',pdf_banner_url:null,pdf_banner_path:null,pdf_images_enabled:false,pdf_images_user_disabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;boilerType='gas';acMode='single';multiCount=2;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
+function startWizard(){if(typeof quoteRowsEditorActive!=='undefined')quoteRowsEditorActive=false;current={id:SpektraQuoteStorage.uuid(),quote_no:'NÁVRH-'+String(Date.now()).slice(-6),_server_quote_no:false,_dirty:true,status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_template:'presentation',pdf_banner_mode:'auto',pdf_banner_url:null,pdf_banner_path:null,pdf_images_enabled:false,pdf_images_user_disabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;boilerType='gas';acMode='single';multiCount=2;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
 function nextBuilding(){let name=s(document.getElementById('cName').value),phone=s(document.getElementById('cPhone').value),addr=s(document.getElementById('cAddress').value);if(!name||!phone||!addr){alert('Vyplň meno, telefón a adresu realizácie.');return}current.customer={name,phone,email:s(document.getElementById('cEmail').value),address:addr,note:s(document.getElementById('cNote').value)};renderExternalDhwTankPicker();go('step2')}
 function toggleLoss(){let known=document.getElementById('hasLoss').value==='yes';document.getElementById('lossKnown').classList.toggle('hidden',!known);document.getElementById('lossEstimate').classList.toggle('hidden',known)}
 function nextCategory(){let known=document.getElementById('hasLoss').value==='yes',loss=+document.getElementById('heatLoss').value||0,area=+document.getElementById('area').value||0;if(known&&loss<=0){alert('Zadaj tepelnú stratu.');return}if(!known&&area<=0){alert('Zadaj vykurovanú plochu.');return}const dhwSolution=current.category==='air_conditioning'?'none':document.getElementById('dhwMode').value;const externalTankCode=dhwSolution==='external'?(document.getElementById('externalDhwTankCode')?.value||EXTERNAL_DHW_TANK_200.code):null;current.building={known_loss:known,heat_loss_kw:known?loss:null,area_m2:known?null:area,w_per_m2:+document.getElementById('buildingClass').value,heating:document.getElementById('heating').value,dhw_solution:dhwSolution,with_external_dhw_tank:dhwSolution==='external',external_dhw_tank_code:externalTankCode};renderChoices();go('step3')}
@@ -1689,6 +1727,7 @@ function applyInspectionOverrides(items,d){
 }
 function buildBOM(){
   if(isQuotePriceLocked())return;
+  if(window.SpektraQuoteMaterials?.rowsMode(current)||(typeof quoteRowsEditorActive!=='undefined'&&quoteRowsEditorActive))return;
   if(window.SpektraQuoteMaterials)SpektraQuoteMaterials.capture(current);
  let d=recommendation,stock=findStockForDevice(d),items=[];
  if(stock){syncProductImagesFromStock(stock);d=recommendation;}
@@ -1887,13 +1926,15 @@ function installationPrice(tier){
 // nemeníme uložené ceny zariadenia ani materiálu, iba doplníme chýbajúcu montáž.
 function ensureHeatPumpInstallationItem(){
   if(isQuotePriceLocked())return false;
+  if(window.SpektraQuoteMaterials?.rowsMode(current)||(typeof quoteRowsEditorActive!=='undefined'&&quoteRowsEditorActive))return false;
+  if(window.SpektraQuoteMaterials?.isRoleRemoved(current,['installation','installation_service']))return false;
   if(!current || (current.category||category)!=='heat_pump')return false;
   if(!Array.isArray(current.items))current.items=[];
 
   const existing=current.items.find(i=>i.role==='installation_service'||i.role==='installation');
   if(existing){
     existing.visible=true;
-    if(existing.price==null)existing.price=installationPrice(current.installation_tier||'standard');
+    if(existing.price==null&&!existing.price_override)existing.price=installationPrice(current.installation_tier||'standard');
     return false;
   }
 
@@ -1935,16 +1976,24 @@ function ensureHeatPumpInstallationItem(){
 function recalcQuoteTotalsFromItems(){
   if(isQuotePriceLocked())return;
   if(!current||!Array.isArray(current.items))return;
-  let net=0,missing=false;
+  // Match the RPC: quantity has 3 decimals, unit price 4; round the summed
+  // net to cents, then round VAT-inclusive total from that rounded net.
+  let scaled=0n,missing=!current.items.length;
   current.items.forEach(i=>{
     if(i.price==null)missing=true;
-    else net+=(Number(i.price)||0)*(Number(i.qty)||0);
+    else{
+      const price=Number(i.price),qty=Number(i.qty);
+      if(!Number.isFinite(price)||!Number.isFinite(qty)||price<0||qty<0){missing=true;return;}
+      scaled+=BigInt(Math.round(price*10000))*BigInt(Math.round(qty*1000));
+    }
   });
-  const vatPct=Number(current.vat_pct||23);
-  current.net=net;
+  const vatPct=Number(current.vat_pct??23);
+  const netCents=(scaled+50000n)/100000n;
+  const totalCents=(netCents*BigInt(Math.round((100+vatPct)*100))+5000n)/10000n;
+  current.net=Number(netCents)/100;
   current.vat_pct=vatPct;
-  current.vat=net*vatPct/100;
-  current.total=net*(1+vatPct/100);
+  current.vat=Number(totalCents-netCents)/100;
+  current.total=Number(totalCents)/100;
   current.price_complete=!missing;
   if(document.getElementById('internalProfitPanel'))renderInternalProfit();
 }
@@ -2433,7 +2482,7 @@ function renderRecommendation(){
  if(altCount)altCount.textContent=alt.length?'('+alt.length+')':'';
  if(altList)altList.innerHTML=alt.map(x=>'<div class="row" onclick="pickAlternative(\''+x.id+'\')"><div><b>'+esc(x.model+' '+(x.variant||''))+'</b><small>'+((x.power_kw||'—')+' kW')+'</small></div><span>Vybrať ›</span></div>').join('');
  renderQuoteMaterialEditor();
- let net=0,missing=false;current.items.forEach(i=>{if(i.price==null)missing=true;else net+=(+i.price||0)*(+i.qty||0)});current.net=net;current.vat_pct=Number(current.vat_pct??23);current.vat=net*current.vat_pct/100;current.total=net*(1+current.vat_pct/100);
+ recalcQuoteTotalsFromItems();const net=current.net,missing=!current.price_complete;
  let dev=current.items[0]?.price,install=current.items.slice(1).reduce((a,i)=>a+(i.price==null?0:(+i.price||0)*(+i.qty||0)),0);document.getElementById('devicePrice').textContent=eur(dev);document.getElementById('installPrice').textContent=missing?eur(install)+' (známe položky)':eur(install);document.getElementById('netPrice').textContent=missing?'Neúplná cena':eur(net);document.getElementById('vatPrice').textContent=missing?'—':eur(current.vat);document.getElementById('grossPrice').textContent=missing?'—':eur(current.total);const warning=document.getElementById('priceWarning');
  if(warning){
    warning.classList.toggle('hidden',!missing);
@@ -2448,6 +2497,7 @@ function renderRecommendation(){
 }
 async function refreshQuoteFromCatalog(button=null){
   if(!current)return;
+  const owner=current;
   if(isQuotePriceLocked()){
     alert('Schválená ponuka má uzamknuté ceny a názvy položiek. Aktualizácia skladu ju nemení. Pre nové ceny vytvor novú ponuku.');
     return;
@@ -2466,11 +2516,14 @@ async function refreshQuoteFromCatalog(button=null){
       rebuildStockIndexes();
     }
 
-    if(isTradeQuote(current)){
+    if(current!==owner||isQuotePriceLocked())return;
+    if(isTradeQuote(current)||window.SpektraQuoteMaterials?.rowsMode(current)||(typeof quoteRowsEditorActive!=='undefined'&&quoteRowsEditorActive)){
       const result=SpektraQuoteMaterials.refreshExisting(current,stocks);
+      if(typeof quoteRowsEditorActive!=='undefined'&&quoteRowsEditorActive)SpektraQuoteMaterials.enableRows(current);
       recalcQuoteTotalsFromItems();
-      renderFinal();
+      if(typeof quoteRowsEditorActive!=='undefined'&&quoteRowsEditorActive){renderQuoteMaterialEditor();renderQuoteRowsSummary();}else renderFinal();
       const saved=await upsertCurrent();
+      if(current!==owner)return;
       if(!saved?.ok)throw new Error(saved?.error||'Uloženie ponuky nebolo potvrdené.');
       const missingPrices=current.items.filter(i=>i.price==null);
       alert('Aktuálne ceny boli načítané pre '+result.updated+' položiek. Množstvá a ručné ceny zostali zachované.'+
@@ -2496,6 +2549,7 @@ async function refreshQuoteFromCatalog(button=null){
     }catch(e){
       console.warn('Static catalog refresh failed',e);
     }
+    if(current!==owner||isQuotePriceLocked())return;
     refreshDeviceCatalogFromStocks();
     updateCatalogStateText();
 
@@ -2689,10 +2743,11 @@ function warrantySignature(){
 function warrantyConsentHtml(compact=false){
   const signed=warrantySignature(),size=compact?'7.8px':'9px';
   const date=signed?.signed_at?new Date(signed.signed_at).toLocaleDateString('sk-SK'):null;
+  const consentText=SpektraQuoteRowOutput.detailed(current)?SPEKTRA_CONSENT.replace('2. strane','poslednej strane'):SPEKTRA_CONSENT;
   return '<div style="margin-top:10px;padding:8px 10px;border:1px solid #a9cadb;border-radius:6px;page-break-inside:avoid;font-size:'+size+';line-height:1.4">'+
     '<div style="display:flex;align-items:flex-start;gap:7px">'+
       '<span style="display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;min-width:13px;border:1.5px solid #173247;background:#fff">'+(signed?'✓':'')+'</span>'+
-      '<span>'+esc(SPEKTRA_CONSENT)+'</span>'+
+      '<span>'+esc(consentText)+'</span>'+
     '</div>'+
     '<div style="display:flex;justify-content:flex-end;align-items:end;gap:20px;margin-top:10px;color:#516474">'+
       '<span>Dátum: '+(date||'........................')+'</span>'+
@@ -2709,6 +2764,8 @@ function clearWarrantySignaturePad(){
   warrantyPadDrawn=false;
 }
 function openWarrantySignature(){
+  const label=document.getElementById('warrantyConsentLabel');
+  if(label)label.textContent='Súhlasím s podmienkami 5-ročnej záruky Spektra uvedenými na '+(current.material_edits?.pdf_detail?'poslednej':'2.')+' strane ponuky a s pravidelným ročným servisom počas 5 rokov.';
   const dialog=document.getElementById('warrantySignatureDialog');
   const canvas=document.getElementById('warrantySignatureCanvas');
   dialog.classList.remove('hidden');
@@ -2762,6 +2819,8 @@ function renderWarrantySignatureStatus(){
   if(btn)btn.classList.toggle('hidden',!current?.warranty_consent?.accepted);
 }
 function backFromFinal(){
+  if(isQuotePriceLocked()){go('home');return;}
+  if((typeof quoteRowsEditorActive!=='undefined'&&quoteRowsEditorActive)||window.SpektraQuoteMaterials?.rowsMode(current)){openQuoteRows();return;}
   if(isTradeQuote(current)){
     if(window.SpektraInspections)SpektraInspections.openHome();
     else go('home');
@@ -2787,19 +2846,23 @@ function annualServiceText(){
     : '';
 }
 function renderFinal(){
+ if(!current)return;
  if(typeof renderQuoteMaterialEditor==='function')renderQuoteMaterialEditor();
  syncPdfTemplateUI();
- const priceLockNotice=document.getElementById('approvedPriceNotice');
- if(priceLockNotice)priceLockNotice.classList.toggle('hidden',!isQuotePriceLocked());
- const finalRefresh=document.getElementById('finalRefreshPriceBtn');
- if(finalRefresh)finalRefresh.classList.toggle('hidden',isQuotePriceLocked()||!isTradeQuote(current));
- const tradeQuote=isTradeQuote(current);
+ const locked=isQuotePriceLocked();
+ const priceLockNotice=document.getElementById('approvedPriceNotice');if(priceLockNotice)priceLockNotice.classList.toggle('hidden',!locked);
+ const editButton=document.getElementById('editQuoteRowsButton');if(editButton)editButton.classList.toggle('hidden',locked);
+ const copyButton=document.getElementById('copyApprovedQuoteButton');if(copyButton)copyButton.classList.toggle('hidden',!locked);
+ const finalRefresh=document.getElementById('finalRefreshPriceBtn');if(finalRefresh)finalRefresh.classList.toggle('hidden',locked||!isTradeQuote(current));
+ const tradeQuote=isTradeQuote(current),items=current.items||[];
+ const rowsView=window.SpektraQuoteMaterials?.rowsMode(current)||(typeof quoteRowsEditorActive!=='undefined'&&quoteRowsEditorActive);
  const warrantyCard=document.getElementById('warrantyCard');if(warrantyCard)warrantyCard.classList.toggle('hidden',tradeQuote);
  if(!tradeQuote)renderWarrantySignatureStatus();
- const install=current.items.find(i=>i.role==='installation_service'||i.role==='installation');
- const flush=current.items.find(i=>i.role==='heating_system_flush_cleaner_inhibitor');
- const scope=install?.work_scope?.length?'<div style="margin-top:12px"><b>Montáž zahŕňa:</b><ul style="margin:7px 0 0 18px;padding:0">'+install.work_scope.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>':'';
- const optional=flush?'<div class="srow" style="margin-top:10px"><span>Preplach + cleaner + inhibitor</span><b>'+eur(flush.price)+'</b></div>':'';
+ const install=items.find(i=>i.role==='installation_service'||i.role==='installation');
+ const flush=items.find(i=>i.role==='heating_system_flush_cleaner_inhibitor');
+ const amount=i=>i?.price==null?null:Number(i.price)*Number(i.qty);
+ const scope=!rowsView&&install?.work_scope?.length?'<div style="margin-top:12px"><b>Montáž zahŕňa:</b><ul style="margin:7px 0 0 18px;padding:0">'+install.work_scope.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>':'';
+ const optional=!rowsView&&flush?'<div class="srow" style="margin-top:10px"><span>'+esc(flush.name)+'</span><b>'+eur(amount(flush))+'</b></div>':'';
  const service=annualServiceInfo();
  const annual=service&&current.optional_services?.annual_service!==false
    ? '<div class="srow" style="margin-top:10px"><span>'+esc(service.label)+'</span><b>'+esc(service.price)+'</b></div><div class="sub">Účtuje sa pri vykonaní servisu a nezvyšuje cenu montáže.</div>'
@@ -2811,11 +2874,10 @@ function renderFinal(){
    : subsidy.program==='obnov'
      ? '<div class="srow" style="margin-top:10px"><span>Obnov dom mini+</span><b>až 11 000 €</b></div><div class="sub">Ďalšie kolo plánované na január 2027; konkrétna výška závisí od podmienok výzvy.</div>'
      : '';
- document.getElementById('finalSummary').innerHTML='<h2 style="margin-top:0">'+esc(current.customer.name)+'</h2><div class="sub">'+esc(current.customer.address)+'</div><div style="margin-top:14px"><b>'+esc(customerText(current.device.brand+' '+current.device.model+' '+(current.device.variant||'')))+'</b></div><div class="srow"><span>Montáž</span><b>'+(
-   current.category==='heat_pump'
-     ? ((current.installation_tier==='economy'?'EKONOM':'ŠTANDARD')+' – '+(install?.price!=null?eur(install.price):(isQuotePriceLocked()?'podľa schválenej ponuky':eur(installationPrice(current.installation_tier||'standard')))))
-     : (install?.price!=null?eur(install.price):'podľa cenníka')
- )+'</b></div>'+optional+annual+warranty+subsidyHtml+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+ (current.price_complete?eur(current.total):'Cena ešte nie je kompletná') +'</span></div>'
+ const title=rowsView?(items.find(i=>i.role==='device')?.name||'Položky podľa rozpisu ponuky'):customerText([current.device?.brand,current.device?.model,current.device?.variant].filter(Boolean).join(' '));
+ const breakdown=rowsView?'<div class="sub" style="margin-top:8px">Počet riadkov: '+items.length+' · '+(current.material_edits?.pdf_detail?'Podrobný rozpis v PDF':'Montážny materiál v PDF zoskupený')+'</div><div class="srow"><span>Celkom bez DPH</span><b>'+eur(current.net)+'</b></div>':
+   '<div class="srow"><span>Montáž</span><b>'+(current.category==='heat_pump'?((current.installation_tier==='economy'?'EKONOM':'ŠTANDARD')+' – '+(install?.price!=null?eur(amount(install)):(locked?'podľa schválenej ponuky':eur(installationPrice(current.installation_tier||'standard'))))):(install?.price!=null?eur(amount(install)):'podľa cenníka'))+'</b></div>';
+ document.getElementById('finalSummary').innerHTML='<h2 style="margin-top:0">'+esc(current.customer?.name)+'</h2><div class="sub">'+esc(current.customer?.address)+'</div><div style="margin-top:14px"><b>'+esc(title)+'</b></div>'+breakdown+optional+annual+warranty+subsidyHtml+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+(current.price_complete?eur(current.total):'Cena ešte nie je kompletná')+'</span></div>';
 }
 function hydrateQuoteForm(){
   if(!current)return;
@@ -2846,88 +2908,33 @@ function hydrateQuoteForm(){
 function openQuote(id,pdfOnly=false){
   try{
     const ref=String(id||'');
-    const matches=quotes.filter(x=>String(x.id||'')===ref || String(x.quote_no||'')===ref);
+    const matches=quotes.filter(x=>String(x.id||'')===ref||String(x.quote_no||'')===ref);
     const q=matches.sort((a,b)=>(b.updated||0)-(a.updated||0))[0]||null;
-    if(!q){
-      alert('Ponuku '+ref+' sa nepodarilo nájsť. Skús synchronizovať ponuky.');
-      return;
-    }
-
+    if(!q){alert('Ponuku '+ref+' sa nepodarilo nájsť. Skús synchronizovať ponuky.');return;}
     current=JSON.parse(JSON.stringify(q));
-    current.customer=current.customer||{};
-    current.building=current.building||{};
+    current.customer=current.customer||{};current.building=current.building||{};
     current.items=Array.isArray(current.items)?current.items:[];
     if(!current.pdf_template)current.pdf_template='presentation';
     if(!current.pdf_banner_mode)current.pdf_banner_mode='auto';
-    ensurePdfImagesState();
-    ensureSubsidyState();
-
-    if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false};
-    if(current.optional_services.annual_service===undefined)current.optional_services.annual_service=true;
-    if(current.optional_services.condensate_pump===undefined)current.optional_services.condensate_pump=false;
-    if(current.optional_services.dhw_tank_fe120===undefined)current.optional_services.dhw_tank_fe120=false;
+    ensurePdfImagesState();ensureSubsidyState();
+    if(!current.optional_services)current.optional_services={flush:false,flush_price_ex_vat:400,annual_service:!isTradeQuote(current),condensate_pump:false,dhw_tank_fe120:false};
     if(!current.installation_tier)current.installation_tier='standard';
-
-    category=current.category||'heat_pump';
-    brand=current.brand||current.device?.brand||'';
+    category=current.category||'heat_pump';brand=current.brand||current.device?.brand||'';
     boilerType=current.boiler_type||current.device?.boiler_type||'gas';
     acMode=current.ac_mode||current.device?.ac_mode||'single';
     multiCount=current.multisplit_count||current.device?.multisplit_count||2;
     recommendation=current.device&&Object.keys(current.device).length?{...current.device}:null;
-    // List PDF uses the saved snapshot without installation repairs or BOM rebuilds.
-    if(pdfOnly){renderFinal();go('step5');return;}
-    // Approved offers keep their stored items and totals, including legacy
-    // offers without an installation row. Do not hydrate or rebuild from stock.
-    if(isQuotePriceLocked()){
-      renderFinal();
-      go('step5');
-      return;
+    // A new draft with customer data only still needs the device wizard.
+    if(!pdfOnly&&!isQuotePriceLocked()&&current.status==='draft'&&!current.items.length&&!recommendation&&!window.SpektraQuoteMaterials?.rowsMode(current)){
+      if(typeof quoteRowsEditorActive!=='undefined')quoteRowsEditorActive=false;
+      hydrateQuoteForm();renderChoices();go('step1');return;
     }
-    if(isTradeQuote(current)){
-      current.optional_services=current.optional_services||{};
-      current.optional_services.annual_service=false;
-      renderFinal();
-      go('step5');
-      return;
-    }
-
-    const repairedInstallation=ensureHeatPumpInstallationItem();
-    if(repairedInstallation)recalcQuoteTotalsFromItems();
-
-    hydrateQuoteForm();
-    renderChoices();
-
-    // Pri otvorení starej ponuky ju automaticky neprepočítavame.
-    // Zobrazíme uložený snapshot; aktuálne ceny si používateľ obnoví vedome tlačidlom.
-    if(recommendation){
-      try{
-        if(!current.items.length)buildBOM();
-        renderRecommendation();
-      }catch(e){
-        console.warn('Stored quote recommendation render failed',e);
-      }
-    }
-
-    let detailedOk=true;
-    try{renderFinal()}catch(e){detailedOk=false;console.warn('Stored quote final render failed',e)}
-    if(detailedOk && recommendation){
-      go('step4');
-    }else{
-      // Aj poškodená/staršia ponuka musí zostať opraviteľná.
-      hydrateQuoteForm();
-      go('step1');
-      setTimeout(()=>alert('Ponuka '+(current.quote_no||'')+' bola otvorená v opravnom režime. Údaje môžeš upraviť a pokračovať cez jednotlivé kroky.'),50);
-    }
+    if(typeof quoteRowsEditorActive!=='undefined')quoteRowsEditorActive=!isQuotePriceLocked();
+    // Opening a saved offer never changes its rows, prices, or totals.
+    if(pdfOnly||isQuotePriceLocked()){renderFinal();go('step5');return;}
+    openQuoteRows();
   }catch(e){
     console.error('openQuote failed',e);
-    try{
-      if(current){
-        hydrateQuoteForm();
-        go('step1');
-        setTimeout(()=>alert('Ponuka '+(current.quote_no||'')+' bola otvorená v opravnom režime.'),50);
-        return;
-      }
-    }catch(_){}
     alert('Ponuku sa nepodarilo otvoriť na úpravu: '+(e.message||String(e)));
   }
 }
@@ -2997,6 +3004,7 @@ async function shareWA(){
 function offerHtmlTechnical(){
   ensureHeatPumpInstallationItem();
   recalcQuoteTotalsFromItems();
+  const rowOutput=SpektraQuoteRowOutput;
   const issueDate=current.issued_on?new Date(current.issued_on+'T12:00:00'):new Date(current.created||Date.now());
   const validDate=current.valid_until?new Date(current.valid_until+'T12:00:00'):new Date(issueDate.getTime()+14*24*60*60*1000);
   const issue=issueDate.toLocaleDateString('sk-SK');
@@ -3007,35 +3015,13 @@ function offerHtmlTechnical(){
 
   const deviceItem=current.items.find(i=>i.role==='device');
   const installationItem=current.items.find(i=>i.role==='installation_service'||i.role==='installation');
-  const otherVisible=current.items.filter(i=>i.visible && i!==deviceItem && i!==installationItem);
-
-  const materialItems=current.items.filter(i=>
-    i!==deviceItem &&
-    i!==installationItem &&
-    !i.visible &&
-    i.role!=='heating_system_flush_cleaner_inhibitor'
-  );
-  const materialTotal=materialItems.reduce((sum,i)=>sum+(Number(i.price||0)*Number(i.qty||0)),0);
-
-  const customerRows=[];
-  if(deviceItem) customerRows.push(deviceItem);
-  if(materialItems.length){
-    customerRows.push({
-      role:'customer_material_bundle',
-      name:customerMaterialBundleName(),
-      qty:1,
-      unit:'súb.',
-      price:materialTotal
-    });
-  }
-  if(installationItem) customerRows.push(installationItem);
-  customerRows.push(...otherVisible);
+  const customerRows=rowOutput.customerRows(current,customerMaterialBundleName());
 
   const showProductImages=!!current.pdf_images_enabled;
   const rows=customerRows.map(i=>{
-    const unit=Number(i.price||0);
-    const amount=unit*Number(i.qty||0);
-    const gross=amount*(1+(Number(current.vat_pct||23)/100));
+    const name=rowOutput.itemName(current,i,customerText);
+    if(rowOutput.isText(i))return '<tr data-pdf-text-row style="page-break-inside:avoid"><td colspan="5" style="padding:9px 5px;border-bottom:1px solid #d7dce3;white-space:pre-wrap;overflow-wrap:anywhere"><div data-pdf-item-name style="font-size:10px;line-height:1.4">'+esc(name)+'</div></td></tr>';
+    const {unit,amount,gross}=rowOutput.amounts(i,current);
     let imgUrl='';
     if(showProductImages){
       const illustration=quoteRowIllustration(i,installationItem);
@@ -3047,7 +3033,7 @@ function offerHtmlTechnical(){
     }
     let desc='';
     if(i===deviceItem){
-      const bits=[customerText(current.device?.variant||''),i.pohoda?.code?('Kód: '+i.pohoda.code):''].filter(Boolean);
+      const bits=[rowOutput.rowsMode(current)?'':customerText(current.device?.variant||''),i.pohoda?.code?('Kód: '+i.pohoda.code):''].filter(Boolean);
       desc=bits.join(' · ');
     }else if(i.role==='customer_material_bundle'){
       desc='Kompletný inštalačný materiál podľa rozsahu uvedeného nižšie v ponuke.';
@@ -3066,12 +3052,12 @@ function offerHtmlTechnical(){
       '<td style="padding:7px 5px;border-bottom:1px solid #d7dce3;vertical-align:top">'+
         '<div style="display:flex;align-items:flex-start">'+productImage+
           '<div style="width:'+textWidth+'">'+
-            '<div data-pdf-item-name style="font-weight:700;font-size:10px;line-height:1.25;margin-bottom:3px">'+esc(customerText(i.name))+'</div>'+
+            '<div data-pdf-item-name style="font-weight:700;font-size:10px;line-height:1.25;margin-bottom:3px">'+esc(name)+'</div>'+
             (desc?'<div data-pdf-item-description style="font-size:8.2px;color:#5c6670;line-height:1.35">'+esc(desc)+'</div>':'')+
           '</div>'+
         '</div>'+
       '</td>'+
-      '<td style="padding:7px 4px;border-bottom:1px solid #d7dce3;text-align:center;vertical-align:top;font-weight:600">'+i.qty+' '+esc(i.unit)+'</td>'+
+      '<td style="padding:7px 4px;border-bottom:1px solid #d7dce3;text-align:center;vertical-align:top;font-weight:600">'+esc(i.qty)+' '+esc(i.unit)+'</td>'+
       '<td style="padding:7px 4px;border-bottom:1px solid #d7dce3;text-align:right;vertical-align:top">'+eur(unit)+'</td>'+
       '<td style="padding:7px 4px;border-bottom:1px solid #d7dce3;text-align:right;vertical-align:top;font-weight:700">'+eur(amount)+'</td>'+
       '<td style="padding:7px 4px;border-bottom:1px solid #d7dce3;text-align:right;vertical-align:top;font-weight:700">'+eur(gross)+'</td>'+
@@ -3123,6 +3109,7 @@ function offerHtmlTechnical(){
   if(!isTradeQuote(current)&&current.category!=='air_conditioning'&&current.building?.with_external_dhw_tank){
     materialScopeParts.push('TÚV armatúry, expanzná nádoba, poistný ventil, prepínací ventil a servo');
   }
+  if(rowOutput.rowsMode(current))materialScopeParts.splice(0,materialScopeParts.length,'Materiál podľa uložených položiek a dohodnutého rozsahu tejto ponuky.');
   const materialScope='<div style="margin-top:16px"><div style="font-weight:700;margin-bottom:5px">Rozsah materiálu</div><div style="color:#444;line-height:1.45">'+esc(materialScopeParts.join(' · '))+'</div></div>';
 
   const service=annualServiceInfo();
@@ -3208,7 +3195,7 @@ function offerHtmlTechnical(){
     '<div data-pdf-totals style="display:flex;justify-content:flex-end;margin-top:12px">'+
       '<div style="width:255px">'+
         '<div style="display:flex;justify-content:space-between;padding:3px 0"><span>Základ dane:</span><b>'+eur(net)+'</b></div>'+
-        '<div style="display:flex;justify-content:space-between;padding:3px 0"><span>DPH '+(current.vat_pct||23)+' %:</span><b>'+eur(vat)+'</b></div>'+
+        '<div style="display:flex;justify-content:space-between;padding:3px 0"><span>DPH '+(current.vat_pct??23)+' %:</span><b>'+eur(vat)+'</b></div>'+
         '<div style="display:flex;justify-content:space-between;padding:7px 0 3px;border-top:2px solid #111;font-size:14px"><span>SPOLU:</span><b>'+(current.price_complete?eur(total):'—')+'</b></div>'+
       '</div>'+
     '</div>'+
@@ -3227,6 +3214,7 @@ function offerHtmlPresentation(){
   ensurePdfTemplateState();
   ensureHeatPumpInstallationItem();
   recalcQuoteTotalsFromItems();
+  const rowOutput=SpektraQuoteRowOutput;
 
   const issueDate=current.issued_on?new Date(current.issued_on+'T12:00:00'):new Date(current.created||Date.now());
   const validDate=current.valid_until?new Date(current.valid_until+'T12:00:00'):new Date(issueDate.getTime()+14*24*60*60*1000);
@@ -3235,23 +3223,11 @@ function offerHtmlPresentation(){
   const net=Number(current.net||0);
   const vat=Number(current.vat||0);
   const total=Number(current.total||0);
-  const vatPct=Number(current.vat_pct||23);
+  const vatPct=Number(current.vat_pct??23);
 
   const deviceItem=current.items.find(i=>i.role==='device');
   const installationItem=current.items.find(i=>i.role==='installation_service'||i.role==='installation');
-  const otherVisible=current.items.filter(i=>i.visible&&i!==deviceItem&&i!==installationItem);
-  const materialItems=current.items.filter(i=>i!==deviceItem&&i!==installationItem&&!i.visible&&i.role!=='heating_system_flush_cleaner_inhibitor');
-  const materialTotal=materialItems.reduce((sum,i)=>sum+(Number(i.price||0)*Number(i.qty||0)),0);
-
-  const rows=[];
-  if(deviceItem)rows.push(deviceItem);
-  if(materialItems.length)rows.push({
-    role:'customer_material_bundle',
-    name:customerMaterialBundleName(),
-    qty:1,unit:'súb.',price:materialTotal
-  });
-  if(installationItem)rows.push(installationItem);
-  rows.push(...otherVisible);
+  const rows=rowOutput.customerRows(current,customerMaterialBundleName());
 
   const getRowImage=i=>{
     if(!current.pdf_images_enabled)return '';
@@ -3267,16 +3243,16 @@ function offerHtmlPresentation(){
   };
 
   const rowHtml=rows.map(i=>{
-    const unit=Number(i.price||0);
-    const amount=unit*Number(i.qty||0);
-    const gross=amount*(1+vatPct/100);
+    const name=rowOutput.itemName(current,i,customerText);
+    if(rowOutput.isText(i))return '<tr data-pdf-text-row style="page-break-inside:avoid;background:#fff"><td colspan="4" style="padding:9px 7px;border-bottom:1px solid #dbe6ee;white-space:pre-wrap;overflow-wrap:anywhere"><div data-pdf-item-name style="font-size:9.8px;line-height:1.4;color:#173247">'+esc(name)+'</div></td></tr>';
+    const {amount,gross}=rowOutput.amounts(i,current);
     const imageUrl=getRowImage(i);
 
     let desc='';
     if(i===deviceItem){
       desc=[
-        current.device?.variant||'',
-        current.device?.power_kw?String(current.device.power_kw).replace('.',',')+' kW':'',
+        rowOutput.rowsMode(current)?'':(current.device?.variant||''),
+        !rowOutput.rowsMode(current)&&current.device?.power_kw?String(current.device.power_kw).replace('.',',')+' kW':'',
         i.pohoda?.code?('Kód: '+i.pohoda.code):''
       ].filter(Boolean).join(' · ');
     }else if(i.role==='customer_material_bundle'){
@@ -3296,12 +3272,12 @@ function offerHtmlPresentation(){
             ?'<div style="width:29mm;height:24mm;display:flex;align-items:center;justify-content:center;flex:0 0 auto;background:#fff;border-radius:5px"><img crossorigin="anonymous" src="'+esc(imageUrl)+'" style="max-width:100%;max-height:100%;object-fit:contain"></div>'
             :'<div style="width:8mm;height:8mm;flex:0 0 auto;border-radius:50%;background:#eaf4f9;display:flex;align-items:center;justify-content:center;color:#00539B;font-weight:900">✓</div>')+
           '<div>'+
-            '<div data-pdf-item-name style="font-weight:800;font-size:9.8px;line-height:1.25;color:#173247">'+esc(customerText(i.name))+'</div>'+
+            '<div data-pdf-item-name style="font-weight:800;font-size:9.8px;line-height:1.25;color:#173247">'+esc(name)+'</div>'+
             (desc?'<div data-pdf-item-description style="font-size:7.9px;color:#617383;margin-top:3px;line-height:1.35">'+esc(desc)+'</div>':'')+
           '</div>'+
         '</div>'+
       '</td>'+
-      '<td style="padding:7px 4px;border-bottom:1px solid #dbe6ee;text-align:center;font-weight:700;color:#173247">'+i.qty+' '+esc(i.unit)+'</td>'+
+      '<td style="padding:7px 4px;border-bottom:1px solid #dbe6ee;text-align:center;font-weight:700;color:#173247">'+esc(i.qty)+' '+esc(i.unit)+'</td>'+
       '<td style="padding:7px 5px;border-bottom:1px solid #dbe6ee;text-align:right;color:#173247">'+eur(amount)+'</td>'+
       '<td style="padding:7px 7px;border-bottom:1px solid #dbe6ee;text-align:right;font-weight:900;color:#173247">'+eur(gross)+'</td>'+
     '</tr>';
@@ -3352,6 +3328,7 @@ function offerHtmlPresentation(){
     );
   }
   if(!isTradeQuote(current)&&current.category!=='air_conditioning'&&current.building?.with_external_dhw_tank)materialParts.push('TÚV armatúry, expanzná nádoba a poistné prvky');
+  if(rowOutput.rowsMode(current))materialParts.splice(0,materialParts.length,'Materiál podľa uložených položiek a dohodnutého rozsahu tejto ponuky.');
 
   const work=(installationItem?.work_scope||[]).slice(0,isTradeQuote(current)?12:7);
 
@@ -3472,13 +3449,13 @@ function offerHtmlPresentation(){
 }
 
 function warrantyTermsHtml(){
-  const device=[current?.device?.brand,current?.device?.model,current?.device?.variant].filter(Boolean).join(' ');
+  const device=SpektraQuoteRowOutput.rowsMode(current)?'Zariadenia uvedené v položkách ponuky':[current?.device?.brand,current?.device?.model,current?.device?.variant].filter(Boolean).join(' ');
   const row=(n,title,body)=>'<div style="display:grid;grid-template-columns:7mm 1fr;gap:2mm;margin:0 0 4.2mm;break-inside:avoid">'+
     '<div style="color:#c20000;font-size:11px;font-weight:900">'+n+'.</div><div><div style="color:#00539B;font-size:10.5px;font-weight:800;margin-bottom:1.5mm">'+title+'</div><div style="font-size:9px;line-height:1.45">'+body+'</div></div></div>';
   return '<div style="box-sizing:border-box;width:210mm;height:297mm;padding:15mm 16mm 13mm;font-family:Arial,sans-serif;color:#173247;background:#fff;position:relative;overflow:hidden">'+
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:5mm;border-bottom:2px solid #00539B">'+
       '<div><div style="color:#c20000;font-size:8px;font-weight:900;letter-spacing:1px">SPEKTRA INSTALL</div><div style="font-size:21px;line-height:1.1;font-weight:900;color:#00539B;margin-top:2mm">Podmienky 5-ročnej záruky</div><div style="font-size:9px;margin-top:2mm">ZÁRUKA SPEKTRA na zariadenie pri pravidelnom ročnom servise</div></div>'+
-      '<div style="text-align:right;font-size:8px;line-height:1.45;color:#516474">Strana 2/2<br>Č. ponuky: <b>'+esc(current.quote_no||'—')+'</b></div>'+
+      '<div style="text-align:right;font-size:8px;line-height:1.45;color:#516474"><span data-pdf-warranty-folio>'+(SpektraQuoteRowOutput.detailed(current)?'Posledná strana':'Strana 2/2')+'</span><br>Č. ponuky: <b>'+esc(current.quote_no||'—')+'</b></div>'+
     '</div>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4mm;background:#f2f7fa;padding:3.5mm 4mm;margin:5mm 0 6mm;font-size:8.5px;line-height:1.45">'+
       '<div><b>Poskytovateľ záruky</b><br>Spektra Install s.r.o.<br>Hollého 210, 015 01 Rajec<br>IČO: 53690036</div>'+
@@ -3553,7 +3530,7 @@ async function createPdfFile(){
   holder.style.background='#fff';
   holder.style.overflow='visible';
   holder.innerHTML=offerHtml();
-  const paginateTradeOffer=isTradeQuote(current);
+  const paginateTradeOffer=isTradeQuote(current)||SpektraQuoteRowOutput.detailed(current);
   const pdfIdentity={quoteNo:current.quote_no||'',customerName:current.customer?.name||''};
   document.body.appendChild(holder);
 
@@ -3561,7 +3538,21 @@ async function createPdfFile(){
     const root=holder.firstElementChild;
     if(!root)throw new Error('Chýba obsah ponuky.');
 
-    // Trade offers may contain dozens of individually visible stock rows.
+    const appendWarrantyPage=async(pdf,termsPage)=>{
+      if(!termsPage)return;
+      const termsCanvas=await window.html2canvas(termsPage,{
+        scale:2.4,useCORS:false,allowTaint:true,backgroundColor:'#ffffff',
+        logging:false,imageTimeout:0,scrollX:0,scrollY:0,
+        width:termsPage.scrollWidth,height:termsPage.scrollHeight,
+        windowWidth:termsPage.scrollWidth,windowHeight:termsPage.scrollHeight
+      });
+      if(!termsCanvas.width||!termsCanvas.height)throw new Error('Nepodarilo sa vyrenderovať podmienky záruky.');
+      pdf.addPage('a4','portrait');
+      pdf.addImage(termsCanvas.toDataURL('image/jpeg',0.96),'JPEG',0,0,210,297,undefined,'FAST');
+      termsCanvas.width=1;termsCanvas.height=1;
+    };
+
+    // Trade and detailed offers may contain dozens of individually visible rows.
     // Build separate A4 DOM pages before rasterizing; never shrink the long list.
     if(paginateTradeOffer){
       if(!window.SpektraPdfPagination)throw new Error('Stránkovanie PDF sa nenačítalo. Obnovte aplikáciu.');
@@ -3569,7 +3560,19 @@ async function createPdfFile(){
       await SpektraPdfPagination.waitForAssets(root);
       const prepared=SpektraPdfPagination.prepare(root,pdfIdentity);
       try{
+        const terms=holder.children[1];
+        const pageCount=prepared.pages.length+(terms?1:0);
+        if(terms){
+          prepared.pages.forEach((page,index)=>{
+            const folio=page.querySelector('.quotePdfFolio');
+            if(folio)folio.textContent='Strana '+(index+1)+' / '+pageCount;
+          });
+          const folio=terms.querySelector('[data-pdf-warranty-folio]');
+          if(folio)folio.textContent='Strana '+pageCount+' / '+pageCount;
+        }
         const pdf=await SpektraPdfPagination.render(prepared,{html2canvas:window.html2canvas,jsPDF:window.jspdf.jsPDF});
+        await appendWarrantyPage(pdf,terms);
+        if(pdf.internal.getNumberOfPages()!==pageCount)throw new Error('Ponuka má nesprávny počet strán. Obnovte aplikáciu.');
         return new File([pdf.output('blob')],(pdfIdentity.quoteNo||'cenova-ponuka')+'.pdf',{type:'application/pdf'});
       }finally{prepared.dispose();}
     }
@@ -3641,17 +3644,7 @@ async function createPdfFile(){
 
     // Samostatná druhá strana s podmienkami záruky sa vykreslí ako celá A4.
     const termsPage=holder.children[1];
-    if(termsPage){
-      const termsCanvas=await window.html2canvas(termsPage,{
-        scale:2.4,useCORS:false,allowTaint:true,backgroundColor:'#ffffff',
-        logging:false,imageTimeout:0,scrollX:0,scrollY:0,
-        width:termsPage.scrollWidth,height:termsPage.scrollHeight,
-        windowWidth:termsPage.scrollWidth,windowHeight:termsPage.scrollHeight
-      });
-      if(!termsCanvas.width||!termsCanvas.height)throw new Error('Nepodarilo sa vyrenderovať podmienky záruky.');
-      pdf.addPage('a4','portrait');
-      pdf.addImage(termsCanvas.toDataURL('image/jpeg',0.96),'JPEG',0,0,210,297,undefined,'FAST');
-    }
+    await appendWarrantyPage(pdf,termsPage);
 
     const expectedPages=termsPage?2:1;
     if(pdf.internal.getNumberOfPages()!==expectedPages)throw new Error('Ponuka má nesprávny počet strán. Obnov aplikáciu a skúste PDF vytvoriť znova.');
@@ -3766,7 +3759,7 @@ function pohodaXmlDate(ts){
 }
 
 function isPohodaTextServiceItem(i){
-  return [
+  return SpektraQuoteRowOutput.isManual(i)||[
     'installation_service',
     'installation',
     'heating_system_flush_cleaner_inhibitor'
@@ -3774,22 +3767,32 @@ function isPohodaTextServiceItem(i){
 }
 
 function validatePohodaOfferItems(){
-  const problems=[];
-  const rows=(current?.items||[]).filter(i=>Number(i.qty||0)>0 && i.price!=null);
-  if(!rows.length)problems.push('Ponuka nemá žiadne exportovateľné položky.');
-
-  rows.forEach((i,index)=>{
-    const code=i.pohoda?.code||i.pohoda_code||null;
-    if(!i.name)problems.push('Riadok '+(index+1)+': chýba názov.');
-    if(!(Number(i.qty)>0))problems.push('Riadok '+(index+1)+': neplatné množstvo.');
-    if(i.price==null||!Number.isFinite(Number(i.price)))problems.push('Riadok '+(index+1)+': chýba cena.');
+  const problems=[],rows=[];
+  (current?.items||[]).forEach((i,index)=>{
+    const textOnly=SpektraQuoteRowOutput.isText(i);
+    const quantity=i?.qty==null||String(i.qty).trim()===''?NaN:Number(i.qty);
+    // A disabled row is intentionally omitted. An unknown price is an error,
+    // never a reason to silently remove a billable row from the export.
+    if(quantity===0&&!textOnly)return;
+    rows.push(i);
+    const code=i?.pohoda?.code||i?.pohoda_code||null;
+    const name=SpektraQuoteRowOutput.itemName(current,i,customerText).trim();
+    const unit=String(i?.unit||'ks');
+    const prefix='Riadok '+(index+1)+': ';
+    if(!name)problems.push(prefix+'chýba názov.');
+    if(Array.from(name).length>90)problems.push(prefix+'POHODA povoľuje názov najviac 90 znakov. Skráťte názov alebo rozdeľte text na viac položiek.');
+    if(Array.from(unit).length>10)problems.push(prefix+'merná jednotka v POHODE môže mať najviac 10 znakov.');
+    if(!Number.isFinite(quantity)||quantity<=0)problems.push(prefix+'neplatné množstvo.');
+    if(i?.price==null||String(i.price).trim()===''||!Number.isFinite(Number(i.price))||Number(i.price)<0)problems.push(prefix+'chýba platná nezáporná cena.');
+    else if(textOnly&&Number(i.price)!==0)problems.push(prefix+'poznámka bez ceny nemôže obsahovať účtovanú sumu.');
 
     // Službu bez skladovej karty je možné vložiť ako textový riadok.
     // Zariadenie a materiál však musia smerovať na existujúci POHODA kód.
     if(!code && !isPohodaTextServiceItem(i)){
-      problems.push('Riadok '+(index+1)+' „'+customerText(i.name)+'“ nemá POHODA kód.');
+      problems.push('Riadok '+(index+1)+' „'+name+'“ nemá POHODA kód.');
     }
   });
+  if(!rows.length)problems.push('Ponuka nemá žiadne exportovateľné položky.');
   return {rows,problems};
 }
 
@@ -3808,15 +3811,20 @@ function createPohodaIssuedOfferXml(){
   const quoteNo=String(current.quote_no||current.id||'PONUKA');
   const itemXml=rows.map((i,index)=>{
     const code=i.pohoda?.code||i.pohoda_code||null;
-    const text=customerText(i.name||('Položka '+(index+1)));
-    const qty=Number(i.qty||1);
-    const price=Number(i.price||0);
+    const text=SpektraQuoteRowOutput.itemName(current,i,customerText);
+    const qty=Number(i.qty);
+    const price=Number(i.price);
+    const textOnly=SpektraQuoteRowOutput.isText(i);
 
     return [
       '      <ofr:offerItem>',
       '        <ofr:text>'+xmlEsc(text)+'</ofr:text>',
       '        <ofr:quantity>'+qty.toFixed(3).replace(/\.000$/,'')+'</ofr:quantity>',
-      '        <ofr:rateVAT>high</ofr:rateVAT>',
+      // Verified: https://api.stormware.cz/xml/schema/version_2/offer.xsd
+      // unit follows quantity; unitType permits up to 10 characters.
+      textOnly?'':'        <ofr:unit>'+xmlEsc(i.unit||'ks')+'</ofr:unit>',
+      '        <ofr:payVAT>false</ofr:payVAT>',
+      '        <ofr:rateVAT>'+(Number(current.vat_pct??23)===0?'none':'high')+'</ofr:rateVAT>',
       '        <ofr:homeCurrency>',
       '          <typ:unitPrice>'+price.toFixed(4).replace(/0+$/,'').replace(/\.$/,'')+'</typ:unitPrice>',
       '        </ofr:homeCurrency>',
@@ -3902,7 +3910,7 @@ window.addEventListener('online',()=>syncQuotes(true,true));
 window.addEventListener('focus',()=>syncQuotes(false,true));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncQuotes(false,true)});
 </script>
-<script src="js/quote-material-editor.js?v=20261007-price-refresh1"></script>
+<script src="js/quote-material-editor.js?v=20261007-rows1"></script>
 <script src="js/inspections.js?v=20261006-clean1"></script>
 <script src="js/home-toolbar.js?v=20261007-bottom1"></script>
 <script src="js/contacts.js?v=20261007-contacts1"></script>

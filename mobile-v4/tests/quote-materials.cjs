@@ -32,7 +32,7 @@ test('custom material removal is persistent',()=>{
 });
 test('repeated catalog choice increases the same card quantity and supports removed card readdition',()=>{
  const q=quote();assert.equal(M.add(q,stock(),'2','x').merged,true);assert.equal(q.items[1].qty,7);assert.equal(q.items.length,3);
- M.remove(q,1);M.add(q,stock(),'3','y');rebuild(q);assert.equal(q.items.filter(M.editable).length,1);assert.equal(q.items.at(-1).qty,3);
+ M.remove(q,1);M.add(q,stock(),'3','y');rebuild(q);assert.equal(q.items.length,3);assert.equal(q.items.filter(i=>i.pohoda?.code==='CU28').length,1);assert.equal(q.items.at(-1).qty,3);
 });
 test('manual sale and cost overrides survive regular rebuild and price refresh',()=>{
  const q=quote();M.setQuantity(q,1,'8');q.items[1].price=10;q.items[1].price_override=true;q.items[1].cost=6;q.items[1].cost_override=true;
@@ -59,12 +59,24 @@ test('switching system does not transfer incompatible recipe quantities or delet
 });
 test('approval blocks all material mutations and preserves full quote',()=>{
  const q=quote();q.status='approved';const before=JSON.stringify(q);
- for(const f of [()=>M.setQuantity(q,1,'3'),()=>M.remove(q,1),()=>M.add(q,stock(),'3','x')])assert.throws(f);
+ for(const f of [()=>M.setQuantity(q,1,'3'),()=>M.remove(q,1),()=>M.add(q,stock(),'3','x'),
+  ()=>M.setField(q,0,'name','Prepísané'),()=>M.addManual(q,{name:'Práca'},'manual'),()=>M.enableRows(q),()=>M.setDetailedPdf(q,true)])assert.throws(f);
  M.capture(q);M.apply(q,[],[]);assert.equal(JSON.stringify(q),before);
  q.status='draft';q._server_status='approved';assert.throws(()=>M.remove(q,1));
 });
-test('main device and montage service are protected from quantity/deletion',()=>{
- const q=quote();for(const i of [0,2]){assert.throws(()=>M.setQuantity(q,i,'2'));assert.throws(()=>M.remove(q,i))}
+test('main device and montage service support persistent field edits and deletion',()=>{
+ const q=quote();
+ for(const index of [0,2]){
+  M.setQuantity(q,index,'2');M.setField(q,index,'name','Upravená položka '+index);
+  M.setField(q,index,'unit','súb.');M.setField(q,index,'price','123,45');
+ }
+ rebuild(q);
+ for(const index of [0,2]){
+  assert.equal(q.items[index].qty,2);assert.equal(q.items[index].name,'Upravená položka '+index);
+  assert.equal(q.items[index].unit,'súb.');assert.equal(q.items[index].price,123.45);
+ }
+ M.remove(q,2);M.remove(q,0);rebuild(q);
+ assert.deepEqual(q.items.map(i=>i.role),['pipe']);assert.equal(M.isRoleRemoved(q,['installation','installation_service']),true);
 });
 test('search supports names without accents, code, PLU, EAN and filters inactive cards',()=>{
  const rows=[stock({ean:'123456789',manufacturer:'TEST'}),stock({id:'other',plu:'PLU2',code:'V',name:'Ventil',active:false})];
@@ -114,4 +126,128 @@ test('approved inspection cannot refresh prices, including stale local status',(
  for(const flags of [{status:'approved'},{status:'draft',_server_status:'approved'}]){
  const q={...flags,items:[material()]},before=clone(q);assert.throws(()=>M.refreshExisting(q,[stock({sell_price_ex_vat:1})]));assert.deepEqual(q,before);
  }
+});
+test('renaming an uncoded row and its unit keeps its original identity through reload, rebuild and removal',()=>{
+ let q=quote();q.items[1]={role:'custom_recipe',name:'Pôvodný názov',qty:5,unit:'m',price:12,cost:7};
+ const generated=clone(q.items),originalKey=M.key(q.items[1]);
+ M.setField(q,1,'name','Iný názov');M.setField(q,1,'unit','bal.');M.setField(q,1,'qty','2,5');
+ assert.equal(M.key(q.items[1]),originalKey);
+ q=clone(q);M.capture(q);q.items=M.apply(q,clone(generated),[]);
+ assert.equal(q.items[1].name,'Iný názov');assert.equal(q.items[1].unit,'bal.');assert.equal(q.items[1].qty,2.5);
+ assert.equal(M.key(q.items[1]),originalKey);
+ M.remove(q,1);q.items=M.apply(q,clone(generated),[]);assert.equal(q.items.length,2);
+});
+test('catalog row custom name and unit survive a stock update without breaking exact card mapping',()=>{
+ const q=quote(),st=stock({id:'extra',fingerprint:'fp-extra',plu:'PLUextra'});
+ M.add(q,st,'2','extra');M.setField(q,3,'name','Potrubie pre kuchyňu');M.setField(q,3,'unit','bal.');
+ rebuild(q,[stock(),{...st,name:'Nový katalógový názov',sell_price_ex_vat:20}]);
+ const i=q.items[3];assert.equal(i.name,'Potrubie pre kuchyňu');assert.equal(i.unit,'bal.');assert.equal(i.price,20);
+ assert.equal(i.pohoda.id,'extra');assert.equal(i.stored_metadata.quote_material.catalog_ref.id,'extra');
+});
+test('row mode keeps the issued item snapshot across recipe and system changes, including an empty offer',()=>{
+ let q=quote();q.warranty_consent={accepted:true,signature_data_url:'data:image/png;base64,QQ=='};
+ M.enableRows(q);assert.equal(M.rowsMode(q),true);assert.equal(q.material_edits.pdf_detail,false);assert.equal(q.warranty_consent,undefined);
+ M.setField(q,0,'name','Dva dodané kotly');M.setField(q,0,'qty','2');M.remove(q,2);
+ M.addManual(q,{name:'Doprava',qty:1,unit:'km',price:20,cost:10,service:true},'manual-service');
+ q=clone(q);const before=clone(q),snapshot=q.items;
+ M.capture(q);assert.equal(M.apply(q,quote().items,[stock({sell_price_ex_vat:900})],M.scope(q,'split')),snapshot);
+ assert.deepEqual(q,before);assert.equal(q.items[2].role,'quote_manual_service');
+ assert.deepEqual(q.material_edits.scopes,{}); // No second item snapshot is stored in the journal.
+ while(q.items.length)M.remove(q,0);
+ assert.deepEqual(M.apply(q,quote().items,[]),[]);
+});
+test('opening untouched quotes does not create row mode; PDF detail is an explicit separate setting',()=>{
+ const q=quote(),before=clone(q);M.capture(q);assert.deepEqual(q,before);assert.equal(M.rowsMode(q),false);
+ M.setDetailedPdf(q,true);assert.equal(M.rowsMode(q),false);assert.equal(q.material_edits.pdf_detail,true);
+ M.enableRows(q);assert.equal(q.material_edits.pdf_detail,true);M.setDetailedPdf(q,false);assert.equal(M.rowsMode(q),true);
+ const saved=clone(q);assert.throws(()=>M.setDetailedPdf(q,'false'));assert.deepEqual(q,saved);
+});
+test('manual billable material and labor preserve unknown prices; text rows contribute explicit zero',()=>{
+ const q=quote();
+ const material=M.addManual(q,{name:'Ručný materiál'},'manual-material').item;
+ const labor=M.addManual(q,{name:'Práca',qty:'2,5',unit:'hod',price:'25',cost:'10',service:true},'manual-labor').item;
+ const note=M.addManual(q,{name:'Zákazník pripraví miesto montáže.',textOnly:true},'manual-text').item;
+ assert.equal(material.role,'quote_manual');assert.equal(material.qty,1);assert.equal(material.price,null);assert.equal(material.cost,null);
+ assert.equal(labor.role,'quote_manual_service');assert.equal(labor.qty,2.5);assert.equal(labor.price,25);assert.equal(labor.cost,10);
+ assert.equal(M.isText(note),true);assert.equal(note.role,'quote_text');assert.equal(note.price,0);assert.equal(note.cost,0);
+ assert.equal(note.cost_override,true);assert.equal(note.visible,true);assert.equal(note.unit,'ks');assert.equal(note.qty,1);
+ for(const field of ['qty','unit','price','cost'])assert.throws(()=>M.setField(q,5,field,'5'));
+ M.setField(q,5,'name','Doplnená poznámka');assert.equal(note.name,'Doplnená poznámka');
+});
+test('manual rows retain independent identities and are not remapped by matching catalog names',()=>{
+ let q=quote();M.addManual(q,{name:'Medené potrubie 28 mm',price:9,cost:4},'manual-a');
+ M.addManual(q,{name:'Medené potrubie 28 mm',price:10,cost:5},'manual-b');M.addManual(q,{name:'Poznámka',textOnly:true},'text');
+ q=clone(q);rebuild(q,[stock({sell_price_ex_vat:99,purchase_price_ex_vat:88})]);
+ assert.deepEqual(q.items.slice(3).map(i=>i.price),[9,10,0]);assert.ok(q.items.slice(3).every(i=>i.pohoda===null));
+ M.refreshExisting(q,[stock({sell_price_ex_vat:999})]);assert.deepEqual(q.items.slice(3).map(i=>i.price),[9,10,0]);
+ M.remove(q,3);rebuild(q);assert.equal(q.items.filter(i=>i.role==='quote_manual').length,1);
+ assert.equal(q.items[3].stored_metadata.quote_material.id,'manual-b');
+});
+test('cleared sale and cost fields remain unknown through refresh and journal regeneration',()=>{
+ const q=quote();M.setField(q,1,'price','');M.setField(q,1,'cost','');
+ M.refreshExisting(q,[stock({sell_price_ex_vat:70,purchase_price_ex_vat:60})]);rebuild(q);
+ assert.equal(q.items[1].price,null);assert.equal(q.items[1].cost,null);
+ assert.equal(q.items[1].price_override,true);assert.equal(q.items[1].cost_override,true);
+});
+test('field validation rejects invalid inputs before mutating the quote or its signature',()=>{
+ const q=quote();q.warranty_consent={accepted:true,offer_key:'original'};const before=clone(q);
+ for(const [field,value] of [['name',' '],['unit',''],['name','nul\u0000text'],['role','installation'],['qty','-1'],['qty','1.1234'],
+  ['price','-1'],['cost','1.00001'],['price','NaN'],['price','Infinity'],['price','1e3'],['price','2eur'],['cost','100000000']]){
+  assert.throws(()=>M.setField(q,1,field,value));assert.deepEqual(q,before);
+ }
+ assert.throws(()=>M.setField(q,99,'name','Platný názov'));assert.deepEqual(q,before);
+ for(const values of [{name:' '},{name:'Práca',qty:'-1'},{name:'Práca',unit:''},{name:'Práca',price:'-1'},{name:'Práca',cost:'100000000'}]){
+  assert.throws(()=>M.addManual(q,values,'x'));assert.deepEqual(q,before);
+ }
+ assert.equal(M.money('99,1234'),99.1234);assert.equal(M.money('99999999.9999'),99999999.9999);
+ M.setField(q,1,'qty','0');M.setField(q,1,'price','0');assert.equal(q.items[1].qty,0);assert.equal(q.items[1].price,0);
+ assert.equal(q.warranty_consent,undefined);
+});
+test('row mode catalog addition is visible and repeated selection still increases the exact card quantity',()=>{
+ const q=quote();M.enableRows(q);
+ assert.equal(M.add(q,stock(),'2','unused').merged,true);assert.equal(q.items[1].qty,7);
+ const st=stock({id:'second',fingerprint:'fp-second',plu:'PLUsecond'});
+ const result=M.add(q,st,'3','new');assert.equal(result.merged,false);assert.equal(result.item.visible,true);
+ M.add(q,st,'2','new-again');assert.equal(q.items.length,4);assert.equal(q.items[3].qty,5);
+});
+test('removed installation guard follows the active wizard scope',()=>{
+ const q=quote();M.remove(q,2);assert.equal(M.isRoleRemoved(q,['installation','installation_service']),true);
+ rebuild(q,[stock()],'split');assert.equal(M.isRoleRemoved(q,['installation','installation_service']),false);
+ assert.ok(q.items.some(i=>i.role==='installation_service'));
+ rebuild(q,[stock()],'monoblock');assert.equal(M.isRoleRemoved(q,['installation','installation_service']),true);
+ assert.ok(!q.items.some(i=>i.role==='installation_service'));
+});
+test('missing exact stock card cannot be replaced by a different card with the same PLU',()=>{
+ const old=stock(),replacement=stock({id:'other',fingerprint:'fp-other',sell_price_ex_vat:999});
+ assert.equal(M.findStock(old,[replacement]),null);
+ const q=quote();M.setField(q,1,'name','Vlastný názov');const before=clone(q.items[1]);
+ assert.deepEqual(M.refreshExisting(q,[replacement]),{updated:0,missing:['Vlastný názov']});
+ assert.deepEqual(q.items[1],before);
+});
+test('server-approved status blocks every row mutation even with a stale local draft',()=>{
+ const q=quote();M.enableRows(q);q._server_status='approved';const before=clone(q);
+ for(const act of [()=>M.setField(q,0,'name','Zmena'),()=>M.setQuantity(q,0,'2'),()=>M.remove(q,0),
+  ()=>M.add(q,stock(),'1','x'),()=>M.addManual(q,{name:'Text',textOnly:true},'t'),()=>M.enableRows(q),()=>M.setDetailedPdf(q,true)]){
+  assert.throws(act);assert.deepEqual(q,before);
+ }
+ M.capture(q);assert.equal(M.apply(q,[],[]),q.items);assert.deepEqual(q,before);
+});
+test('atomic storage round trip retains row mode, PDF setting, field edits and manual text identity',async()=>{
+ const js=fs.readFileSync(path.join(__dirname,'../js/db.js'),'utf8');let payload;
+ const client={auth:{onAuthStateChange(){},getSession:async()=>({data:{session:{user:{id:'test'}}}})},rpc:async(name,args)=>{payload=args;return {data:{remote_id:'r',sync_version:2}}}};
+ const c=vm.createContext({window:{SPEKTRA_SUPABASE:{url:'x',anonKey:'x'},supabase:{createClient:()=>client}},console});
+ vm.runInContext(js,c);await c.window.SpektraDB.init();const q=quote();M.enableRows(q);M.setDetailedPdf(q,true);
+ M.setField(q,0,'name','Dve zariadenia');M.setField(q,0,'unit','bal.');M.setField(q,0,'qty','2');M.remove(q,2);
+ M.addManual(q,{name:'Samostatná poznámka',textOnly:true},'text-row');
+ await c.window.SpektraDB.saveQuote(q,'row-request');
+ assert.equal(payload.p_quote.workflow.material_edits.rows_mode,true);assert.equal(payload.p_quote.workflow.material_edits.pdf_detail,true);
+ const html=fs.readFileSync(path.join(__dirname,'../app.html'),'utf8');
+ const declarations=[...html.matchAll(/^(?:async )?function (\w+)\(/gm)],n=declarations.findIndex(m=>m[1]==='remoteQuoteToLocal');
+ const context=vm.createContext({stockByCodeMap:new Map(),norm:x=>String(x).toLowerCase()});
+ vm.runInContext(html.slice(declarations[n].index,declarations[n+1].index),context);
+ const saved=context.remoteQuoteToLocal({...clone(payload.p_quote),id:'r',status:'draft',workflow:clone(payload.p_quote.workflow),quote_items:clone(payload.p_items),sync_version:2});
+ assert.equal(M.rowsMode(saved),true);assert.equal(saved.items[0].name,'Dve zariadenia');assert.equal(saved.items[0].unit,'bal.');assert.equal(saved.items[0].qty,2);
+ assert.equal(M.isText(saved.items[2]),true);assert.equal(saved.items[2].stored_metadata.quote_material.id,'text-row');
+ assert.equal(saved.items[2].cost,0);assert.equal(saved.items[2].cost_override,true);
+ saved.items=M.apply(saved,quote().items,[stock()]);assert.equal(saved.items.length,3);assert.equal(saved.items[2].role,'quote_text');
 });
