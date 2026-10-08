@@ -116,9 +116,9 @@
     }
     if(d.id==='floor_heating_rehau'){
       const m=out.spacing_mm==='100'?10:out.spacing_mm==='200'?5:6.7;
-      out.pipe_calculated_m=Math.ceil(out.area_m2*m*1.10);
+      out.pipe_calculated_m=Math.ceil(round(out.area_m2*m*1.10));
       out.pipe_total_m=out.pipe_length_m||out.pipe_calculated_m;
-      out.board_m2=Math.ceil(out.area_m2*1.05*100)/100;
+      out.board_m2=Math.ceil(round(out.area_m2*1.05*100))/100;
       out.circuits_total=out.circuits||Math.ceil(out.area_m2*m/90);
       out.manifolds_total=out.manifold_count||Math.ceil(out.circuits_total/12);
       out.edge_tape_m=out.perimeter_m||Math.ceil(out.area_m2*0.45);
@@ -184,12 +184,19 @@
     const m=item.stored_metadata?.quote_assembly?.catalog_ref||item.stored_metadata?.quote_material?.catalog_ref;
     const st=item.pohoda||item.stock||item;
     if(m)return {...clone(m),source:m.source||'pohoda'};
-    return {source:'pohoda',id:st.id??null,fingerprint:st.fingerprint??null,plu:st.plu??st.pohoda_plu??null,
+    return {source:'pohoda',...(st.match_by==='code'?{match_by:'code'}:{}),id:st.id??null,fingerprint:st.fingerprint??null,plu:st.plu??st.pohoda_plu??null,
       code:st.code??st.pohoda_code??null,storage_ref:st.storage_ref??null,pohoda_stock_id:st.pohoda_stock_id??item.pohoda_stock_id??null};
   }
   function findStock(ref,stocks=[]){
     if(!ref)return null;
     const pool=stocks.filter(x=>x&&x.active!==false&&(!ref.storage_ref||String(x.storage_ref??'')===String(ref.storage_ref)));
+    if(ref.match_by==='code'){
+      const code=text(ref.code);if(!code)return null;
+      const matches=stocks.filter(x=>x&&x.active!==false&&text(x.code)===code);
+      if(matches.length===1)return matches[0];
+      const scoped=ref.storage_ref?matches.filter(x=>String(x.storage_ref??'')===String(ref.storage_ref)):[];
+      return scoped.length===1?scoped[0]:null;
+    }
     const identity=ref.id?'id':ref.fingerprint?'fingerprint':ref.pohoda_stock_id?'pohoda_stock_id':null;
     if(identity){const rows=pool.filter(x=>String(x[identity]??'')===String(ref[identity]));return rows.length===1?rows[0]:null;}
     // A recipe may contain both identifiers. Require agreement when both exist.
@@ -258,23 +265,29 @@
     const kind=options.kind||kindFor(r),qty=evaluateRule(rule,c.p);
     const priceOverride=r.price_override===true||options.fixedPackage===true;
     const tier=r.installation_tiers?.[c.p.installation_tier]?.price_ex_vat;
-    const cost=kind==='text'?null:options.preserveCost?nullable(r.cost):st?nullable(st.purchase_price_ex_vat):nullable(r.cost);
+    let cost=kind==='text'?null:options.preserveCost?nullable(r.cost):st?nullable(st.purchase_price_ex_vat):nullable(r.cost);
     let price=options.preservePrice?nullable(r.price):(nullable(st?.sell_price_ex_vat)??nullable(r.price)??nullable(tier)??nullable(r.default_sell_price_ex_vat));
     if(options.template&&st&&!options.preservePrice)price=nullable(st.sell_price_ex_vat);
     if(r.price_rule&&!options.preservePrice)price=priceFromCost(r.price_rule,cost!=null&&(cost>0||r.cost_override===true||r.cost_known===true)?cost:null,price);
     if(templateId==='boiler_gas_standard'&&r.role==='installation_service'&&r.default_sell_price_ex_vat!=null)price=nullable(r.default_sell_price_ex_vat);
     if(r.mapping_status==='included_in_installation')price=0;
+    const missingCodeCard=ref.match_by==='code'&&!st;
+    const unitKey=v=>text(v).toLowerCase().replace('²','2').replace('³','3');
+    const codeUnitChanged=ref.match_by==='code'&&st&&r.unit&&unitKey(r.unit)!==unitKey(st.unit);
+    if(missingCodeCard||codeUnitChanged){price=null;cost=null;} // Never bill stale prices or pack prices for metre quantities.
+    if(codeUnitChanged)warn(c,'catalog_unit_changed','Skladová karta zmenila MJ: '+text(st.name)+'. Znovu priraďte kartu a potvrďte množstvo.');
     const item={role:r.role||(kind==='text'?'quote_text':'quote_manual'),name:text(options.name||st?.name||r.name||r.expected_name||r.role)||'Položka',
       qty,unit:text(r.unit||st?.unit)||'ks',price:kind==='text'?null:price,
       cost,
       pohoda:st?clone(st):null,pohoda_code:st?.code??ref.code??null,pohoda_stock_id:st?.pohoda_stock_id??r.pohoda_stock_id??null,
       visible:kind!=='material',customer_group:options.customer_group||c.groups.find(g=>g.id===groupId)?.name||r.customer_group||'',
-      mapping_status:r.mapping_status|| (st?'mapped':'unmapped'),note:text(r.note),work_scope:Array.isArray(r.work_scope)?r.work_scope.map(text).filter(Boolean):[],
+      mapping_status:missingCodeCard?'catalog_item_missing':codeUnitChanged?'catalog_unit_changed':st?'mapped':r.mapping_status||'unmapped',note:text(r.note),work_scope:Array.isArray(r.work_scope)?r.work_scope.map(text).filter(Boolean):[],
       ...(priceOverride?{price_override:true}:{}),...(r.cost_override===true?{cost_override:true}:{}),
       stored_metadata:{quote_assembly:{id:c.instance+':row:'+(++c.counter),group_id:groupId,kind,
         scenario_id:c.d.id,origin:'scenario',template_id:templateId||null,template_version:c.input.recipes?.version??null,
-        catalog_ref:st?reference(st):ref,quantity_rule:clone(rule),baseline_quantity:qty,
+        catalog_ref:st?reference({...st,...(ref.match_by==='code'?{match_by:'code'}:{})}):ref,quantity_rule:clone(rule),baseline_quantity:qty,
         manual:{qty:false,price:priceOverride,cost:r.cost_override===true,name:r.name_override===true,unit:false},
+        ...(missingCodeCard||codeUnitChanged?{stock_selection_required:true}:{}),
         ...(r.price_rule?{price_rule:validatePriceRule(r.price_rule)}:{}),...(r.cost_known===true?{cost_known:true}:{}),
         ...(r.singleton_key?{singleton_key:r.singleton_key}:{}),
         ...(r.mapping_status==='included_in_installation'?{charge_mode:'included',included_in_installation:true}:{}),
@@ -439,7 +452,7 @@
     }
     const labor=group(c,c.instance+':floor_labor','Montáž podlahového kúrenia','labor','computed','floor_heating_rehau');
     row(c,{role:'installation_service',expected_name:'Montáž podlahového kúrenia vrátane tlakovej skúšky',unit:'m²',
-      price:p.installation_rate,price_override:true,work_scope:['Pokládka systémových dosiek a potrubia','Pripojenie rozdeľovača','Tlaková skúška']},
+      price:p.installation_rate||null,price_override:true,work_scope:['Pokládka systémových dosiek a potrubia','Pripojenie rozdeľovača','Tlaková skúška']},
       labor.id,'floor_heating_rehau',parameter('area_m2'));
     labor.contents=[{name:'Pokládka potrubia a systémových dosiek'},{name:'Pripojenie okruhov a tlaková skúška'}];
     c.covered.add('pressure');
@@ -647,7 +660,7 @@
       }
       if(r.condition&&!recipeEnabled(r,c))continue;
       const future=r.include_in_initial_total===false,unselected=r.required===false&&!recipeEnabled(r,c);
-      const i=row(c,r,g.id,t.id,r.quantity_rule,{kind:r.kind,name:r.name,template:true,fixedPackage:t.pricing==='fixed',optional:future||unselected,preservePrice:input.refreshPrices!==true&&(t.pricing==='fixed'||r.price_override===true),preserveCost:input.refreshPrices!==true&&r.cost_override===true});
+      const i=row(c,r,g.id,t.id,r.quantity_rule,{kind:r.kind,name:r.catalog_ref?.match_by==='code'&&r.name_override!==true?undefined:r.name,template:true,fixedPackage:t.pricing==='fixed',optional:future||unselected,preservePrice:input.refreshPrices!==true&&(t.pricing==='fixed'||r.price_override===true),preserveCost:input.refreshPrices!==true&&r.cost_override===true});
       i.stored_metadata.quote_assembly.template_version=t.version;
       if(t.pricing==='fixed'&&r.kind!=='text'&&r.charge_mode!=='included'&&r.mapping_status!=='included_in_installation')g.fixed_row_id=i.stored_metadata.quote_assembly.id;
       if(future||unselected)c.optional.push({id:c.instance+':optional:'+c.counter,name:i.name,kind:r.kind,selected:false,include_in_initial_total:!future,items:[i],groups:[clone(g)],template_id:t.id});

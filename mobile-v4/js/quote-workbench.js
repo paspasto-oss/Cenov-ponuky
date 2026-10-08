@@ -144,7 +144,7 @@
     const sid=state.scenarioId,p=state.parameters;
     const param=(key,label,def,unit='')=>field(label+(unit?' ['+unit+']':''),'wbParam_'+key,p[key]??def,'data-wb-param="'+key+'" inputmode="decimal"');
     let form='';
-    if(sid!=='zti')form+=devicePicker('device',sid==='ac_multi'?'Vonkajšia jednotka':'Zariadenie');
+    if(S().describe(sid).device_required)form+=devicePicker('device',sid==='ac_multi'?'Vonkajšia jednotka':'Zariadenie');
     if(sid==='heat_pump'){
       form+='<div class="wbGrid">'+select('Zapojenie','wbSystem',[['monoblock','Monoblok'],['split','Split']],p.system_type||'monoblock','data-wb-param="system_type"')+select('Príprava TÚV','wbDhw',[['none','Bez TÚV'],['integrated','AiO – integrovaný zásobník'],['external','Externý zásobník']],p.dhw_solution||'none','data-wb-param="dhw_solution" data-wb-rerender="1"')+'</div>';
       if(p.dhw_solution==='external')form+=devicePicker('tank','Externý zásobník TÚV');
@@ -180,8 +180,42 @@
   function searchStock(role,query){
     state.search[role]=query;const box=document.getElementById('wbStockResults_'+role);if(!box)return;
     const found=root.SpektraQuoteMaterials.search(stocks,query,15);
+    if(role==='row_link'){
+      state.linkResults=found.rows.map(clone);
+      box.innerHTML=String(query).trim().length<2?'':found.rows.length?found.rows.map((st,n)=>'<div class="wbStock"><div><b>'+E(st.name)+'</b><small>Kód: '+E(st.code||'chýba')+' · '+E(st.storage_name||st.storage_ref||'')+' · '+money(st.sell_price_ex_vat)+' / '+E(st.unit||'')+'</small></div>'+btn('link-pick-stock','Vybrať','data-id="'+n+'"')+'</div>').join(''):'<div class="wbEmpty">Karta sa nenašla. Doplňte ju v POHODE, importujte XML a obnovte zásoby. Riadok zatiaľ zostane bez ceny.</div>';
+      return;
+    }
     if(String(query).trim().length<2){box.innerHTML='';return;}
     box.innerHTML=found.rows.length?found.rows.map(st=>'<div class="wbStock"><div><b>'+E(st.name)+'</b><small>'+E(st.code||'')+' · '+money(st.sell_price_ex_vat)+' / '+E(st.unit||'ks')+'</small></div>'+btn('pick-stock','Vybrať','data-role="'+E(role)+'" data-stock="'+E(st.id||st.fingerprint||st.code)+'"')+'</div>').join(''):'<div class="wbEmpty">Nenašla sa skladová karta. Skontrolujte katalóg cez ↻.</div>';
+  }
+  function stockLinkDialog(index,selected=null){
+    const row=current?.items?.[index];if(!row||A().isText(row))throw new Error('Vyberte materiálový riadok.');
+    const before=JSON.stringify(row),owner=current.id;
+    state.linkIndex=index;state.search.row_link='';state.linkResults=[];
+    const differentUnit=selected&&String(selected.unit||'').trim().toLowerCase().replace('²','2').replace('³','3')!==String(row.unit||'').trim().toLowerCase().replace('²','2').replace('³','3');
+    let body='<p><strong>'+E(row.name)+'</strong><br><span class="sub">Párovanie podľa presného kódu POHODA. Názov slúži iba na ručné vyhľadávanie.</span></p>';
+    if(selected){
+      body+='<div class="wbSelected"><b>'+E(selected.name)+'</b>Kód: '+E(selected.code)+' · '+E(selected.unit)+'<br>Predaj: '+money(selected.sell_price_ex_vat)+' · nákup: '+money(selected.purchase_price_ex_vat)+' bez DPH</div>'+field('Množstvo ['+selected.unit+']','wbLinkQty',row.qty,'inputmode="decimal"');
+      if(differentUnit)body+='<label class="wbCheck"><input id="wbLinkUnitConfirmed" type="checkbox"><span>Pôvodná MJ: '+E(row.unit)+'. Množstvo som prepočítal na '+E(selected.unit)+'.<small>Pôvodný automatický vzorec sa nahradí potvrdeným množstvom.</small></span></label>';
+    }else body+='<label class="wbField"><span>Kód alebo názov skladovej karty</span><input type="search" autocomplete="off" data-wb-search="row_link" placeholder="'+E(row.name)+'"></label><div id="wbStockResults_row_link" class="wbStockList"></div><div class="wbTools"><a class="btn ghost" href="admin/stock-sync.html" target="_blank" rel="noopener">Import XML z POHODY</a>'+btn('link-refresh','↻ Obnoviť zásoby')+'</div><p class="sub">Import nevkladá riadky do ponuky a nemení jej ceny. Kartu priraďte až po kontrole množstva a mernej jednotky.</p>';
+    showDialog('Vybrať položku zo zásob',body,'Priradiť do tohto riadku',selected?async()=>{
+      if(current?.id!==owner||JSON.stringify(current.items[index])!==before)throw new Error('Riadok sa zmenil. Zopakujte výber zo zásob.');
+      const st=A().findStock(A().codeReference(selected),stocks);
+      if(!st)throw new Error('Kód nie je jednoznačný alebo karta už nie je v zásobách. Obnovte zásoby.');
+      if(['name','unit','sell_price_ex_vat','purchase_price_ex_vat'].some(k=>String(st[k]??'')!==String(selected[k]??'')))throw new Error('Skladová karta sa od výberu zmenila. Vyberte ju znova.');
+      const qty=value('wbLinkQty'),confirmUnit=document.getElementById('wbLinkUnitConfirmed')?.checked===true;
+      const saved=await mutate('Skladová karta bola priradená podľa kódu.',q=>A().assignStock(q,index,st,{qty,confirmUnit}));
+      if(saved.ok&&!saved.stale)closeDialog();
+    }:null);
+  }
+  async function refreshLinkStocks(){
+    const owner=current?.id,index=state.linkIndex,user=root.SpektraDB?.getUser?.()?.id;
+    if(!root.SpektraDB?.isAuthenticated())throw new Error('Prihláste sa a importujte XML cez ↻.');
+    const fresh=await root.SpektraDB.listStocks({force:true});
+    if(owner!==current?.id||user!==root.SpektraDB?.getUser?.()?.id)return;
+    if(!fresh.length)throw new Error('Katalóg je prázdny. Najprv dokončite import XML.');
+    stocks=fresh;if(typeof rebuildStockIndexes==='function')rebuildStockIndexes();
+    stockLinkDialog(index);status('Zásoby boli obnovené. Vyberte kartu podľa kódu.');
   }
   function stockById(id){return stocks.find(s=>String(s.id||s.fingerprint||s.code)===String(id));}
   function pickedDevice(role){
@@ -199,7 +233,7 @@
   function previewRows(items){return '<div class="wbScroll"><table class="wbTable"><thead><tr><th>Položka</th><th>Množstvo</th><th>MJ</th><th>Predaj / MJ</th></tr></thead><tbody>'+items.map(i=>'<tr><td>'+E(i.name)+'<small>'+E(i.pohoda_code||i.pohoda?.code||'')+'</small></td><td>'+E(i.qty)+'</td><td>'+E(i.unit)+'</td><td class="wbNumber">'+money(i.price)+'</td></tr>').join('')+'</tbody></table></div>';}
   function previewScenario(){
     const parameters=collectParameters(),device=pickedDevice('device');
-    if(state.scenarioId!=='zti'&&!device)throw new Error('Vyberte zariadenie z katalógu.');
+    if(S().describe(state.scenarioId).device_required&&!device)throw new Error('Vyberte zariadenie z katalógu.');
     if(state.scenarioId==='heat_pump'&&parameters.dhw_solution==='external'&&!pickedDevice('tank'))throw new Error('Vyberte externý zásobník TÚV z katalógu.');
     const indoorDevices=[];
     if(state.scenarioId==='ac_multi')for(let n=0;n<Number(parameters.indoor_count||2);n++){
@@ -509,6 +543,14 @@
       if(name==='recalculate'){quantityDialog();return;}
       if(name==='prices'){await priceDialog();return;}
       if(name==='row-detail'){rowDialog(Number(id));return;}
+      if(name==='link-stock'){stockLinkDialog(Number(id));return;}
+      if(name==='link-refresh'){await refreshLinkStocks();return;}
+      if(name==='link-pick-stock'){
+        const selected=state.linkResults?.[Number(id)];if(!selected)throw new Error('Zopakujte vyhľadávanie skladovej karty.');
+        const st=A().findStock(A().codeReference(selected),stocks);
+        if(!st)throw new Error('Kód nie je jednoznačný. Skontrolujte kód a sklad v POHODE.');
+        stockLinkDialog(state.linkIndex,clone(st));return;
+      }
       if(name==='copy-row'){await mutate('Položka bola skopírovaná.',q=>A().copyRow(q,Number(id)));return;}
       if(name==='save-template'){saveTemplateDialog(id);return;}
       if(name==='use-template'){await useTemplate(id);return;}
@@ -533,7 +575,7 @@
       if(name==='download-document'){const html=id==='purchase'?O().renderPurchase(current):O().renderInstaller(current);download((current.quote_no||'ponuka')+'_'+id+'.html','<!doctype html><html lang="sk"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+E(current.quote_no)+'</title><style>body{font:14px Arial;margin:24px;color:#20364b}table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left}@media print{body{margin:0}tr{break-inside:avoid}}</style><body>'+html+'</body></html>','text/html');return;}
     }catch(e){const n=document.getElementById('wbDialogError');if(n)n.textContent=e.message||String(e);else status(e.message||String(e),true);}
   }
-  function rowControls(index){return '<div class="wbRowButtons">'+btn('row-detail','⋯','data-id="'+index+'"')+btn('copy-row','⧉','data-id="'+index+'"')+'</div>';}
+  function rowControls(index){return '<div class="wbRowButtons">'+(!A().isText(current?.items?.[index])?btn('link-stock','Zásoby','data-id="'+index+'"'):'')+btn('row-detail','⋯','data-id="'+index+'"')+btn('copy-row','⧉','data-id="'+index+'"')+'</div>';}
   function rowGroupControl(index,groups=A().groups(current)){
     const g=groups.find(g=>g.row_indices?.includes(index));
     return '<div class="wbRowGroup"><select aria-label="Skupina položky" data-wb-move-row="'+index+'">'+groups.map(x=>'<option value="'+E(x.id)+'"'+(x.id===g?.id?' selected':'')+'>'+E(x.name)+'</option>').join('')+'</select></div>';
@@ -566,6 +608,6 @@
       A().addRows(q,group.id,temp.items,{origin:'manual'});
     });if(result.ok&&!result.stale)resetManualQuoteForm();return result;
   }
-  const api={addCatalog,addManual,onOpen,render,tab,action,changeRow,setRealizationDate,mutate,prepareEdit,beginRevision,quickStart,revisionLabel,rowControls,rowGroupControl,bindRows,marginWarning,priceDialog,loadLibrary};
+  const api={addCatalog,addManual,onOpen,render,tab,action,changeRow,setRealizationDate,mutate,prepareEdit,beginRevision,quickStart,revisionLabel,rowControls,rowGroupControl,bindRows,marginWarning,priceDialog,loadLibrary,stockLinkDialog};
   root.SpektraQuoteWorkbench=api;
 })(typeof window==='object'?window:globalThis);

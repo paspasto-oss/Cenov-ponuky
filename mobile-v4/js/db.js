@@ -278,8 +278,11 @@ window.SpektraDB = (() => {
       active:true,
       sync_token:syncToken,
       raw_payload:{
-        source_format:x.source_format||null,
-        source_row:x.source_row||null
+        ...(x.raw_payload&&typeof x.raw_payload==='object'?x.raw_payload:{}),
+        source_format:x.source_format||x.raw_payload?.source_format||null,
+        source_row:x.source_row||x.raw_payload?.source_row||null,
+        xml_fields:x.raw_xml_fields||x.raw_payload?.xml_fields||null,
+        xlsx_fields:x.raw_xlsx_fields||x.raw_payload?.xlsx_fields||null
       },
       synced_at:new Date().toISOString()
     }));

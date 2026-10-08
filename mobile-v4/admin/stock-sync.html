@@ -21,7 +21,7 @@ button,input,select{font:inherit}button{cursor:pointer}input,select{background:#
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../supabase-config.js"></script>
 <script src="../js/realization-date.js?v=20261008-term1"></script>
-<script src="../js/db.js?v=20261008-term1"></script>
+<script src="../js/db.js?v=20261008-code1"></script>
 <link rel="stylesheet" href="../js/visual-refresh.css?v=20261006-clean2">
 <link rel="stylesheet" href="../js/theme.css?v=20261008-theme1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=20261001-cs1">
@@ -133,6 +133,7 @@ button,input,select{font:inherit}button{cursor:pointer}input,select{background:#
 <script>
 let normalized=[], changes=[], conflicts=[], activeTab='all', sourceRows=0, filename='', effectiveMode='partial', sourceFormat='xlsx', sourceEncoding='', autoResolvedDuplicates=0;
 let baselineRows=[], baselineMeta=null;
+let baselineByExactCode=new Map();
 let baselineByFingerprint=new Map(),baselineByCode=new Map(),baselineByPlu=new Map(),baselineCommercialByCode=new Map(),baselineCommercialByPlu=new Map();
 let imageFiles=[], imageFileIndex=new Map();
 
@@ -148,14 +149,14 @@ const numFields=new Set(['sell_price_inc_vat','purchase_price_ex_vat','sell_pric
 function s(v){return v==null?'':String(v).trim()}
 function norm(v){return s(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ')}
 function n(v){if(v==null||v==='')return null;let x=Number(String(v).replace(',','.').replace(/\s/g,''));return Number.isFinite(x)?x:null}
-function fingerprint(r){return [norm(r.plu),norm(r.code),norm(r.storage_ref||r.storage_name),norm(r.name)].join('|')}
+function fingerprint(r){return s(r.code)?'pohoda-code:'+JSON.stringify([s(r.code),s(r.storage_ref||r.storage_name)]):'missing-code:'+JSON.stringify([s(r.plu),s(r.name)])}
 function money(v){return v==null?'—':new Intl.NumberFormat('sk-SK',{style:'currency',currency:'EUR'}).format(v)}
 function qty(v){return v==null?'—':new Intl.NumberFormat('sk-SK',{maximumFractionDigits:3}).format(v)}
 function esc(x){return s(x).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
 function setProgress(p,text){document.getElementById('processCard').classList.remove('hidden');document.getElementById('bar').style.width=p+'%';document.getElementById('processPct').textContent=p+' %';document.getElementById('processText').textContent=text}
 function baseline(){return baselineRows}
 function rebuildBaselineIndexes(){
-  baselineByFingerprint=new Map();baselineByCode=new Map();baselineByPlu=new Map();
+  baselineByExactCode=new Map();baselineByFingerprint=new Map();baselineByCode=new Map();baselineByPlu=new Map();
   baselineCommercialByCode=new Map();baselineCommercialByPlu=new Map();
   const imageScore=x=>(x?.image_url?1000000000:0)+(Number(x?.sell_price_ex_vat)>0?1000000:0)+Math.max(0,Number(x?.quantity_available)||0);
   const commercialScore=x=>(Number(x?.purchase_price_ex_vat)>0?1000000000:0)+(s(x?.storage_name)||s(x?.storage_ref)?100000000:0)+(Number(x?.sell_price_ex_vat)>0?10000000:0)+Math.max(0,Number(x?.quantity_available)||0);
@@ -165,6 +166,7 @@ function rebuildBaselineIndexes(){
     if(!prev||score(x)>score(prev))map.set(key,x);
   };
   for(const x of baselineRows){
+    if(s(x.code)){const list=baselineByExactCode.get(s(x.code))||[];list.push(x);baselineByExactCode.set(s(x.code),list);}
     if(x.fingerprint)baselineByFingerprint.set(x.fingerprint,x);
     put(baselineByCode,norm(x.code),x,imageScore);
     put(baselineByPlu,norm(x.plu),x,imageScore);
@@ -319,32 +321,34 @@ function dataUrlToFile(dataUrl,name){
   const ext=mime.includes('png')?'png':mime.includes('webp')?'webp':mime.includes('gif')?'gif':'jpg';
   return new File([bytes],(name||'embedded')+'.'+ext,{type:mime});
 }
-function existingStockFor(row){
+function existingStockFor(row){return findBaselineIdentity(row);}
+function baselineIdentityCandidates(row){
   if(!baselineByFingerprint.size&&baselineRows.length)rebuildBaselineIndexes();
-  const exact=baselineByFingerprint.get(row.fingerprint)||null;
-  if(exact?.image_url)return exact;
-  const byCode=row.code?baselineByCode.get(norm(row.code)):null;
-  if(byCode?.image_url)return byCode;
-  const byPlu=row.plu?baselineByPlu.get(norm(row.plu)):null;
-  if(byPlu?.image_url)return byPlu;
-  return exact||byCode||byPlu||null;
+  const code=s(row.code);if(!code)return [];
+  const all=baselineByExactCode.get(code)||[];
+  if(all.length<=1)return all; // A unique code survives renamed or moved classification.
+  if(s(row.storage_ref)){
+    const scoped=all.filter(x=>s(x.storage_ref)===s(row.storage_ref));
+    if(scoped.length)return scoped;
+    // Older exports sometimes had no warehouse ID. Never cross a known warehouse.
+    return all.filter(x=>!s(x.storage_ref)&&(!s(row.storage_name)||!s(x.storage_name)||s(x.storage_name)===s(row.storage_name)));
+  }
+  if(s(row.storage_name)){
+    const scoped=all.filter(x=>s(x.storage_name)===s(row.storage_name));
+    if(scoped.length)return scoped;
+    return all.filter(x=>!s(x.storage_name)&&!s(x.storage_ref));
+  }
+  return all;
 }
 function findBaselineIdentity(row){
-  if(!baselineByFingerprint.size&&baselineRows.length)rebuildBaselineIndexes();
-  const exact=baselineByFingerprint.get(row.fingerprint)||null;
-  if(exact)return exact;
-  if(row.plu){
-    const byPlu=baselineCommercialByPlu.get(norm(row.plu))||baselineByPlu.get(norm(row.plu));
-    if(byPlu)return byPlu;
-  }
-  if(row.code){
-    const byCode=baselineCommercialByCode.get(norm(row.code))||baselineByCode.get(norm(row.code));
-    if(byCode)return byCode;
-  }
-  return null;
+  const candidates=baselineIdentityCandidates(row);
+  return candidates.length===1?candidates[0]:null;
 }
 function preserveBaselineIdentity(row){
-  const old=findBaselineIdentity(row);
+  const candidates=baselineIdentityCandidates(row);
+  if(!s(row.code))row._identity_issue='Chýba kód POHODA. Doplňte ho v POHODE a zopakujte export.';
+  else if(candidates.length>1)row._identity_issue='Kód '+s(row.code)+' má viac skladových kariet. Doplňte sklad alebo odstráňte duplicitu.';
+  const old=candidates.length===1?candidates[0]:null;
   if(!old)return row;
   // XML exporty nemusia niesť sklad rovnako ako XLSX. Zachováme existujúci
   // fingerprint a chýbajúcu skladovú identitu, aby sa tá istá POHODA karta
@@ -387,13 +391,15 @@ function mergeRows(rows){
     x.source_row=x.source_row||idx+1;
     x.fingerprint=x.fingerprint||fingerprint(x);
     x=preserveBaselineIdentity(x);
+    if(x._identity_issue)localConf.push({fingerprint:x.fingerprint,a:x,b:x,reason:x._identity_issue});
     x.suppliers=x.suppliers|| (x.supplier_name?[x.supplier_name]:[]);
     if(!merged.has(x.fingerprint)){merged.set(x.fingerprint,x);return}
 
     const prev=merged.get(x.fingerprint);
-    const sameBusinessKey=
-      (x.plu&&prev.plu&&norm(x.plu)===norm(prev.plu)) ||
-      (x.code&&prev.code&&norm(x.code)===norm(prev.code));
+    const sameBusinessKey=s(x.code)&&s(x.code)===s(prev.code)&&s(x.storage_ref||x.storage_name)===s(prev.storage_ref||prev.storage_name);
+    const core=['purchase_price_ex_vat','sell_price_ex_vat','sell_price_inc_vat','quantity_available','unit'];
+    const bad=core.some(k=>prev[k]!=null&&x[k]!=null&&String(prev[k])!==String(x[k]));
+    if(bad){localConf.push({fingerprint:x.fingerprint,a:prev,b:x,reason:'Rovnaký kód a sklad, rozdielna cena/množstvo/MJ'});return;}
 
     if(sameBusinessKey){
       autoResolvedDuplicates++;
@@ -416,9 +422,7 @@ function mergeRows(rows){
     if(x.supplier_name&&!prev.suppliers.includes(x.supplier_name))prev.suppliers.push(x.supplier_name);
     prev.image_source_refs=uniqueStrings([...(prev.image_source_refs||[]),...(x.image_source_refs||[])]);
     prev._embedded_images=uniqueStrings([...(prev._embedded_images||[]),...(x._embedded_images||[])]);
-    const core=['purchase_price_ex_vat','sell_price_ex_vat','sell_price_inc_vat','quantity_available','unit'];
-    const bad=core.some(k=>prev[k]!=null&&x[k]!=null&&String(prev[k])!==String(x[k]));
-    if(bad)localConf.push({fingerprint:x.fingerprint,a:prev,b:x,reason:'Rovnaká identita, rozdielna cena/množstvo/MJ'});
+    if(!sameBusinessKey)localConf.push({fingerprint:x.fingerprint,a:prev,b:x,reason:'Konflikt skladovej identity'});
   });
   normalized=[...merged.values()].map(inheritExistingImages);
   conflicts=localConf;
@@ -435,7 +439,7 @@ async function parseXlsx(file){
   const out=rows.map((raw,idx)=>{
     const x={};Object.entries(raw).forEach(([k,v])=>{const key=aliases[s(k)]||null;if(key)x[key]=numFields.has(key)?n(v):s(v)});
     if(!x.name)return null;
-    x.source_row=idx+2;x.source_format='xlsx';x.fingerprint=fingerprint(x);x.suppliers=x.supplier_name?[x.supplier_name]:[];
+    x.raw_xlsx_fields={...raw};x.source_row=idx+2;x.source_format='xlsx';x.fingerprint=fingerprint(x);x.suppliers=x.supplier_name?[x.supplier_name]:[];
     return x;
   });
   mergeRows(out);
@@ -716,6 +720,7 @@ async function applySync(){
   const btn=document.getElementById('applyBtn');
   btn.disabled=true;btn.textContent='Ukladám…';
   try{
+    if(effectiveMode==='full'&&conflicts.length)throw new Error('Úplný import obsahuje konflikty kódov. Opravte ich alebo zvoľte čiastočný import; pôvodné zásoby zostali zachované.');
     const conflictSet=new Set(conflicts.map(c=>c.fingerprint));
     const clean=collapseImageOnlyRows(normalized.filter(x=>!conflictSet.has(x.fingerprint)).map(x=>({...x,active:true,last_seen_at:new Date().toISOString()})));
     const imageUploads=await prepareProductImages(clean,btn);

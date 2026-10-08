@@ -37,12 +37,13 @@ function renderQuoteMaterialEditor(){
   const rows=(current.items||[]).map((i,n)=>{
     const textOnly=api.isText(i),meta=i.stored_metadata?.quote_material;
     const code=i.pohoda?.code||i.pohoda_code||'';
+    const missingStock=!textOnly&&(i.stored_metadata?.quote_assembly?.stock_selection_required===true||i.mapping_status==='catalog_item_missing');
     let info=textOnly?'Poznámka bez ceny':meta?.origin==='manual'?(i.role==='quote_manual_service'?'Vlastná práca / služba':'Vlastná položka'):code?'Kód: '+code:'Položka bez skladového kódu';
     if(i.pohoda?.plu)info+=' · PLU: '+i.pohoda.plu;
-    if(i.mapping_status==='catalog_item_missing')info+=' · skladová karta sa nenašla';
+    if(missingStock)info+=' · čaká na kartu zo zásob POHODA';
     const knownCost=i.cost!=null&&(Number(i.cost)>0||i.cost_override===true);
     const total=Number(i.qty)===0?0:i.price==null?null:Number(i.price)*Number(i.qty);
-    return '<tr data-quote-row="'+n+'" class="'+(textOnly?'quoteTextRow':'')+'"><td class="quoteRowName"><div class="quoteRowNameWrap"><span class="quoteRowNumber">'+(n+1)+'</span><div><textarea rows="2" aria-label="Názov položky '+(n+1)+'" data-row-field="name" onchange="setQuoteItemField('+n+',\'name\',this.value,this)">'+esc(i.name)+'</textarea><small>'+esc(info)+'</small>'+(quoteRowsEditorActive&&window.SpektraQuoteWorkbench?SpektraQuoteWorkbench.rowGroupControl(n,workbenchGroups):'')+'</div></div></td>'+
+    return '<tr data-quote-row="'+n+'" class="'+(textOnly?'quoteTextRow':missingStock?'quoteStockPlaceholder':'')+'"><td class="quoteRowName"><div class="quoteRowNameWrap"><span class="quoteRowNumber">'+(n+1)+'</span><div><textarea rows="2" aria-label="Názov položky '+(n+1)+'" data-row-field="name" placeholder="'+esc(missingStock?i.name:'')+'" onchange="setQuoteItemField('+n+',\'name\',this.value,this)">'+(missingStock?'':esc(i.name))+'</textarea><small>'+esc(info)+'</small>'+(quoteRowsEditorActive&&window.SpektraQuoteWorkbench?SpektraQuoteWorkbench.rowGroupControl(n,workbenchGroups):'')+'</div></div></td>'+
       (textOnly?'<td colspan="5" class="quoteTextLabel">Text sa vytlačí bez množstva a ceny.</td>':
         '<td>'+input(i,n,'qty','Množstvo',i.qty,'inputmode="decimal"')+'</td>'+
         '<td>'+input(i,n,'unit','Merná jednotka',i.unit||'ks','maxlength="10"')+'</td>'+

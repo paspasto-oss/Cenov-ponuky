@@ -8,3 +8,10 @@
 .quotePdfDetail{display:flex;align-items:flex-start;gap:9px;padding:13px 0;font-size:13px}.quotePdfDetail input{width:20px;height:20px;flex-shrink:0;margin:0}.quotePdfDetail small{display:block;font-size:11px;color:var(--m);margin-top:4px}.quoteScrollHint{display:none}#quoteMaterialStatus{margin:8px 0;font-size:12px;padding:10px;background:#eff6fa;border-radius:8px;overflow-wrap:anywhere}#quoteMaterialStatus.warn{background:#fff4d9}.quoteSrOnly{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
 #bomDetails summary:focus-visible,.quoteMaterialTools button:focus-visible,.quoteRowsTable button:focus-visible,.quoteMaterialTools input:focus-visible,.quoteRowsTable input:focus-visible,.quoteRowsTable textarea:focus-visible,.quoteTableScroll:focus-visible{outline:2px solid var(--b);outline-offset:2px}
 @media(max-width:720px){.quoteRowsHeading{display:block}.quoteRowsActions{margin-top:14px}.quoteRowsActions .btn{flex:1}.quoteRowsMetrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.quoteRowsMetric{padding:12px}.quoteRowsMetric strong{font-size:19px}.quoteManualTop{grid-template-columns:1fr}.quoteManualNumbers{grid-template-columns:repeat(2,minmax(0,1fr))}.quoteMaterialSearchGrid{grid-template-columns:minmax(0,1fr) 90px}.quoteStockResult{align-items:flex-start}.quoteStockResult b{font-size:13px}.quoteMaterialTools{padding:10px}.quoteScrollHint{display:block}.quoteAddActions .btn{flex:1;font-size:12px}.quoteRowsTable input,.quoteRowsTable textarea{font-size:16px}#rowMaterialEditorSlot .quoteEditorIntro,#rowMaterialEditorSlot .quoteAddActions,#rowMaterialEditorSlot .quotePdfDetail{margin-left:11px;margin-right:11px}}
+
+/* Unassigned stock slots retain their real name in saved data and print output. */
+.quoteStockPlaceholder textarea::placeholder{color:var(--m,#64748b);opacity:1;font-style:italic}
+.quoteStockPlaceholder .quoteRowName small{color:var(--m,#64748b)}
+.quoteStockPlaceholder textarea{border-style:dashed}
+.wbRowButtons{flex-wrap:wrap}
+.wbRowButtons button[data-wb-action="link-stock"]{font-size:11px;padding:6px 3px;width:100%;min-height:44px}

@@ -79,11 +79,18 @@
     return wanted.some(role=>(b?.removed_roles||[]).includes(role));
   }
   function reference(st){
-    return {id:st?.id||null,fingerprint:st?.fingerprint||null,plu:st?.plu||null,code:st?.code||null,storage_ref:st?.storage_ref||null};
+    return {...(st?.match_by==='code'?{match_by:'code'}:{}),id:st?.id||null,fingerprint:st?.fingerprint||null,plu:st?.plu||null,code:st?.code||null,storage_ref:st?.storage_ref||null};
   }
   function findStock(ref,stocks){
     if(!ref)return null;
     const rows=(stocks||[]).filter(x=>x.active!==false);
+    if(ref.match_by==='code'){
+      const code=String(ref.code??'').trim();if(!code)return null;
+      const found=rows.filter(x=>String(x.code??'').trim()===code);
+      if(found.length===1)return found[0];
+      const scoped=ref.storage_ref?found.filter(x=>String(x.storage_ref??'')===String(ref.storage_ref)):[];
+      return scoped.length===1?scoped[0]:null;
+    }
     // Never silently choose a different warehouse/card when an exact ID exists.
     // PLU/code fallback cannot replace a missing exact stored card.
     for(const field of (ref.fingerprint||ref.id)?['fingerprint','id']:['plu']){
