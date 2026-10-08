@@ -29,6 +29,14 @@
       field('indoor_count','Počet vnútorných jednotiek','number',2,{min:2,max:8,step:1}),
       field('branch_lengths','Trasa každej vnútornej jednotky','branches',[5,5],{unit:'m',min:0,step:0.5}),
       field('power_cable_m','Spoločný napájací kábel','number',5,{unit:'m',min:0,step:0.5})]},
+    {id:'floor_heating_rehau',name:'Podlahové kúrenie REHAU',category:'floor_heating',device_required:false,parameters:[
+      field('area_m2','Vykurovaná plocha','number',100,{unit:'m²',min:1,step:0.5}),
+      field('spacing_mm','Rozstup potrubia','select','150',{options:[['100','100 mm'],['150','150 mm'],['200','200 mm']]}),
+      field('pipe_length_m','Potrubie – vlastné množstvo (0 = automaticky)','number',0,{unit:'m',min:0,step:1}),
+      field('circuits','Počet okruhov (0 = automaticky)','number',0,{unit:'ks',min:0,step:1}),
+      field('manifold_count','Počet rozdeľovačov (0 = automaticky)','number',0,{unit:'ks',min:0,step:1}),
+      field('perimeter_m','Okrajová páska – vlastný obvod (0 = odhad)','number',0,{unit:'m',min:0,step:0.5}),
+      field('installation_rate','Montáž bez DPH za m²','number',0,{unit:'€/m²',min:0,step:0.5,help:'Vyplňte firemnú sadzbu montáže.'})]},
     {id:'zti',name:'ZTI – vývody a rozvody',category:'other',trade_type:'zti',device_required:false,parameters:[
       field('water_outlets','Vývody vody 16 × 1/2','number',1,{unit:'ks',min:0,step:1}),
       field('waste_outlets','Vývody odpadu DN50','number',0,{unit:'ks',min:0,step:1}),
@@ -105,6 +113,17 @@
       if(branches&&branches.length!==out.indoor_count)throw new Error('Počet dĺžok trás sa musí zhodovať s počtom vnútorných jednotiek.');
       out.branch_lengths=Array.from({length:out.indoor_count},(_,i)=>valueNumber(branches?branches[i]:(input['branch_'+(i+1)+'_m']??5),'Dĺžka vetvy '+(i+1)));
       out.branch_lengths.forEach((v,i)=>{out['branch_'+(i+1)+'_m']=v;});
+    }
+    if(d.id==='floor_heating_rehau'){
+      const m=out.spacing_mm==='100'?10:out.spacing_mm==='200'?5:6.7;
+      out.pipe_calculated_m=Math.ceil(out.area_m2*m*1.10);
+      out.pipe_total_m=out.pipe_length_m||out.pipe_calculated_m;
+      out.board_m2=Math.ceil(out.area_m2*1.05*100)/100;
+      out.circuits_total=out.circuits||Math.ceil(out.area_m2*m/90);
+      out.manifolds_total=out.manifold_count||Math.ceil(out.circuits_total/12);
+      out.edge_tape_m=out.perimeter_m||Math.ceil(out.area_m2*0.45);
+      if(out.circuits_total<out.manifolds_total)throw new Error('Počet rozdeľovačov nesmie prevyšovať počet okruhov.');
+      if(out.circuits_total>out.manifolds_total*12)throw new Error('Na zvolený počet okruhov treba viac rozdeľovačov (max. 12 okruhov na jeden).');
     }
     if(d.id==='zti'&&!own(input,'labor_rate'))out.labor_rate=out.job_type==='renovation'?40:35;
     return out;
@@ -402,6 +421,31 @@
     const clips=group(c,c.instance+':zti_clips','Uchytenie potrubia','material','computed','zti_clips');
     row(c,{role:'zti_floor_clip',pohoda_code:'144013000000001257',expected_name:'Podlahová príchytka potrubia',unit:'ks'},clips.id,'zti_clips',{type:'sum',parameters:['pipe16_m','pipe20_m','pipe25_m'],factor:2,offset:0,min:0});
   }
+  function addFloorHeating(c){
+    const p=c.p;
+    const g=group(c,c.instance+':floor_material','Podlahové kúrenie REHAU – materiál','material','computed','floor_heating_rehau');
+    const defs=[
+      ['floor_pipe','REHAU RAUTHERM S 17×2', 'm','pipe_total_m'],
+      ['floor_board','REHAU Varionova systémová doska','m²','board_m2'],
+      ['floor_edge','Okrajová dilatačná páska','m','edge_tape_m'],
+      ['floor_manifold','Rozdeľovač podľa počtu okruhov','ks','manifolds_total'],
+      ['floor_cabinet','Skrinka rozdeľovača','ks','manifolds_total'],
+      ['floor_eurocone','Eurokonus – pripojenie okruhu','ks','circuits_total',2],
+      ['floor_sleeve','Ochranná rúrka pripojenia','ks','circuits_total',2]
+    ];
+    for(const [role,name,unit,key,factor] of defs){
+      const i=row(c,{role,expected_name:name,unit,mapping_status:'needs_compatibility_check'},g.id,'floor_heating_rehau',parameter(key,factor||1));
+      i.stored_metadata.quote_assembly.stock_selection_required=true;
+    }
+    const labor=group(c,c.instance+':floor_labor','Montáž podlahového kúrenia','labor','computed','floor_heating_rehau');
+    row(c,{role:'installation_service',expected_name:'Montáž podlahového kúrenia vrátane tlakovej skúšky',unit:'m²',
+      price:p.installation_rate,price_override:true,work_scope:['Pokládka systémových dosiek a potrubia','Pripojenie rozdeľovača','Tlaková skúška']},
+      labor.id,'floor_heating_rehau',parameter('area_m2'));
+    labor.contents=[{name:'Pokládka potrubia a systémových dosiek'},{name:'Pripojenie okruhov a tlaková skúška'}];
+    c.covered.add('pressure');
+    warn(c,'floor_design','Počet okruhov je orientačný. Overte hydrauliku, skutočné dĺžky slučiek a výber rozdeľovača. Materiál spárujte s presnými kartami POHODA.');
+    if(!p.installation_rate)warn(c,'floor_labor_price','Doplňte sadzbu montáže €/m².');
+  }
   function addCommonServices(c){
     const services=Array.isArray(c.input.services)?c.input.services:[];
     const used=new Set(c.items.map(i=>i.stored_metadata.quote_assembly.singleton_key).filter(Boolean));
@@ -428,6 +472,7 @@
     else if(d.id==='ac_single')addRecipe(c,'ac_single_split_5m');
     else if(d.id==='ac_multi'){addRecipe(c,'ac_multisplit_5m');addMultisplit(c);}
     else if(d.id==='zti')addZti(c);
+    else if(d.id==='floor_heating_rehau')addFloorHeating(c);
     addCommonServices(c);
     // The existing quote backend treats any unpriced row as incomplete. Inactive
     // recipe entries remain in the scenario definition, never in billed q.items.
