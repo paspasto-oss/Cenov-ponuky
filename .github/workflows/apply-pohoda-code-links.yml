@@ -1,0 +1,44 @@
+name: Apply reviewed POHODA code mapping
+on:
+  push:
+    branches: [fix/pohoda-code-links-20261008]
+    paths: [.github/patches/pohoda-code-links.patch.b64]
+permissions:
+  contents: write
+concurrency:
+  group: apply-pohoda-code-links
+  cancel-in-progress: false
+jobs:
+  apply:
+    if: github.repository == 'paspasto-oss/Cenov-ponuky' && github.ref == 'refs/heads/fix/pohoda-code-links-20261008'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/pohoda-code-links-20261008
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify and apply reviewed patch
+        run: |
+          python3 - <<'PY'
+          import base64, gzip, hashlib, pathlib
+          data = gzip.decompress(base64.b64decode(pathlib.Path('.github/patches/pohoda-code-links.patch.b64').read_text()))
+          assert hashlib.sha256(data).hexdigest() == 'bc57f33c70101bc3cf665285f72769616c919c17f0159a995680180ad5e78de5', 'Patch checksum mismatch'
+          pathlib.Path('/tmp/pohoda-code-links.patch').write_bytes(data)
+          PY
+          git apply --check --index /tmp/pohoda-code-links.patch
+          git apply --index /tmp/pohoda-code-links.patch
+          git diff --cached --check
+      - name: Compile modules and run all regression tests
+        run: |
+          for file in mobile-v4/js/*.js; do node --check "$file"; done
+          node --test mobile-v4/tests/*.cjs
+      - name: Save validated application changes on the isolated branch
+        run: |
+          git rm .github/patches/pohoda-code-links.patch.b64
+          git config user.name 'Spektra application update'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Link assembly stock slots by exact POHODA code'
+          git push origin HEAD:fix/pohoda-code-links-20261008
