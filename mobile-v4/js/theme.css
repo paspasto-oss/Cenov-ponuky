@@ -1,0 +1,146 @@
+/* Screen palette only. Printed documents and image pixels keep their colours. */
+.themeToggle{display:inline-flex;align-items:center;justify-content:center;flex:0 0 32px;width:32px;height:32px;padding:6px;border:1px solid #cdd9e3;border-radius:8px;background:#f5f8fa;color:#31566f;cursor:pointer}
+.themeToggle svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.themeToggle .themeSun{display:none}
+.themeToggle:hover{background:#e6f0f7;border-color:#7194ac}
+.themeToggle:focus-visible{outline:3px solid #84b8e0;outline-offset:2px}
+.themeStatus{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+
+/* Isolate previews and the html2canvas render roots from inherited theme tokens.
+ * Warranty pages are children of data-pdf-render, including their signatures. */
+:is(.wbPreview,[data-pdf-render],[data-pdf-layout],[data-pdf-pagination-stage],.quotePdfPage,[data-quote-customer-preview],[data-quote-internal-document],.inspectionPdfPage,#warrantySignatureCanvas){
+  --bg:#f3f6f8;--p:#fff;--p2:#f4f8fb;--line:#dce5ed;--t:#173247;--m:#607183;--r:#c20000;--r2:#d82323;--g:#28775c;--a:#9a7628;--b:#00539b;
+  color-scheme:light;
+}
+.wbPreview{background:#fff;color:#173247}
+
+@media screen{
+  :root{color-scheme:light}
+  html[data-theme="dark"]{
+    color-scheme:dark;
+    --bg:#101820;--p:#18232e;--p2:#202e3c;--line:#364958;--t:#eef4f8;--m:#afc0cd;
+    --b:#8fcaff;--r:#ef6974;--r2:#fa8b95;--a:#f3d28d;
+    --theme-hover:#273849;--theme-input:#111e29;--theme-control:#617b90;
+    --theme-accent:#8fcaff;--theme-selected:#223f55;--theme-primary:#2b6da1;
+    --theme-success:#9fe2bc;--theme-success-bg:#193f35;
+    --theme-warning:#f3d28d;--theme-warning-bg:#40371f;
+    --theme-danger:#ffb3b6;--theme-danger-bg:#492b33;
+  }
+  html[data-theme="dark"] .themeToggle{background:var(--p2);color:var(--theme-accent);border-color:var(--theme-control)}
+  html[data-theme="dark"] .themeToggle:hover{background:var(--theme-hover)}
+  html[data-theme="dark"] .themeToggle .themeMoon{display:none}
+  html[data-theme="dark"] .themeToggle .themeSun{display:block}
+
+  /* App shell, shared lists and cards. All selectors name application surfaces. */
+  html[data-theme="dark"] :is(.appStickyHeader,.stockSyncPage .wrap>.head,body>.homeToolbar,body>.nav,.homeToolbarMenu,.quoteBackBar,.inspBackBar){background:var(--p);border-color:var(--line);box-shadow:0 3px 16px #0003}
+  html[data-theme="dark"] :is(.wrap .card,.wrap .stat,.wrap .reco,.wrap .summary,.wrap .pbox,.wrap .item,.wrap .alternativesMenu,.wrap .compactListHeading,.wrap .compactListCard>.compactListHeading){background:var(--p);border-color:var(--line)}
+  html[data-theme="dark"] :is(#home>.stats,#inspectionHome>.stats,#quoteList .row,#inspectionList>.row){background:var(--p);border-color:var(--line)}
+  html[data-theme="dark"] :is(#quoteList .row:hover,#inspectionList>.row:hover){background:var(--p2)}
+  html[data-theme="dark"] :is(.wrap .row,.wrap .big,.wrap .quoteMaterialTools,.wrap .inspThumb){background:var(--p2);border-color:var(--line);color:var(--t)}
+  html[data-theme="dark"] :is(.wrap .activeContext,.wrap .pill){background:var(--p2);border-color:var(--line);color:var(--m)}
+  html[data-theme="dark"] .wrap .activeContext{color:var(--theme-accent)}
+  html[data-theme="dark"] :is(.wrap .field label,.wrap .big small,.wrap .choice small,.wrap .choice.on small,.wrap .alternativesMenu summary){color:var(--m)}
+  html[data-theme="dark"] .wrap .big.primary small{color:#eef4f8}
+  html[data-theme="dark"] :is(.wrap .alternativesMenu[open] summary,.wrap .srow.total){border-color:var(--line)}
+  html[data-theme="dark"] :is(.wrap .reco .kw,.wrap .pbox strong,#quoteList .quoteListFinancials .quoteListTotal strong){color:var(--theme-accent)}
+  html[data-theme="dark"] #quoteList .quoteListFinancials .quoteListTotal{border-color:var(--line)}
+  html[data-theme="dark"] #quoteList .quoteListFinancials .quoteListProfit strong{color:var(--theme-success)}
+  html[data-theme="dark"] #quoteList .quoteListFinancials .quoteListProfit.negative strong{color:var(--theme-danger)}
+  html[data-theme="dark"] #quoteList .quoteListFinancials .quoteListMetric.incomplete strong{color:var(--theme-warning)}
+
+  /* Form fields and actions, including workbench dialogs appended to body. */
+  html[data-theme="dark"] :is(.wrap,.wbDialog) :is(input,select,textarea){background:var(--theme-input);color:var(--t);border-color:var(--theme-control);caret-color:var(--theme-accent)}
+  html[data-theme="dark"] :is(.wrap,.wbDialog) :is(input,textarea)::placeholder{color:#9bb0c0;opacity:1}
+  html[data-theme="dark"] :is(.wrap,.wbDialog) :is(input[type="checkbox"],input[type="radio"]){accent-color:var(--theme-accent)}
+  html[data-theme="dark"] :is(.wrap,.wbDialog,.homeToolbar) :is(button,input,select,textarea):focus-visible{outline:3px solid #a2d3ff;outline-offset:2px}
+  html[data-theme="dark"] :is(.wrap .btn,.wbDialog .btn,.wrap .big.primary,body>.nav .btn.primary){background:var(--theme-primary);color:#fff;border-color:var(--theme-primary)}
+  html[data-theme="dark"] :is(.wrap .btn.green,.wbDialog .btn.green){background:#28775c;color:#fff;border-color:#66b99a}
+  html[data-theme="dark"] :is(.wrap .btn.ghost,.wbDialog .btn.ghost,#quoteList .quoteEditBtn,#inspectionList .inspectionEditBtn){background:var(--p2);color:var(--t);border-color:var(--theme-control)}
+  html[data-theme="dark"] :is(.homeToolbar .homeToolbarButton,body>.nav button){background:var(--p2);color:var(--t);border-color:var(--theme-control)}
+  html[data-theme="dark"] :is(.homeToolbar .homeToolbarButton:hover,.wrap .btn.ghost:hover,.wbDialog .btn.ghost:hover){background:var(--theme-hover)}
+  html[data-theme="dark"] .homeToolbar .homeToolbarButton[aria-current="page"]{background:var(--theme-selected);color:var(--theme-accent);border-color:var(--theme-accent)}
+  html[data-theme="dark"] :is(.wrap .choice,.wrap .inspType){background:var(--p2);color:var(--t);border-color:var(--theme-control)}
+  html[data-theme="dark"] :is(.wrap .choice:not(.disabled):hover,.wrap .inspType:hover){background:var(--theme-hover)}
+  html[data-theme="dark"] :is(.wrap .choice.on,.wrap .choice.on:hover,.wrap .inspType.on,.wrap .inspType.on:hover){background:var(--theme-selected);color:var(--theme-accent);border-color:var(--theme-accent)}
+  html[data-theme="dark"] :is(.wrap .step,.wrap .inspectionProgress i){background:var(--line)}
+  html[data-theme="dark"] :is(.wrap .step.on,.wrap .inspectionProgress i.on){background:var(--theme-accent)}
+
+  /* Status colours keep their meaning with readable text on dark surfaces. */
+  html[data-theme="dark"] :is(.wrap .badge,.wrap .inspStatus){background:var(--p2);color:var(--m)}
+  html[data-theme="dark"] :is(.wrap .notice,.wbDialog .notice){background:var(--theme-selected);color:#c8e4fa;border-color:#466781}
+  html[data-theme="dark"] :is(.wrap .notice.warn,.wbDialog .notice.warn,.wrap .badge.draft,.wrap .badge.ready,.wrap .badge.lead,.wrap .inspStatus.in_progress){background:var(--theme-warning-bg);color:var(--theme-warning);border-color:#79673c}
+  html[data-theme="dark"] :is(.wrap .notice.ok,.wbDialog .notice.ok,.wrap .badge.approved,.wrap .inspStatus.completed,.wrap .inspStatus.converted){background:var(--theme-success-bg);color:var(--theme-success);border-color:#467f69}
+  html[data-theme="dark"] .wrap .badge.sent{background:var(--theme-selected);color:var(--theme-accent)}
+  html[data-theme="dark"] :is(#quoteList .quotePdfBtn,#inspectionList .inspectionPdfBtn){background:var(--theme-danger-bg);color:var(--theme-danger);border-color:#875561}
+
+  /* Contact suggestions and inspection materials, including injected styles. */
+  html[data-theme="dark"] :is(.contactSuggestions,.inspManualSuggestions){background:var(--p2);border-color:var(--theme-control);box-shadow:0 6px 20px #0004}
+  html[data-theme="dark"] :is(.contactSuggestions>button,.wrap .quoteStockResult,.wrap .inspStockResult,.wrap .inspManualSuggestion){background:var(--p);color:var(--t);border-color:var(--line)}
+  html[data-theme="dark"] :is(.contactSuggestions>button:hover,.contactSuggestions>button:focus-visible,.wrap .inspStockResult:hover,.wrap .inspManualSuggestion:hover,.wrap .inspManualSuggestion:focus){background:var(--theme-selected);border-color:var(--theme-accent)}
+  html[data-theme="dark"] :is(.contactSuggestions>small,.contactSuggestions>button span,.inspStockResult small,.inspStockHint,.inspManualSuggestion small,.inspMaterialMeta){color:var(--m)}
+  html[data-theme="dark"] :is(.inspStockResult .price,.inspManualSuggestion .price){color:var(--theme-accent)}
+  html[data-theme="dark"] .inspMaterialMeta.linked{color:var(--theme-success)}
+  html[data-theme="dark"] .wrap .inspMaterial button{background:var(--theme-hover);color:var(--t)}
+  html[data-theme="dark"] .wrap .inspThumb button{background:#111e29;color:#fff;border:1px solid #afc0cd}
+  html[data-theme="dark"] #inspectionWizard details:not(.card){background:var(--p2)!important;border-color:var(--line)!important}
+  html[data-theme="dark"] #inspectionWizard :is(.inspManualSuggestions>div,.inspPhotoGrid small){color:var(--m)!important}
+
+  /* Editable quote rows and their financial totals. */
+  html[data-theme="dark"] .quoteRowsMetric{background:var(--p);border-color:var(--line)}
+  html[data-theme="dark"] .quoteRowsMetric.total{background:var(--theme-primary);border-color:var(--theme-primary);color:#fff}
+  html[data-theme="dark"] .quoteRowsMetric.total small{color:#eef4f8}
+  html[data-theme="dark"] .quoteRowsTable th{background:var(--p2);color:var(--m);border-color:var(--line)}
+  html[data-theme="dark"] .quoteRowsTable td{border-color:var(--line)}
+  html[data-theme="dark"] .quoteRowsTable tbody tr:nth-child(even){background:var(--p2)}
+  html[data-theme="dark"] .quoteRowsTable .quoteTextRow{background:#302d20!important}
+  html[data-theme="dark"] .quoteRowNumber{color:var(--m)}
+  html[data-theme="dark"] .quoteRemoveMaterial{background:var(--p2);color:var(--theme-danger);border-color:#875561}
+  html[data-theme="dark"] .quoteRemoveMaterial:hover{background:var(--theme-danger-bg)}
+  html[data-theme="dark"] .quoteRowsTable [aria-invalid="true"]{background:var(--theme-danger-bg);border:2px solid var(--theme-danger)}
+  html[data-theme="dark"] #quoteMaterialStatus{background:var(--theme-selected);color:#c8e4fa}
+  html[data-theme="dark"] #quoteMaterialStatus.warn{background:var(--theme-warning-bg);color:var(--theme-warning)}
+
+  /* HVAC workbench: assemblies, scenarios, search, rules and dialogs. */
+  html[data-theme="dark"] :is(.wbTabs,.wbEmpty){background:var(--p2);border-color:var(--line);color:var(--m)}
+  html[data-theme="dark"] .wbTabs button{color:var(--m)}
+  html[data-theme="dark"] .wbTabs button[aria-selected="true"]{background:var(--theme-selected);color:var(--theme-accent);box-shadow:0 1px 5px #0003}
+  html[data-theme="dark"] :is(.wbCard,.wbChoice,.wbGroup,.wbLibraryItem,.wbDialog,.wbDialogActions){background:var(--p);color:var(--t);border-color:var(--line)}
+  html[data-theme="dark"] .wbChoice{border-color:var(--theme-control)}
+  html[data-theme="dark"] .wbChoice[aria-pressed="true"]{background:var(--theme-danger-bg);color:var(--theme-danger);border-color:#f18c95}
+  html[data-theme="dark"] :is(.wbField>span,.wbField small,.wbMeta,.wbReadOnly,.wbCheck small,.wbStock small,.wbTable small){color:var(--m)}
+  html[data-theme="dark"] .wbGroup>summary .wbGroupPrice{color:var(--t)}
+  html[data-theme="dark"] :is(.wbGroupBody,.wbStock,.wbBranch,.wbTable td,.wbDocumentActions){border-color:var(--line)}
+  html[data-theme="dark"] .wbBadge{background:var(--theme-selected);color:var(--theme-accent)}
+  html[data-theme="dark"] .wbBadge.warn{background:var(--theme-warning-bg);color:var(--theme-warning)}
+  html[data-theme="dark"] .wbSelected{background:var(--theme-success-bg);color:var(--theme-success);border-color:#467f69}
+  html[data-theme="dark"] .wbStatus{background:var(--theme-success-bg);color:var(--theme-success)}
+  html[data-theme="dark"] .wbStatus.error{background:var(--theme-danger-bg);color:var(--theme-danger)}
+  html[data-theme="dark"] .wbTable th{background:var(--p2);color:var(--m);border-color:var(--line)}
+  html[data-theme="dark"] .wbOverlay{background:#050c14b8}
+  html[data-theme="dark"] .wbDialog{box-shadow:0 15px 80px #0008}
+  html[data-theme="dark"] .wbRowButtons button{background:var(--p2);color:var(--m);border-color:var(--theme-control)}
+  html[data-theme="dark"] :is(.wbRowLabel,.quoteRowsTable .quoteRowName small.wbRowLabel){color:var(--theme-warning)}
+  html[data-theme="dark"] #quoteRows .wbEditorGroupHeading td{background:var(--p2);color:var(--t)}
+  html[data-theme="dark"] .wbPreview{border-color:var(--line)}
+  html[data-theme="dark"] #warrantySignatureDialog>div{color:var(--t);border-color:var(--line)}
+  html[data-theme="dark"] #warrantySignatureCanvas{background:#fff!important}
+
+  /* Stock import is a separate page with the same device preference. */
+  html[data-theme="dark"] .stockSyncPage .drop{background:var(--p2);border-color:var(--theme-control)}
+  html[data-theme="dark"] .stockSyncPage .drop.drag{background:var(--theme-selected);border-color:var(--theme-accent)}
+  html[data-theme="dark"] .stockSyncPage .progress{background:var(--line)}
+  html[data-theme="dark"] .stockSyncPage .bar{background:var(--theme-accent)}
+  html[data-theme="dark"] .stockSyncPage .tab{background:var(--p2);color:var(--m);border-color:var(--theme-control)}
+  html[data-theme="dark"] .stockSyncPage .tab.on{background:var(--theme-selected);color:var(--theme-accent);border-color:var(--theme-accent)}
+  html[data-theme="dark"] .stockSyncPage :is(.tableWrap,.tbl td){border-color:var(--line)}
+  html[data-theme="dark"] .stockSyncPage .tbl th{background:var(--p2);color:var(--m);border-color:var(--line)}
+  html[data-theme="dark"] .stockSyncPage .chg.new{background:var(--theme-success-bg);color:var(--theme-success)}
+  html[data-theme="dark"] .stockSyncPage .chg.price{background:var(--theme-warning-bg);color:var(--theme-warning)}
+  html[data-theme="dark"] .stockSyncPage :is(.chg.stock,.chg.meta){background:var(--theme-selected);color:var(--theme-accent)}
+  html[data-theme="dark"] .stockSyncPage :is(.chg.removed,.chg.conflict){background:var(--theme-danger-bg);color:var(--theme-danger)}
+  html[data-theme="dark"] .stockSyncPage .stat.new strong{color:var(--theme-success)}
+  html[data-theme="dark"] .stockSyncPage .stat.price strong{color:var(--theme-warning)}
+  html[data-theme="dark"] .stockSyncPage .stat.stock strong{color:var(--theme-accent)}
+  html[data-theme="dark"] .stockSyncPage :is(.stat.off,.stat.conf) strong{color:var(--theme-danger)}
+}
+@media print{.themeToggle,.themeStatus{display:none!important}}

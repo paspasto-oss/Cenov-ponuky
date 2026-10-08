@@ -4,8 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f3f6f8">
+<script src="../js/theme.js?v=20261008-theme1"></script>
 <title>Spektra Ponuky – Aktualizácia zásob</title>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>\n<script src="../js/idb-stock.js?v=20260926-scale100k2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="../js/idb-stock.js?v=20260926-scale100k2"></script>
 <style>
 :root{--bg:#B9D9EB;--p:#ffffff;--p2:#eaf4f9;--line:#8fb8cf;--t:#173247;--m:#607787;--r:#c20000;--g:#28775c;--a:#9a7628;--b:#00539B}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding-bottom:86px}
@@ -20,14 +22,17 @@ button,input,select{font:inherit}button{cursor:pointer}input,select{background:#
 <script src="../supabase-config.js"></script>
 <script src="../js/db.js?v=20260927-mobilecachefix1"></script>
 <link rel="stylesheet" href="../js/visual-refresh.css?v=20261006-clean2">
+<link rel="stylesheet" href="../js/theme.css?v=20261008-theme1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=20261001-cs1">
 </head>
 <body class="stockSyncPage">
 <div class="wrap">
   <div class="head">
     <div class="brand"><div class="logo"></div><div><h1>Aktualizácia zásob</h1><div class="sub">POHODA → Spektra Ponuky</div></div></div>
+    <button class="themeToggle" type="button" data-theme-toggle aria-label="Tmavý režim" aria-pressed="false" title="Prepnúť na tmavý režim"><svg class="themeMoon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 13A8.5 8.5 0 0 1 11 3.5 8.5 8.5 0 1 0 20.5 13Z"/></svg><svg class="themeSun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button>
     <div id="dbState" class="pill">Kontrolujem databázu…</div>
   </div>
+  <span id="themeStatus" class="themeStatus" role="status" aria-live="polite"></span>
 
   <div id="authCard" class="card hidden">
     <h2>Prihlásenie do Spektra databázy</h2>
