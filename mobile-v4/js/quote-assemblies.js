@@ -51,9 +51,13 @@
     return 'material';
   }
   function reference(stock={}){
-    const ref={source:stock.source||'pohoda'};
+    const ref={source:stock.source||'pohoda',...(stock.match_by==='code'?{match_by:'code'}:{})};
     for(const key of ['id','fingerprint','plu','code','storage_ref','pohoda_stock_id'])ref[key]=stock[key]??null;
     return ref;
+  }
+  function codeReference(stock={}){
+    const code=text(stock.code,'kód POHODA');
+    return {...reference(stock),match_by:'code',code};
   }
   function catalogReference(row){
     if(object(metadata(row).catalog_ref))return reference(metadata(row).catalog_ref);
@@ -69,6 +73,15 @@
     if(!ref)return null;
     const rows=stocks.filter(s=>s&&s.active!==false&&(!ref.storage_ref||String(s.storage_ref??'')===String(ref.storage_ref)));
     const match=field=>rows.filter(s=>s[field]!=null&&String(s[field])===String(ref[field]));
+    if(ref.match_by==='code'){
+      // The code is a string: never strip leading zeroes, fold case or use a name.
+      const code=String(ref.code??'').trim();
+      if(!code)return null;
+      const found=stocks.filter(s=>s&&s.active!==false&&String(s.code??'').trim()===code);
+      if(found.length===1)return found[0];
+      const scoped=ref.storage_ref?found.filter(s=>String(s.storage_ref??'')===String(ref.storage_ref)):[];
+      return scoped.length===1?scoped[0]:null;
+    }
     if(ref.fingerprint||ref.id){
       for(const field of ['fingerprint','id']){
         if(!ref[field])continue;const found=match(field);if(found.length===1)return found[0];
@@ -312,6 +325,33 @@
     return {items,skipped};
   }
   function addRows(q,groupId,rows,options){return mutation(q,draft=>addRowsIn(draft,groupId,rows,options));}
+  function assignStock(q,id,stock,options={}){
+    if(!stock||stock.active===false)throw new Error('Skladová karta nie je dostupná.');
+    const ref=codeReference(stock),name=text(stock.name,'názov skladovej karty'),unit=text(stock.unit,'mernú jednotku');
+    const price=money(stock.sell_price_ex_vat),cost=money(stock.purchase_price_ex_vat);
+    return mutation(q,draft=>{
+      const row=getRow(draft,id),m=metadata(row);
+      if(isText(row))throw new Error('Textový riadok sa nepriraďuje k zásobám.');
+      const unitKey=v=>String(v??'').trim().toLowerCase().replace('²','2').replace('³','3');
+      const changedUnit=unitKey(row.unit)!==unitKey(unit);
+      if(changedUnit&&options.confirmUnit!==true)throw new Error('Skladová karta má inú MJ. Potvrďte množstvo v novej mernej jednotke.');
+      const qty=options.qty===undefined?quantity(row.qty):quantity(options.qty);
+      if(changedUnit||qty!==Number(row.qty)){
+        m.quantity_rule={type:'fixed',qty};m.manual.qty=true;m.manual_quantity=true;
+      }
+      row.qty=qty;row.name=name;row.unit=unit;row.price=price;row.cost=cost;
+      row.pohoda=clone(stock);row.pohoda_code=ref.code;row.pohoda_stock_id=stock.pohoda_stock_id??null;
+      row.mapping_status='mapped';row.price_override=false;row.cost_override=false;
+      m.catalog_ref=ref;m.stock_selection_required=false;
+      m.manual={...m.manual,name:false,unit:changedUnit,price:false,cost:false};
+      m.price_rule={mode:'catalog'};delete m.price_policy;
+      m.price_source={source:'pohoda',updated_at:stock.updated_at||stock.imported_at||null};
+      if(row.stored_metadata.quote_material){
+        Object.assign(row.stored_metadata.quote_material,{origin:'catalog',catalog_ref:clone(ref),name_override:false});
+      }
+      return row;
+    });
+  }
   function moveRow(q,id,targetGroupId,options={}){
     return mutation(q,draft=>{
       const row=getRow(draft,id),target=getGroup(draft,targetGroupId),old=getGroup(draft,metadata(row).group_id);
@@ -496,6 +536,10 @@
       const group=draft.material_edits.assemblies.groups.find(g=>g.id===m.group_id);
       if(group?.pricing==='fixed')manual.price=true;
       if(!st){missing.push({row_id:m.id,name:row.name,reason:'catalog_item_missing'});continue;}
+      const unitKey=v=>String(v??'').trim().toLowerCase().replace('²','2').replace('³','3');
+      if(ref.match_by==='code'&&unitKey(row.unit)!==unitKey(st.unit)){
+        missing.push({row_id:m.id,name:row.name,reason:'catalog_unit_changed',error:'Zmenená MJ. Znovu priraďte skladovú kartu a potvrďte množstvo.'});continue;
+      }
       let cost,price;
       try{
         cost=money(st.purchase_price_ex_vat);price=money(st.sell_price_ex_vat);
@@ -529,7 +573,7 @@
         if(Array.isArray(options.rowIds)&&!options.rowIds.includes(match.row_id))continue;
         const row=getRow(draft,match.row_id);
         if(JSON.stringify(catalogReference(row))!==JSON.stringify(match.reference))throw new Error('Skladová väzba sa od náhľadu zmenila. Zopakujte aktualizáciu.');
-        row.pohoda=clone(match.stock);metadata(row).catalog_ref=reference(match.stock);
+        row.pohoda=clone(match.stock);metadata(row).catalog_ref=reference({...match.stock,...(match.reference.match_by==='code'?{match_by:'code'}:{})});
         metadata(row).price_source={source:'pohoda',updated_at:match.stock.updated_at||match.stock.imported_at||null};
         row.pohoda_code=match.stock.code??row.pohoda_code??null;
         row.pohoda_stock_id=match.stock.pohoda_stock_id??row.pohoda_stock_id??null;
@@ -700,7 +744,7 @@
         note:String(row.note||''),work_scope:Array.isArray(row.work_scope)?clone(row.work_scope):[],catalog_ref:catalogReference(row)})),
       contents:clone(group.contents||[])}));
   }
-  const api={init,ensure:init,inspect,groups,metadata,rowId,kind,isText,unlocked,quantity,money,amounts,reference,catalogReference,findStock,manualFlags,
+  const api={init,ensure:init,inspect,groups,metadata,rowId,kind,isText,unlocked,quantity,money,amounts,reference,codeReference,catalogReference,findStock,assignStock,manualFlags,
     outputSettings,setOutput,createGroup,updateGroup,setGroupDetails,addRows,moveRow,copyRow,copyGroup,removeRow,removeGroup,setField,markManual,setFixedPrice,
     validateRule,evaluateRule,setQuantityRule,previewQuantities,applyQuantities,validatePriceRule,priceFromCost,setPriceRule,previewPrices,applyPrices,
     addScenario,addOptional,selectOptional,saveVariant,selectVariant,removeVariant,createRevision,procurement,installer};

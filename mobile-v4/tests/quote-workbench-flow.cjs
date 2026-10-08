@@ -279,3 +279,35 @@ test('undo after issuing creates R2 instead of overwriting the issued version',a
   assert.equal(c.current.material_edits.assemblies.revision.number,2);assert.equal(c.current.material_edits.assemblies.revision.root_quote_no,issued.quote_no);
   assert.deepEqual(clone(c.quotes.find(q=>q.id===original.id)),issued);
 });
+
+test('underfloor quick scenario can be prepared and inserted without selecting a device',async()=>{
+ const original=quote('floor-draft','draft'),{c,api,open,confirm,node}=environment(original);await open();
+ // The VM UI and Node scenario module have different Object prototypes; clone the test boundary.
+ c.SpektraHvacScenarios={...S,instantiate:input=>S.instantiate(clone(input))};
+ await api.action('scenario',{dataset:{id:'floor_heating_rehau'}});
+ assert.doesNotMatch(node('quoteWorkbench').innerHTML,/data-wb-search="device"/);
+ await api.action('preview-scenario');assert.match(node('wbOverlay').innerHTML,/RAUTHERM/);
+ await confirm();assert.ok(c.current.items.some(i=>i.role==='floor_pipe'));assert.equal(c.current.status,'draft');
+});
+test('stock assignment is a preview until confirmation and replaces one row in a new revision',async()=>{
+ const original=quote(),{c,api,open,confirm,fill,calls}=environment(original);await open();
+ const selected=stock({id:'fresh',fingerprint:'fresh',code:'0017-S',name:'REHAU potrubie',sell_price_ex_vat:2,purchase_price_ex_vat:1});c.stocks.push(selected);
+ api.stockLinkDialog(1,selected);assert.equal(calls.sends.length,0);assert.equal(c.current.id,original.id);
+ fill({wbLinkQty:'5'});await confirm();assert.notEqual(c.current.id,original.id);assert.equal(c.current.items.length,original.items.length);
+ assert.equal(c.current.items[1].pohoda_code,'0017-S');assert.equal(c.current.items[1].qty,5);assert.equal(c.current.items[1].price,2);
+ assert.equal(A.catalogReference(c.current.items[1]).match_by,'code');assert.deepEqual(clone(c.quotes.find(q=>q.id===original.id)),original);
+});
+test('missing stock slot renders a light placeholder without changing saved name or quantity',async()=>{
+ const original=quote('placeholder','draft');original.items[1].pohoda=null;original.items[1].pohoda_code=null;original.items[1].price=null;original.items[1].cost=null;
+ original.items[1].stored_metadata={quote_assembly:{stock_selection_required:true}};
+ const {c,open,node,api}=environment(original);await open();
+ assert.match(node('bomItems').innerHTML,/quoteStockPlaceholder/);assert.match(node('bomItems').innerHTML,/placeholder="Rozvod v kuchyni"/);
+ assert.match(node('bomItems').innerHTML,/data-wb-action="link-stock"/);assert.equal(c.current.items[1].name,'Rozvod v kuchyni');
+ api.stockLinkDialog(1);assert.match(node('wbOverlay').innerHTML,/Import XML z POHODY/);
+ assert.doesNotMatch(node('wbOverlay').innerHTML,/data-wb-action="confirm-dialog"/,'search dialog has no premature confirmation');
+});
+test('changed or deleted catalog selection cannot be confirmed with stale prices',async()=>{
+ const {c,api,open,confirm,fill,calls,node}=environment(quote('guard','draft'));await open();
+ const selected=stock();api.stockLinkDialog(1,selected);fill({wbLinkQty:'5'});c.stocks[0].sell_price_ex_vat=99;
+ await confirm();assert.equal(calls.sends.length,0);assert.match(node('wbDialogError').textContent,/zmenila/);
+});

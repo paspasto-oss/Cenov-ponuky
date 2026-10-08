@@ -59,3 +59,36 @@ test('explicit zero prices and quantities are commercial data, not image-only da
  const c=environment([oldCard()]);const row={...oldCard(),name:'New',purchase_price_ex_vat:null,sell_price_ex_vat:0,quantity_available:0};
  const rows=c.collapseImageOnlyRows([row]);assert.equal(rows[0].name,'New');assert.equal(rows[0].sell_price_ex_vat,0);
 });
+
+test('code, not reused PLU or old name, selects the baseline card',()=>{
+ const a={...oldCard(),code:'0017',plu:'1',fingerprint:'a'},b={...oldCard(),code:'0018',plu:'2',fingerprint:'b'};
+ const c=environment([a,b]);c.mergeRows([c.normalizeXmlStock(stock({code:'0017',plu:'2',name:'Nový názov'}),0)]);
+ assert.equal(c.normalized[0].fingerprint,'a');assert.equal(c.normalized[0].code,'0017');assert.equal(c.normalized[0].plu,'2');
+ assert.equal(c.normalized[0].name,'Nový názov');assert.equal(c.conflicts.length,0);
+});
+test('same name/PLU or case-folded/zero-stripped code cannot merge a different product',()=>{
+ const c=environment([{...oldCard(),code:'0017-X',fingerprint:'old'}]);
+ for(const code of ['17-X','0017-x','OTHER']){
+   c.mergeRows([c.normalizeXmlStock(stock({code}),0)]);
+   assert.notEqual(c.normalized[0].fingerprint,'old');assert.equal(c.normalized[0].code,code);
+ }
+});
+test('unique code remains the identity when the classification is changed',()=>{
+ const c=environment([{...oldCard(),storage_ref:'old-classification',storage_name:'Staré členenie'}]);
+ c.mergeRows([c.normalizeXmlStock(stock(),0)]);
+ assert.equal(c.normalized[0].fingerprint,'existing-card');assert.equal(c.normalized[0].storage_ref,'291');
+});
+test('ambiguous duplicate code and missing codes are excluded as conflicts instead of guessed',()=>{
+ const c=environment([{...oldCard(),fingerprint:'a',storage_ref:'1'},{...oldCard(),fingerprint:'b',storage_ref:'2'}]);
+ c.mergeRows([c.normalizeXmlStock(stock({storage:false}),0)]);assert.equal(c.conflicts.length,1);assert.match(c.conflicts[0].reason,/viac skladových/);
+ c.mergeRows([c.normalizeXmlStock(stock({code:''}),0)]);assert.equal(c.conflicts.length,1);assert.match(c.conflicts[0].reason,/Chýba kód/);
+});
+test('same code and warehouse with conflicting commercial values is not silently deduplicated',()=>{
+ const c=environment();c.mergeRows([c.normalizeXmlStock(stock({sale:10}),0),c.normalizeXmlStock(stock({sale:20}),1)]);
+ assert.equal(c.conflicts.length,1);assert.match(c.conflicts[0].reason,/rozdielna/);
+});
+test('new fingerprints depend on exact code and classification, never name or PLU',()=>{
+ const c=environment();const a=c.normalizeXmlStock(stock({name:'A',plu:'1'}),0),b=c.normalizeXmlStock(stock({name:'B',plu:'2'}),1);
+ assert.equal(a.fingerprint,b.fingerprint);
+ assert.notEqual(a.fingerprint,c.normalizeXmlStock(stock({code:'different'}),2).fingerprint);
+});

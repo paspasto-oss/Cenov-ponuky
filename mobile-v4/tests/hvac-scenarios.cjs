@@ -9,9 +9,9 @@ const stock=(code,price=10,extra={})=>({id:'stock-'+code,code,name:'Katalóg '+c
 const device=(extra={})=>({brand:'Midea',model:'Vybrané zariadenie',power_kw:8,sell_price_ex_vat:1000,...extra});
 const build=(scenarioId,extra={})=>S.instantiate({scenarioId,recipes,device:device(),stocks:[],...extra});
 
-test('six scenarios expose usable fields and do not mutate injected source recipes',()=>{
+test('seven scenarios expose usable fields and do not mutate injected source recipes',()=>{
   const before=clone(recipes);
-  assert.deepEqual(S.list().map(x=>x.id),['heat_pump','gas_boiler','biomass','ac_single','ac_multi','zti']);
+  assert.deepEqual(S.list().map(x=>x.id),['heat_pump','gas_boiler','biomass','ac_single','ac_multi','floor_heating_rehau','zti']);
   for(const d of S.list()){
     assert.ok(d.parameters.every(f=>f.key&&f.label&&Object.hasOwn(f,'default')));
     const result=build(d.id);assert.ok(result.groups.length);assert.ok(result.items.length);
