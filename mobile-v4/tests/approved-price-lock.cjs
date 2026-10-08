@@ -23,7 +23,7 @@ function quote(status='approved'){
 function environment(q=quote()){
  const nodes=new Map();const calls={renders:0,saves:0,fetches:0,alerts:[],screen:null};
  const getNode=id=>{if(!nodes.has(id))nodes.set(id,{textContent:'',classList:{add(){calls.screen=id},remove(){},toggle(){}},innerHTML:''});return nodes.get(id)};
- const c=vm.createContext({current:structuredClone(q),quotes:[structuredClone(q)],console,
+ const c=vm.createContext({current:structuredClone(q),quotes:[structuredClone(q)],console,SpektraRealizationDate:require('../js/realization-date.js'),
   document:{getElementById:getNode,querySelectorAll:()=>[]},window:{scrollTo(){},SpektraDB:{isAuthenticated:()=>true}},
   SpektraDB:{async listStocks(){calls.fetches++;return [{sell_price_ex_vat:999,name:'Nový názov'}]}},
   alert:m=>calls.alerts.push(m),renderFinal:()=>calls.renders++,upsertCurrent:async()=>calls.saves++,

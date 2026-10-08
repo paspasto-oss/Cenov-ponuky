@@ -422,6 +422,7 @@ window.SpektraDB = (() => {
       url:x.url,path:x.path||null,name:x.name||'',source:x.source||''
     }));
     return {
+      estimated_realization_date:window.SpektraRealizationDate.get(q),
       boiler_type:q.boiler_type||null,
       ac_mode:q.ac_mode||null,
       multisplit_count:q.multisplit_count||null,
@@ -605,7 +606,7 @@ window.SpektraDB = (() => {
       electrical:i.electrical||{},
       routes:i.routes||{},
       extra_work:Array.isArray(i.extra_work)?i.extra_work:[],
-      installation:i.installation||{},
+      installation:{...(i.installation||{}),estimated_realization_date:window.SpektraRealizationDate.get(i)},
       checklist:i.checklist||{},
       notes:i.notes||null,
       inspected_at:i.inspected_at||null,

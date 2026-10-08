@@ -13,7 +13,7 @@
   const value=id=>document.getElementById(id)?.value??'';
   const state={owner:null,tab:'items',scenarioId:'heat_pump',picked:{},search:{},parameters:{},library:[],libraryOwner:null,libraryLoading:false,undo:[],preview:null,status:'',error:false};
   const labels={equipment:'Zariadenie',material:'Montážny materiál',labor:'Montáž',transport:'Doprava',revision:'Revízia',pressure:'Tlaková skúška',service:'Služba',text:'Text',other:'Ostatné'};
-  const formFields=['items','material_edits','category','brand','system_type','device','building','ac_mode','boiler_type','multisplit_count','optional_services','installation_tier','customer'];
+  const formFields=['items','material_edits','category','brand','system_type','device','building','ac_mode','boiler_type','multisplit_count','optional_services','installation_tier','customer','estimated_realization_date'];
   function field(label,id,val='',extra=''){return '<label class="wbField"><span>'+E(label)+'</span><input id="'+E(id)+'" value="'+E(val)+'" '+extra+'></label>';}
   function btn(action,label,data='',cls='ghost'){return '<button type="button" class="btn '+cls+'" data-wb-action="'+E(action)+'" '+data+'>'+E(label)+'</button>';}
   function select(label,id,options,selected,attrs=''){return '<label class="wbField"><span>'+E(label)+'</span><select id="'+E(id)+'" '+attrs+'>'+options.map(([v,t])=>'<option value="'+E(v)+'"'+(String(v)===String(selected)?' selected':'')+'>'+E(t)+'</option>').join('')+'</select></label>';}
@@ -56,6 +56,30 @@
     if(total){const i=current.items[index];total.textContent=money(i?.price==null?null:Number(i.qty)*Number(i.price));}
     return result;
   }
+  function validRealizationDate(raw,input){
+    const dates=root.SpektraRealizationDate;
+    if(!dates)throw new Error('Kalendár sa nenačítal. Obnovte aplikáciu.');
+    const value=String(raw??'').trim(),date=dates.normalize(value);
+    if(input?.validity?.badInput||(value&&!date))throw new Error('Zadajte platný dátum realizácie alebo nechajte pole prázdne.');
+    return date;
+  }
+  async function setRealizationDate(newValue,input){
+    let date;
+    try{
+      if(!current)throw new Error('Nie je otvorená ponuka.');
+      date=validRealizationDate(newValue,input);
+    }catch(e){input?.setAttribute('aria-invalid','true');status(e.message,true);setQuoteMaterialStatus?.(e.message,true);return {ok:false,error:e.message};}
+    if(root.SpektraRealizationDate.get(current)===date){
+      if(input){input.removeAttribute('aria-invalid');input.value=date;}
+      status('CCA termín realizácie sa nezmenil.');
+      return {ok:true,unchanged:true};
+    }
+    const pending=mutate(date?'CCA termín realizácie bol uložený.':'CCA termín realizácie bol vymazaný.',q=>{q.estimated_realization_date=date;},{renderRows:false});
+    const owner=current,token=owner?._edit_token,result=await pending;
+    if(result.stale||current?.id!==owner?.id||current?._edit_token!==token)return result;
+    if(input){if(result.ok){input.removeAttribute('aria-invalid');input.value=root.SpektraRealizationDate.get(current);}else input.setAttribute('aria-invalid','true');}
+    return result;
+  }
   async function beginRevision(){
     try{prepareEdit();openQuoteRows();state.tab='items';render();return await saveQuoteMaterialChange('Vytvorená nová revízia ponuky.',true);}catch(e){status(e.message,true);}
   }
@@ -63,7 +87,11 @@
     if(!current)startWizard();
     const name=String(value('cName')).trim(),phone=String(value('cPhone')).trim(),address=String(value('cAddress')).trim();
     if(!name||!phone||!address){alert('Vyplňte meno, telefón a adresu realizácie.');return;}
+    let date;const dateInput=document.getElementById('cEstimatedRealizationDate');
+    try{date=validRealizationDate(dateInput?.value,dateInput);dateInput?.removeAttribute('aria-invalid');}
+    catch(e){dateInput?.setAttribute('aria-invalid','true');dateInput?.reportValidity?.();alert(e.message);return;}
     current.customer={name,phone,address,email:String(value('cEmail')).trim(),note:String(value('cNote')).trim()};
+    current.estimated_realization_date=date;
     A().init(current);quoteRowsEditorActive=true;state.owner=current.id;state.tab='assemblies';state.undo=[];
     openQuoteRows();render();await saveQuoteMaterialChange('Zákazník bol uložený. Vyberte scenár a zariadenie.');
   }
@@ -538,6 +566,6 @@
       A().addRows(q,group.id,temp.items,{origin:'manual'});
     });if(result.ok&&!result.stale)resetManualQuoteForm();return result;
   }
-  const api={addCatalog,addManual,onOpen,render,tab,action,changeRow,mutate,prepareEdit,beginRevision,quickStart,revisionLabel,rowControls,rowGroupControl,bindRows,marginWarning,priceDialog,loadLibrary};
+  const api={addCatalog,addManual,onOpen,render,tab,action,changeRow,setRealizationDate,mutate,prepareEdit,beginRevision,quickStart,revisionLabel,rowControls,rowGroupControl,bindRows,marginWarning,priceDialog,loadLibrary};
   root.SpektraQuoteWorkbench=api;
 })(typeof window==='object'?window:globalThis);

@@ -7,6 +7,7 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const A=require('../js/quote-assemblies.js'),M=require('../js/quote-materials.js'),S=require('../js/hvac-scenarios.js');
 const O=require('../js/quote-workbench-output.js'),Summary=require('../js/quote-list-summary.js'),Storage=require('../js/quote-storage.js');
 const RowOutput=require('../js/quote-row-output.js');
+const RealizationDate=require('../js/realization-date.js');
 const clone=x=>JSON.parse(JSON.stringify(x));
 const stock=(extra={})=>({id:'cu-card',fingerprint:'cu-fingerprint',plu:'CU1',code:'CU28',name:'Potrubie Cu28',unit:'m',active:true,sell_price_ex_vat:12,purchase_price_ex_vat:7,...extra});
 const quote=(id='original',status='sent')=>({id,quote_no:'CP-'+id,status,category:'heat_pump',system_type:'monoblock',
@@ -44,7 +45,7 @@ function environment(original=quote(),options={}){
       const key=found[1].replace(/-([a-z])/g,(_,x)=>x.toUpperCase());return [...nodes.values()].filter(n=>Object.hasOwn(n.dataset,key));
     }};doc.body=node('body');
   const c=vm.createContext({console:{log:console.log,error:(...args)=>calls.errors.push(args),warn:(...args)=>calls.warnings.push(args)},setTimeout,clearTimeout,document:doc,current:clone(original),quotes:[clone(original),quote('other','draft')],stocks:[stock()],
-    SpektraQuoteAssemblies:A,SpektraQuoteMaterials:M,SpektraHvacScenarios:S,SpektraQuoteWorkbenchOutput:O,SpektraQuoteSummary:Summary,SpektraQuoteStorage:Storage,
+    SpektraQuoteAssemblies:A,SpektraQuoteMaterials:M,SpektraHvacScenarios:S,SpektraQuoteWorkbenchOutput:O,SpektraQuoteSummary:Summary,SpektraQuoteStorage:Storage,SpektraRealizationDate:RealizationDate,
     localStorage:{getItem:key=>local.get(key)??null,setItem:(key,val)=>local.set(key,String(val))},alert:message=>calls.alerts.push(message),confirm:()=>true,
     esc:x=>String(x??'').replace(/[&<>"']/g,v=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[v])),eur:x=>x==null?'—':Number(x).toFixed(2)+' €',
     isTradeQuote:()=>false,renderFinal:()=>calls.final++,renderRecommendation(){},renderInternalProfit(){},updateActiveContext(){},scrollTo(){},
@@ -106,6 +107,49 @@ test('invalid first edit creates no revision, removes no consent and queues no s
   const input=node('invalid-price');const result=await c.setQuoteItemField(1,'price','-1',input);
   assert.equal(result.ok,false);assert.equal(input.getAttribute('aria-invalid'),'true');assert.deepEqual(clone(c.current),before);
   assert.equal(calls.sends.length,0);assert.equal(c.quotes.length,2);
+});
+test('realization date edit persists in a new revision while issued quotes and every billed value stay intact',async()=>{
+  const billed=q=>(q.items||[]).map(i=>[i.name,i.qty,i.unit,i.price,i.cost]);
+  for(const status of ['sent','approved']){
+    const original={...quote('date-'+status,status),estimated_realization_date:'2026-10-20'};
+    const {c,calls,open,api,node}=environment(original);await open();
+    const result=await api.setRealizationDate('2026-11-03',node('quoteEstimatedRealizationDate'));
+    assert.equal(result.ok,true);assert.notEqual(c.current.id,original.id);assert.equal(c.current.status,'draft');
+    assert.equal(c.current.material_edits.assemblies.revision.number,2);assert.equal(c.current.estimated_realization_date,'2026-11-03');
+    assert.deepEqual(billed(c.current),billed(original));assert.equal(c.current.net,original.net);assert.equal(c.current.total,original.total);
+    assert.deepEqual(clone(c.quotes.find(q=>q.id===original.id)),original);assert.equal(calls.sends.length,1);
+    assert.equal(calls.sends[0].estimated_realization_date,'2026-11-03');
+    const revisionId=c.current.id;await open('other');await open(revisionId);
+    assert.equal(c.current.estimated_realization_date,'2026-11-03');assert.equal(node('quoteEstimatedRealizationDate').value,'2026-11-03');
+  }
+});
+test('invalid or unchanged realization date creates no revision and does not clear consent or save',async()=>{
+  const original={...quote(),estimated_realization_date:'2026-10-20'}, {c,calls,open,api,node}=environment(original);await open();
+  const input=node('quoteEstimatedRealizationDate'),before=clone(c.current);
+  assert.equal((await api.setRealizationDate('2026-02-30',input)).ok,false);assert.equal(input.getAttribute('aria-invalid'),'true');
+  input.validity={badInput:true};assert.equal((await api.setRealizationDate('',input)).ok,false);delete input.validity;
+  assert.equal((await api.setRealizationDate('2026-10-20',input)).unchanged,true);assert.equal(input.getAttribute('aria-invalid'),null);
+  assert.deepEqual(clone(c.current),before);assert.equal(calls.sends.length,0);assert.equal(c.quotes.length,2);
+  const empty=environment(quote('empty-date','draft'));await empty.open();
+  assert.equal((await empty.api.setRealizationDate('')).unchanged,true);assert.equal(empty.calls.sends.length,0);
+});
+test('clearing and undoing realization date retains the draft and survives reopening',async()=>{
+  const original={...quote('date-draft','draft'),estimated_realization_date:'2026-10-20'}, {c,calls,open,api,node}=environment(original);await open();
+  const result=await api.setRealizationDate('',node('quoteEstimatedRealizationDate'));assert.equal(result.ok,true);
+  assert.equal(c.current.id,original.id);assert.equal(c.current.estimated_realization_date,'');assert.equal(calls.sends.at(-1).estimated_realization_date,'');
+  await api.action('undo');assert.equal(c.current.estimated_realization_date,'2026-10-20');assert.equal(c.current.id,original.id);
+  await api.setRealizationDate('');await open('other');await open(original.id);
+  assert.equal(c.current.estimated_realization_date,'');assert.equal(node('quoteEstimatedRealizationDate').value,'');
+});
+test('quick quote start saves realization date as quote data separate from the contact',async()=>{
+  const original=quote('quick-date','draft'),{c,calls,fill,api,node}=environment(original);
+  fill({cName:'Nový zákazník',cPhone:'0900000000',cAddress:'Rajec'});
+  const before=clone(c.current),dateInput=node('cEstimatedRealizationDate');dateInput.validity={badInput:true};
+  await api.quickStart();assert.deepEqual(clone(c.current),before);assert.equal(calls.sends.length,0);
+  delete dateInput.validity;dateInput.value='2026-12-02';
+  await api.quickStart();assert.equal(c.current.estimated_realization_date,'2026-12-02');
+  assert.equal(node('quoteEstimatedRealizationDate').value,'2026-12-02');assert.equal(calls.sends.at(-1).estimated_realization_date,'2026-12-02');
+  assert.equal(Object.hasOwn(c.current.customer,'estimated_realization_date'),false);
 });
 test('approved offer opens original final view and explicit edit creates an independent revision',async()=>{
   const original=quote('approved','approved'),{c,calls,open}=environment(original);await open();

@@ -2,6 +2,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const M=require('../js/quote-materials.js');
+const SpektraRealizationDate=require('../js/realization-date.js');
 const clone=x=>JSON.parse(JSON.stringify(x));
 const stock=(extra={})=>({id:'stock-1',fingerprint:'fp-1',plu:'PLU1',code:'CU28',name:'Medené potrubie 28 mm',unit:'m',active:true,sell_price_ex_vat:12,purchase_price_ex_vat:7,...extra});
 const material=()=>({role:'pipe',name:'Medené potrubie 28 mm',qty:5,unit:'m',pohoda:stock(),pohoda_code:'CU28',price:12,cost:7,visible:false});
@@ -90,13 +91,13 @@ test('missing purchase or sales price remains unknown instead of being silently 
 test('atomic RPC payload and remote hydration retain material journal and custom metadata',async()=>{
  const js=fs.readFileSync(path.join(__dirname,'../js/db.js'),'utf8');let payload;
  const client={auth:{onAuthStateChange(){},getSession:async()=>({data:{session:{user:{id:'test'}}}})},rpc:async(name,args)=>{payload=args;return {data:{remote_id:'r',sync_version:2}}}};
- const c=vm.createContext({window:{SPEKTRA_SUPABASE:{url:'x',anonKey:'x'},supabase:{createClient:()=>client}},console});
+ const c=vm.createContext({window:{SpektraRealizationDate,SPEKTRA_SUPABASE:{url:'x',anonKey:'x'},supabase:{createClient:()=>client}},console});
  vm.runInContext(js,c);await c.window.SpektraDB.init();const q=quote();M.remove(q,1);M.add(q,stock(),'2.5','new');
  await c.window.SpektraDB.saveQuote(q,'request');assert.equal(JSON.stringify(payload.p_quote.workflow.material_edits),JSON.stringify(q.material_edits));
  assert.equal(payload.p_items.at(-1).metadata.quote_material.id,'new');assert.equal(payload.p_items.at(-1).qty,2.5);
  const html=fs.readFileSync(path.join(__dirname,'../app.html'),'utf8');
  const declarations=[...html.matchAll(/^(?:async )?function (\w+)\(/gm)],n=declarations.findIndex(m=>m[1]==='remoteQuoteToLocal');
- const context=vm.createContext({stockByCodeMap:new Map(),norm:x=>String(x).toLowerCase()});
+ const context=vm.createContext({stockByCodeMap:new Map(),norm:x=>String(x).toLowerCase(),SpektraRealizationDate});
  vm.runInContext(html.slice(declarations[n].index,declarations[n+1].index),context);
  const saved=context.remoteQuoteToLocal({...clone(payload.p_quote),id:'r',status:'draft',workflow:clone(payload.p_quote.workflow),quote_items:clone(payload.p_items),sync_version:2});
  assert.equal(JSON.stringify(saved.material_edits),JSON.stringify(q.material_edits));assert.equal(saved.items.at(-1).stored_metadata.quote_material.id,'new');
@@ -235,7 +236,7 @@ test('server-approved status blocks every row mutation even with a stale local d
 test('atomic storage round trip retains row mode, PDF setting, field edits and manual text identity',async()=>{
  const js=fs.readFileSync(path.join(__dirname,'../js/db.js'),'utf8');let payload;
  const client={auth:{onAuthStateChange(){},getSession:async()=>({data:{session:{user:{id:'test'}}}})},rpc:async(name,args)=>{payload=args;return {data:{remote_id:'r',sync_version:2}}}};
- const c=vm.createContext({window:{SPEKTRA_SUPABASE:{url:'x',anonKey:'x'},supabase:{createClient:()=>client}},console});
+ const c=vm.createContext({window:{SpektraRealizationDate,SPEKTRA_SUPABASE:{url:'x',anonKey:'x'},supabase:{createClient:()=>client}},console});
  vm.runInContext(js,c);await c.window.SpektraDB.init();const q=quote();M.enableRows(q);M.setDetailedPdf(q,true);
  M.setField(q,0,'name','Dve zariadenia');M.setField(q,0,'unit','bal.');M.setField(q,0,'qty','2');M.remove(q,2);
  M.addManual(q,{name:'Samostatná poznámka',textOnly:true},'text-row');
@@ -243,7 +244,7 @@ test('atomic storage round trip retains row mode, PDF setting, field edits and m
  assert.equal(payload.p_quote.workflow.material_edits.rows_mode,true);assert.equal(payload.p_quote.workflow.material_edits.pdf_detail,true);
  const html=fs.readFileSync(path.join(__dirname,'../app.html'),'utf8');
  const declarations=[...html.matchAll(/^(?:async )?function (\w+)\(/gm)],n=declarations.findIndex(m=>m[1]==='remoteQuoteToLocal');
- const context=vm.createContext({stockByCodeMap:new Map(),norm:x=>String(x).toLowerCase()});
+ const context=vm.createContext({stockByCodeMap:new Map(),norm:x=>String(x).toLowerCase(),SpektraRealizationDate});
  vm.runInContext(html.slice(declarations[n].index,declarations[n+1].index),context);
  const saved=context.remoteQuoteToLocal({...clone(payload.p_quote),id:'r',status:'draft',workflow:clone(payload.p_quote.workflow),quote_items:clone(payload.p_items),sync_version:2});
  assert.equal(M.rowsMode(saved),true);assert.equal(saved.items[0].name,'Dve zariadenia');assert.equal(saved.items[0].unit,'bal.');assert.equal(saved.items[0].qty,2);

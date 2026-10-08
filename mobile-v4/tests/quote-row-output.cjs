@@ -4,6 +4,7 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const api=require('../js/quote-row-output.js');
 const assemblies=require('../js/quote-assemblies.js');
 const workbenchOutput=require('../js/quote-workbench-output.js');
+const realizationDates=require('../js/realization-date.js');
 const app=fs.readFileSync(path.join(__dirname,'../app.html'),'utf8');
 const declarations=[...app.matchAll(/^(?:async )?function (\w+)\(/gm)];
 function source(name){
@@ -21,7 +22,7 @@ function quote(patch={}){
     items:[],net:100,vat:23,total:123,vat_pct:23,price_complete:true,pdf_banner_mode:'none',pdf_images_enabled:false,pdf_images:[],...patch};
 }
 function context(q){
-  const c=vm.createContext({current:q,console,Date,File,Blob,SpektraQuoteRowOutput:api,SpektraQuoteAssemblies:assemblies,SpektraQuoteWorkbenchOutput:workbenchOutput,
+  const c=vm.createContext({current:q,console,Date,File,Blob,SpektraQuoteRowOutput:api,SpektraQuoteAssemblies:assemblies,SpektraQuoteWorkbenchOutput:workbenchOutput,SpektraRealizationDate:realizationDates,
     POHODA_COMPANY_ICO:'53690036',SPEKTRA_WARRANTY:'Záruka Spektra',SPEKTRA_WARRANTY_TERMS_VERSION:'2026-09-28-v1',
     SPEKTRA_CONSENT:'Súhlasím s podmienkami uvedenými na 2. strane tejto ponuky.',
     ensureHeatPumpInstallationItem(){},recalcQuoteTotalsFromItems(){},ensurePdfTemplateState(){},ensurePdfImagesState(){},
@@ -88,6 +89,38 @@ test('detailed warranty identifies its last page and edited row snapshot',()=>{
   assert.match(c.warrantyTermsHtml(),/Posledná strana/);assert.doesNotMatch(c.warrantyTermsHtml(),/Pôvodný model/);
   c.current.material_edits.pdf_detail=false;
   assert.match(c.warrantyConsentHtml(),/na 2\. strane/);assert.match(c.warrantyTermsHtml(),/Strana 2\/2/);
+});
+
+test('both PDF layouts show the optional calendar date without changing the quote',()=>{
+  for(const template of ['offerHtmlTechnical','offerHtmlPresentation']){
+    const q=quote({estimated_realization_date:'2026-10-25'}),before=JSON.stringify(q);
+    const html=context(q)[template]();
+    assert.match(html,/data-pdf-realization/);assert.match(html,/CCA termín realizácie: <b>25\. 10\. 2026<\/b>/);
+    assert.equal(JSON.stringify(q),before);
+    for(const date of ['',undefined,'2026-02-29','2026-10-25T00:00:00Z','<script>']){
+      q.estimated_realization_date=date;
+      assert.doesNotMatch(context(q)[template](),/data-pdf-realization|CCA termín realizácie/);
+    }
+  }
+  assert.equal(realizationDates.format('2028-02-29'),'29. 2. 2028');
+  assert.equal(realizationDates.normalize('2100-02-29'),'');
+});
+
+test('adding the optional date preserves historical signature keys when the date is empty',()=>{
+  const q=quote({items:[bill('Zariadenie',{role:'device',qty:2,price:150.5})]}),c=context(q);
+  vm.runInContext(['warrantyOfferKey','warrantySignature'].map(source).join('\n'),c);
+  const historicalKey=JSON.stringify({
+    warranty_terms_version:'2026-09-28-v1',customer:[q.customer.name,q.customer.address],
+    category:q.category,device:[q.device.id||'',q.device.brand||'',q.device.model||''],
+    items:q.items.map(i=>[i.role,i.name,i.qty,i.price]),total:q.total,
+    annual_service:q.optional_services.annual_service!==false
+  });
+  q.warranty_consent={accepted:true,offer_key:historicalKey,signature_data_url:'data:image/png;base64,QQ=='};
+  assert.equal(c.warrantyOfferKey(),historicalKey);assert.ok(c.warrantySignature());
+  q.estimated_realization_date='';
+  assert.equal(c.warrantyOfferKey(),historicalKey);assert.ok(c.warrantySignature());
+  q.estimated_realization_date='2026-11-03';
+  assert.notEqual(c.warrantyOfferKey(),historicalKey);assert.equal(c.warrantySignature(),null);
 });
 
 function assembledQuote(output){

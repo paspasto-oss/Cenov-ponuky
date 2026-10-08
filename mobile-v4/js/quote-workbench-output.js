@@ -72,8 +72,9 @@
     return {revision:revisionLabel,original_quote_no:original,variant:active?.name?'Variant: '+String(active.name):''};
   }
   function heading(q,title){
-    const info=documentInfo(q);
-    return '<div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:14px"><div><div style="font-size:11px;color:#ba0000;font-weight:800">SPEKTRA INSTALL</div><h2 style="font-size:21px;margin:4px 0 8px;color:#173247">'+esc(title)+'</h2><div style="white-space:pre-wrap">'+esc(q.customer?.name||'')+(q.customer?.address?'<br>'+esc(q.customer.address):'')+'</div></div><div style="text-align:right">Ponuka <b>'+esc(q.quote_no||'—')+'</b>'+(info.revision?'<br>'+esc(info.revision):'')+(info.original_quote_no?'<br>Pôvodná ponuka '+esc(info.original_quote_no):'')+(info.variant?'<br>'+esc(info.variant):'')+'</div></div>';
+    const info=documentInfo(q),dates=root.SpektraRealizationDate||(typeof module==='object'&&module.exports?require('./realization-date.js'):null);
+    const realization=dates?.format(dates.get(q))||'';
+    return '<div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:14px"><div><div style="font-size:11px;color:#ba0000;font-weight:800">SPEKTRA INSTALL</div><h2 style="font-size:21px;margin:4px 0 8px;color:#173247">'+esc(title)+'</h2><div style="white-space:pre-wrap">'+esc(q.customer?.name||'')+(q.customer?.address?'<br>'+esc(q.customer.address):'')+'</div></div><div style="text-align:right">Ponuka <b>'+esc(q.quote_no||'—')+'</b>'+(info.revision?'<br>'+esc(info.revision):'')+(info.original_quote_no?'<br>Pôvodná ponuka '+esc(info.original_quote_no):'')+(info.variant?'<br>'+esc(info.variant):'')+(realization?'<br>CCA termín realizácie: '+esc(realization):'')+'</div></div>';
   }
   function renderCustomer(q={},options={}){
     const api=rowsApi(options),model=options.model||api.customerModel(q,options),totals=model.totals,fmt=options.formatMoney||money;

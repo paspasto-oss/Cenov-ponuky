@@ -61,6 +61,8 @@ function renderQuoteRowsSummary(){
   if(!current)return;
   const title=document.getElementById('quoteRowsTitle');if(title)title.textContent=current.quote_no||'Položky ponuky';
   const customer=document.getElementById('quoteRowsCustomer');if(customer)customer.textContent=[current.customer?.name,current.customer?.address].filter(Boolean).join(' · ');
+  const realization=document.getElementById('quoteEstimatedRealizationDate');
+  if(realization){realization.value=window.SpektraRealizationDate?.get(current)||'';realization.disabled=!window.SpektraQuoteMaterials.unlocked(current);}
   const result=window.SpektraQuoteSummary.calculate(current);
   const values={quoteRowsNet:current.price_complete?eur(current.net):'Neúplná cena',quoteRowsVat:current.price_complete?eur(current.vat):'—',quoteRowsTotal:result.total==null?'Neúplná cena':eur(result.total),quoteRowsProfit:result.gross==null?'Doplniť náklady':eur(result.gross)};
   for(const [id,value] of Object.entries(values)){const el=document.getElementById(id);if(el)el.textContent=value;}

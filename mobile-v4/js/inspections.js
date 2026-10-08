@@ -76,6 +76,7 @@
   const uuid=()=>crypto?.randomUUID?crypto.randomUUID():'insp_'+Date.now()+'_'+Math.random().toString(36).slice(2,10);
   const fold=v=>String(v==null?'':v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
   const priceText=v=>v==null||v===''?'—':new Intl.NumberFormat('sk-SK',{style:'currency',currency:'EUR'}).format(Number(v)||0);
+  const realizationDateText=i=>window.SpektraRealizationDate.format(window.SpektraRealizationDate.get(i));
   function stockPool(){
     try{return Array.isArray(stocks)?stocks:[]}catch(_){return []}
   }
@@ -166,6 +167,7 @@
       _dirty:true,
       inspection_types:['heat_pump'],
       customer:{name:'',phone:'',email:'',address:'',notes:''},
+      estimated_realization_date:'',
       building:{type:'family_house',condition:'renovation',heated_area_m2:150,floors:1,insulated:true,insulation_mm:150,windows:'triple'},
       existing_system:{source:'gas',annual_consumption:'',heating:'underfloor',water_temp_c:35,persons:3},
       heat_loss:{known:false,known_kw:null,specific_loss_w_m2:60,reserve_pct:10,base_kw:null,design_kw:null,recommended_kw:null},
@@ -223,6 +225,7 @@
       _dirty:false,
       inspection_types:Array.isArray(r.inspection_types)?r.inspection_types:[],
       customer:{name:c.name||r.site_contact_name||'',phone:c.phone||r.site_phone||'',email:c.email||r.site_email||'',address:c.address||r.site_address||'',notes:c.notes||''},
+      estimated_realization_date:window.SpektraRealizationDate.normalize(r.installation?.estimated_realization_date),
       building:r.building||{},
       existing_system:r.existing_system||{},
       heat_loss:r.heat_loss||{},
@@ -412,8 +415,9 @@
       const sync=x._dirty?' · čaká na sync':'';
       const ts=inspectionCreatedTs(x);
       const date=ts?new Date(ts).toLocaleDateString('sk-SK'):'—';
+      const estimatedDate=realizationDateText(x);
       return '<div class="row" style="cursor:pointer" onclick="SpektraInspections.edit(\''+esc(x.local_id)+'\')">'+
-        '<div style="flex:1;min-width:0"><b>'+esc(x.customer?.name||'Bez mena')+'</b><small>'+esc(date)+' · '+esc(x.customer?.address||'Bez adresy')+'<br>'+esc(type)+sync+'</small></div>'+
+        '<div style="flex:1;min-width:0"><b>'+esc(x.customer?.name||'Bez mena')+'</b><small>'+esc(date)+' · '+esc(x.customer?.address||'Bez adresy')+'<br>'+esc(type)+sync+(estimatedDate?'<br>CCA termín realizácie: '+esc(estimatedDate):'')+'</small></div>'+
         '<div class="inspectionListActions"><span class="inspStatus '+esc(x.status)+'">'+esc(statusLabel(x.status))+'</span><div class="inspectionActionButtons">'+
         '<button type="button" class="btn small inspectionEditBtn" onclick="event.stopPropagation();SpektraInspections.edit(\''+esc(x.local_id)+'\')">Otvoriť</button>'+
         '<button type="button" class="btn small inspectionPdfBtn" onclick="event.stopPropagation();SpektraInspections.openPdf(\''+esc(x.local_id)+'\')">PDF</button></div></div>'+
@@ -495,6 +499,18 @@
     let v=el.value;
     if(kind==='number')v=el.value===''?null:Number(el.value);
     if(kind==='bool')v=el.checked;
+    if(kind==='date'){
+      const date=window.SpektraRealizationDate.normalize(el.value);
+      if(el.validity?.badInput||(el.value!==''&&!date)){
+        el.setAttribute?.('aria-invalid','true');
+        if(!el.validity?.badInput)el.setCustomValidity?.('Zadaj platný dátum realizácie.');
+        el.reportValidity?.();
+        return;
+      }
+      el.setCustomValidity?.('');
+      el.removeAttribute?.('aria-invalid');
+      v=date;
+    }
     setPath(path,v,rerender);
   }
 
@@ -504,6 +520,7 @@
       field('Meno alebo firma *','icName',c.name,'text','oninput="SpektraInspections.input(\'customer.name\',this)"')+
       '<div class="grid2">'+field('Telefón *','icPhone',c.phone,'tel','onchange="SpektraInspections.input(\'customer.phone\',this)"')+field('E-mail','icEmail',c.email,'email','onchange="SpektraInspections.input(\'customer.email\',this)"')+'</div>'+
       field('Adresa realizácie *','icAddress',c.address,'text','onchange="SpektraInspections.input(\'customer.address\',this)"')+
+      '<div class="field"><label for="icEstimatedRealizationDate">CCA termín realizácie</label><input id="icEstimatedRealizationDate" type="date" value="'+esc(window.SpektraRealizationDate.get(active))+'" aria-describedby="icEstimatedRealizationDateHint" onchange="SpektraInspections.input(\'estimated_realization_date\',this,\'date\')"><small id="icEstimatedRealizationDateHint" class="sub">Predpokladaný termín realizácie, nepovinné.</small></div>'+
       '<div class="field"><label>Poznámka k zákazníkovi</label><textarea onchange="SpektraInspections.input(\'customer.notes\',this)">'+esc(c.notes||'')+'</textarea></div>'+
       '</div><div class="card"><h2>Čo ideme riešiť?</h2><div class="inspTypeGrid">'+TYPE_OPTIONS.map(t=>
         '<button type="button" class="inspType '+((active.inspection_types||[]).includes(t[0])?'on':'')+'" onclick="SpektraInspections.toggleType(\''+t[0]+'\')"><span>'+t[1]+'</span><b>'+esc(t[2])+'</b></button>'
@@ -1618,6 +1635,7 @@
     const types=(active.inspection_types||[]).map(typeLabel).join(', ');
     const work=(active.extra_work||[]).map(k=>EXTRA_WORK.find(x=>x[0]===k)?.[1]||k).join(', ')||'bez doplnkov';
     const tradeEstimate=isTradeInspection()?currentMaterialEstimate():null;
+    const estimatedDate=realizationDateText(active);
     const tradeTotal=tradeEstimate?tradeEstimate.total+tradeLaborPrice():0;
     const tradePriceHtml=tradeEstimate
       ? '<div class="card"><h2>Orientačný návrh ceny</h2><div class="summary">'+summaryRow('Materiál',priceText(tradeEstimate.total)+' bez DPH')+summaryRow('Práca',priceText(tradeLaborPrice())+' bez DPH')+summaryRow('Spolu bez DPH',priceText(tradeTotal))+summaryRow('Spolu s DPH',priceText(tradeTotal*1.23))+'</div>'+(tradeEstimate.missing?'<div class="notice warn" style="margin-top:9px">'+tradeEstimate.missing+' položkám chýba cena.</div>':'')+'</div>'
@@ -1626,7 +1644,7 @@
       ? summaryRow('Typ zákazky',tradeLabel())+(tradePrimaryType()==='zti'?summaryRow('Rozsah ZTI',ztiScopeSummary().join(' · ')||'bez zadaného rozsahu'):'')+summaryRow('Materiál',(active.materials||[]).length+' položiek')+summaryRow('Odhad práce',priceText(tradeLaborPrice())+' bez DPH')+summaryRow('Práce navyše',work)
       : summaryRow('Plocha',(active.building?.heated_area_m2||'—')+' m²')+summaryRow('Vykurovanie',active.existing_system?.heating==='underfloor'?'Podlahovka':active.existing_system?.heating==='radiators'?'Radiátory':'Vysokoteplotné')+summaryRow('Návrhový výkon',num(active.heat_loss?.design_kw).toFixed(2)+' kW')+summaryRow('Odporúčaná trieda',num(active.heat_loss?.recommended_kw)+' kW')+summaryRow('Trasa',num(active.outdoor_unit?.route_m)+' m')+summaryRow('Materiál',(active.materials||[]).length+' položiek')+summaryRow('Práce navyše',work);
     return '<div class="card"><h2>'+esc(active.customer?.name||'Bez mena')+'</h2><div class="sub">'+esc(active.customer?.address||'')+'</div>'+
-      '<div class="summary" style="margin-top:12px">'+summaryRow('Typ',types)+technicalRows+'</div></div>'+tradePriceHtml+
+      '<div class="summary" style="margin-top:12px">'+(estimatedDate?summaryRow('CCA termín realizácie',estimatedDate):'')+summaryRow('Typ',types)+technicalRows+'</div></div>'+tradePriceHtml+
       '<div class="card"><h2>Fotodokumentácia</h2><div class="notice '+(missing.length?'warn':'ok')+'">'+((active.photos||[]).length)+' fotografií · '+(missing.length?'chýba: '+missing.map(photoLabel).join(', '):'kompletná ✓')+'</div></div>'+
       '<div class="card"><h2>Poznámka technika</h2><div>'+esc(active.notes||'Bez poznámky')+'</div></div>'+
       '<div class="sendgrid">'+
@@ -1802,6 +1820,7 @@
   }
   function inspectionPdfPages(i){
     const c=i?.customer||{},types=(i?.inspection_types||[]).map(typeLabel).join(', ')||'Obhliadka';
+    const estimatedDate=realizationDateText(i);
     const tech=inspectionTechnicalRows(i);
     const labor=inspectionLaborInfo(i),materialTotal=inspectionMaterialTotal(i);
     const workPrice=labor?.price??null;
@@ -1811,7 +1830,7 @@
       inspectionPdfHeader('PROTOKOL OBHLIADKY',types)+
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-bottom:6mm">'+
         '<div style="border:1px solid #d6e1e7;border-radius:3mm;padding:4mm"><div style="font-size:8px;color:#6b7d89;text-transform:uppercase">Zákazník</div><div style="font-size:13px;font-weight:800;margin-top:2mm">'+inspectionPdfSafe(c.name||'Bez mena')+'</div><div style="font-size:9px;line-height:1.5;margin-top:2mm">'+inspectionPdfSafe(c.address||i?.site_address||'')+(c.phone?'<br>'+inspectionPdfSafe(c.phone):'')+(c.email?'<br>'+inspectionPdfSafe(c.email):'')+'</div></div>'+
-        '<div style="border:1px solid #d6e1e7;border-radius:3mm;padding:4mm"><div style="font-size:8px;color:#6b7d89;text-transform:uppercase">Obhliadka</div><div style="font-size:10px;line-height:1.55;margin-top:2mm"><b>Dátum:</b> '+inspectionPdfSafe(inspectionDateText(i))+'<br><b>Stav:</b> '+inspectionPdfSafe(statusLabel(i?.status))+'<br><b>Typ:</b> '+inspectionPdfSafe(types)+'</div></div>'+
+        '<div style="border:1px solid #d6e1e7;border-radius:3mm;padding:4mm"><div style="font-size:8px;color:#6b7d89;text-transform:uppercase">Obhliadka</div><div style="font-size:10px;line-height:1.55;margin-top:2mm"><b>Dátum:</b> '+inspectionPdfSafe(inspectionDateText(i))+'<br><b>Stav:</b> '+inspectionPdfSafe(statusLabel(i?.status))+'<br><b>Typ:</b> '+inspectionPdfSafe(types)+(estimatedDate?'<br><b>CCA termín realizácie:</b> '+inspectionPdfSafe(estimatedDate):'')+'</div></div>'+
       '</div>'+
       '<div style="font-size:11px;font-weight:900;color:#00539B;margin:0 0 3mm">Zistenia a podmienky</div>'+
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:2.5mm 5mm;margin-bottom:6mm">'+tech.map(r=>'<div style="border-bottom:1px solid #e4ecef;padding:1.5mm 0;font-size:8.5px"><span style="color:#687985">'+inspectionPdfSafe(r[0])+'</span><br><b>'+inspectionPdfSafe(r[1])+'</b></div>').join('')+'</div>'+
@@ -1978,7 +1997,10 @@
     startWizard();
     current.inspection_id=active.remote_id;
     current.remote_customer_id=active.customer_id;
+    current.estimated_realization_date=window.SpektraRealizationDate.get(active);
     current.customer={name:active.customer.name||'',phone:active.customer.phone||'',email:active.customer.email||'',address:active.customer.address||'',note:active.customer.notes||active.notes||''};
+    const estimatedDateInput=document.getElementById('cEstimatedRealizationDate');
+    if(estimatedDateInput)estimatedDateInput.value=current.estimated_realization_date;
     current.category=type; category=type;
     current.brand='Spektra Install'; brand='Spektra Install';
     current.system_type='service';
@@ -2024,6 +2046,7 @@
     startWizard();
     current.inspection_id=active.remote_id;
     current.remote_customer_id=active.customer_id;
+    current.estimated_realization_date=window.SpektraRealizationDate.get(active);
     current.customer={
       name:active.customer.name||'',
       phone:active.customer.phone||'',
@@ -2063,6 +2086,7 @@
 
     const vals={
       cName:current.customer.name,cPhone:current.customer.phone,cEmail:current.customer.email,cAddress:current.customer.address,cNote:current.customer.note,
+      cEstimatedRealizationDate:current.estimated_realization_date,
       hasLoss:current.building.known_loss?'yes':'no',heatLoss:current.building.heat_loss_kw||'',area:current.building.area_m2||'',
       buildingClass:String(current.building.w_per_m2||60),heating:current.building.heating||'underfloor',dhwMode:current.building.dhw_solution||'none'
     };

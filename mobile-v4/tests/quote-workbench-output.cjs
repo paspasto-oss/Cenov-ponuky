@@ -129,6 +129,16 @@ test('installer document contains planned work and explicit uncompleted service 
   assert.equal(JSON.stringify(q),before);
 });
 
+test('customer and internal documents show only a valid optional realization date without mutating the quote',()=>{
+  for(const render of [output.renderCustomer,output.renderPurchase,output.renderInstaller]){
+    const q={...fixture(),estimated_realization_date:'2026-11-03'},before=JSON.stringify(q);
+    assert.match(render(q,options),/CCA termín realizácie: 3\. 11\. 2026/);assert.equal(JSON.stringify(q),before);
+    for(const date of ['',undefined,'2026-02-30','<script>alert(1)</script>']){
+      q.estimated_realization_date=date;assert.doesNotMatch(render(q,options),/CCA termín realizácie:|<script>/);
+    }
+  }
+});
+
 test('unsafe image callback URLs are ignored and a legitimate image URL is attribute escaped',()=>{
   const q=fixture();
   assert.doesNotMatch(output.renderRows(q,{...options,getImage:()=> 'javascript:alert(1)'}),/<img/);

@@ -21,6 +21,7 @@
 @media(max-width:720px){.wrap{padding:9px}.actions{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.choiceGrid{grid-template-columns:repeat(2,1fr)}.priceBox{grid-template-columns:1fr}.sendgrid{grid-template-columns:1fr}.hero h1{font-size:21px}.quoteBackBar{bottom:calc(62px + env(safe-area-inset-bottom));width:calc(100% - 12px);border-radius:12px;padding:6px}#step1,#step2,#step3,#step4,#step5{padding-bottom:92px}}
 </style>
 <link rel="stylesheet" href="js/quote-list-summary.css?v=20261005-list1">
+<script src="js/realization-date.js?v=20261008-term1"></script>
 <script src="js/quote-list-summary.js?v=20261007-hvac1"></script>
 <script src="js/pdf-banners.js?v=20261005-universal1"></script>
 <script src="js/pdf-pagination.js?v=20261007-hvac1"></script>
@@ -32,9 +33,9 @@
 <script src="js/quote-assemblies.js?v=20261007-hvac1"></script>
 <script src="js/hvac-scenarios.js?v=20261007-hvac1"></script>
 <script src="js/quote-row-output.js?v=20261007-hvac1"></script>
-<script src="js/quote-workbench-output.js?v=20261007-hvac1"></script>
+<script src="js/quote-workbench-output.js?v=20261008-term1"></script>
 <script src="js/quote-storage.js?v=20261005-atomic1"></script>
-<script src="js/db.js?v=20261007-hvac1"></script>
+<script src="js/db.js?v=20261008-term1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
@@ -59,7 +60,7 @@
       <p>Martina zadá len údaje zákazníka a domu. Technický návrh spraví aplikácia na pozadí.</p>
       <div class="actions">
         <button class="big primary" onclick="startWizard()"><span>＋</span><b>Nová cenová ponuka</b><small>Zákazník → dom → zariadenie → cena → PDF</small></button>
-        <button class="big" onclick="location.href='admin/stock-sync.html?v=20261008-theme1'"><span>↻</span><b>Aktualizovať zásoby</b><small>Nahrať nový export Zásoby.xlsx z POHODY</small></button>
+        <button class="big" onclick="location.href='admin/stock-sync.html?v=20261008-term1'"><span>↻</span><b>Aktualizovať zásoby</b><small>Nahrať nový export Zásoby.xlsx z POHODY</small></button>
         <button class="big" onclick="syncQuotes(true,false)"><span>⟳</span><b>Synchronizovať ponuky</b><small>PC práca ↔ mobil ↔ PC doma</small></button>
       </div>
     </div>
@@ -104,6 +105,7 @@
       <div class="field"><label>Meno alebo firma *</label><input id="cName" placeholder="Ján Novák" oninput="draftQuoteNameChanged()"></div>
       <div class="grid2"><div class="field"><label>Telefón *</label><input id="cPhone" type="tel" placeholder="0905 123 456"></div><div class="field"><label>E-mail</label><input id="cEmail" type="email" placeholder="zakaznik@email.sk"></div></div>
       <div class="field"><label>Adresa realizácie *</label><input id="cAddress" placeholder="Ulica, obec"></div>
+      <div class="field"><label for="cEstimatedRealizationDate">CCA termín realizácie</label><input id="cEstimatedRealizationDate" type="date" min="0001-01-01" max="9999-12-31" aria-describedby="cRealizationDateHint"><small id="cRealizationDateHint" class="sub">Predpokladaný termín realizácie – nepovinné.</small></div>
       <div class="field"><label>Poznámka</label><textarea id="cNote" placeholder="Čokoľvek dôležité od zákazníka…"></textarea></div>
     </div>
     <div class="grid2"><button class="btn primary full" type="button" onclick="SpektraQuoteWorkbench.quickStart()">Rýchla ponuka zo scenára →</button><button class="btn ghost full" type="button" onclick="nextBuilding()">Výber podľa budovy →</button></div>
@@ -380,6 +382,7 @@
       <div class="quoteRowsMetric"><small>Hrubý zisk bez DPH</small><strong id="quoteRowsProfit">—</strong></div>
     </div>
     <div id="quoteRowsWarning" class="notice warn hidden" style="margin-bottom:12px"></div>
+    <div class="field" style="max-width:320px;margin-bottom:12px"><label for="quoteEstimatedRealizationDate">CCA termín realizácie</label><input id="quoteEstimatedRealizationDate" type="date" min="0001-01-01" max="9999-12-31" aria-describedby="quoteRealizationDateHint" onchange="SpektraQuoteWorkbench.setRealizationDate(this.value,this)"><small id="quoteRealizationDateHint" class="sub">Predpokladaný termín realizácie – nepovinné.</small></div>
     <div id="quoteWorkbench"></div>
     <div id="rowMaterialEditorSlot"></div>
     <div class="quoteRowsActions"><button class="btn ghost" type="button" onclick="go('home')">← Zoznam ponúk</button><button class="btn ghost" type="button" onclick="refreshQuoteFromCatalog(this)">↻ Obnoviť ceny z katalógu</button></div>
@@ -712,6 +715,7 @@ function remoteQuoteToLocal(r){
     ...w,
     id:r.local_id||('remote_'+r.id),remote_id:r.id,remote_customer_id:r.customer_id||null,
     quote_no:r.quote_no,status:r.status||'draft',
+    estimated_realization_date:SpektraRealizationDate.normalize(w.estimated_realization_date),
     created:Date.parse(r.created_at)||Date.now(),updated:Date.parse(r.updated_at)||Date.now(),
     customer:{name:cust.name||'Bez mena',phone:cust.phone||'',email:cust.email||'',address:cust.address||'',note:cust.notes||''},
     category:r.category||null,brand:r.brand||null,system_type:r.system_type||null,
@@ -833,6 +837,7 @@ function renderHome(){
    const date=quoteCreatedTs(q)?new Date(quoteCreatedTs(q)).toLocaleDateString('sk-SK'):'—';
    return '<div class="row quoteListRow" data-quote-ref="'+ref+'" style="cursor:pointer">'+
      '<div class="quoteListBody"><b>'+esc(q.customer?.name||'Bez mena')+'</b><small>'+esc(date)+' · '+esc(q.customer?.address||'Bez adresy')+'</small>'+
+     (SpektraRealizationDate.get(q)?'<small>CCA termín realizácie: '+esc(SpektraRealizationDate.format(q.estimated_realization_date))+'</small>':'')+
      '<div class="quoteListMeta"><span class="quoteListCode">'+esc(q.quote_no||'')+' · '+esc(labelCat(q.category))+' · '+esc(q.brand||'')+(q._sync_error?' · ⚠ sync':'')+'</span>'+SpektraQuoteSummary.html(q)+'</div></div>'+
      '<div class="quoteListActions"><span class="badge '+esc(q.status)+'">'+labelStatus(q.status)+'</span><div class="quoteListActionButtons"><button class="btn small quoteEditBtn" type="button" data-quote-ref="'+ref+'">Otvoriť</button><button class="btn small quotePdfBtn" type="button" data-quote-ref="'+ref+'">PDF / Tlač</button></div></div>'+
    '</div>';
@@ -967,8 +972,21 @@ function filterHeatPumpDhwDevices(devices){
   return devices;
 }
 
-function startWizard(){if(typeof quoteRowsEditorActive!=='undefined')quoteRowsEditorActive=false;current={id:SpektraQuoteStorage.uuid(),quote_no:'NÁVRH-'+String(Date.now()).slice(-6),_server_quote_no:false,_dirty:true,status:'draft',created:Date.now(),updated:Date.now(),customer:{},building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_template:'presentation',pdf_banner_mode:'auto',pdf_banner_url:null,pdf_banner_path:null,pdf_images_enabled:false,pdf_images_user_disabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;boilerType='gas';acMode='single';multiCount=2;['cName','cPhone','cEmail','cAddress','cNote','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
-function nextBuilding(){let name=s(document.getElementById('cName').value),phone=s(document.getElementById('cPhone').value),addr=s(document.getElementById('cAddress').value);if(!name||!phone||!addr){alert('Vyplň meno, telefón a adresu realizácie.');return}current.customer={name,phone,email:s(document.getElementById('cEmail').value),address:addr,note:s(document.getElementById('cNote').value)};renderExternalDhwTankPicker();go('step2')}
+function startWizard(){if(typeof quoteRowsEditorActive!=='undefined')quoteRowsEditorActive=false;current={id:SpektraQuoteStorage.uuid(),quote_no:'NÁVRH-'+String(Date.now()).slice(-6),_server_quote_no:false,_dirty:true,status:'draft',created:Date.now(),updated:Date.now(),customer:{},estimated_realization_date:'',building:{},items:[],installation_tier:'standard',economy_ready:false,pdf_template:'presentation',pdf_banner_mode:'auto',pdf_banner_url:null,pdf_banner_path:null,pdf_images_enabled:false,pdf_images_user_disabled:false,pdf_images:[{url:'assets/pdf-images/tepelne-cerpadla-banner.jpg',path:null,name:'Spektra – tepelné čerpadlá',source:'default'}],optional_services:{flush:false,flush_price_ex_vat:400,annual_service:true,condensate_pump:false,dhw_tank_fe120:false},subsidy:{program:'none'}};category='heat_pump';brand='';recommendation=null;boilerType='gas';acMode='single';multiCount=2;['cName','cPhone','cEmail','cAddress','cNote','cEstimatedRealizationDate','area','heatLoss'].forEach(id=>document.getElementById(id).value='');document.getElementById('hasLoss').value='no';document.getElementById('buildingClass').value='60';document.getElementById('heating').value='underfloor';document.getElementById('dhwMode').value='external';toggleLoss();go('step1')}
+function nextBuilding(){
+  const name=s(document.getElementById('cName').value),phone=s(document.getElementById('cPhone').value),addr=s(document.getElementById('cAddress').value);
+  if(!name||!phone||!addr){alert('Vyplň meno, telefón a adresu realizácie.');return;}
+  const dateInput=document.getElementById('cEstimatedRealizationDate');
+  const date=SpektraRealizationDate.normalize(dateInput?.value||'');
+  if(dateInput?.validity?.badInput||(dateInput?.value&&!date)){
+    dateInput.setAttribute('aria-invalid','true');dateInput.reportValidity?.();
+    alert('Zadaj platný dátum realizácie alebo nechaj pole prázdne.');return;
+  }
+  dateInput?.removeAttribute('aria-invalid');
+  current.customer={name,phone,email:s(document.getElementById('cEmail').value),address:addr,note:s(document.getElementById('cNote').value)};
+  current.estimated_realization_date=date;
+  renderExternalDhwTankPicker();go('step2');
+}
 function toggleLoss(){let known=document.getElementById('hasLoss').value==='yes';document.getElementById('lossKnown').classList.toggle('hidden',!known);document.getElementById('lossEstimate').classList.toggle('hidden',known)}
 function nextCategory(){let known=document.getElementById('hasLoss').value==='yes',loss=+document.getElementById('heatLoss').value||0,area=+document.getElementById('area').value||0;if(known&&loss<=0){alert('Zadaj tepelnú stratu.');return}if(!known&&area<=0){alert('Zadaj vykurovanú plochu.');return}const dhwSolution=current.category==='air_conditioning'?'none':document.getElementById('dhwMode').value;const externalTankCode=dhwSolution==='external'?(document.getElementById('externalDhwTankCode')?.value||EXTERNAL_DHW_TANK_200.code):null;current.building={known_loss:known,heat_loss_kw:known?loss:null,area_m2:known?null:area,w_per_m2:+document.getElementById('buildingClass').value,heating:document.getElementById('heating').value,dhw_solution:dhwSolution,with_external_dhw_tank:dhwSolution==='external',external_dhw_tank_code:externalTankCode};renderChoices();go('step3')}
 function backToTypeBrand(){
@@ -2743,6 +2761,7 @@ function warrantyOfferKey(){
     warranty_terms_version:SPEKTRA_WARRANTY_TERMS_VERSION,
     customer:[current?.customer?.name||'',current?.customer?.address||''],
     category:current?.category||'',device:[current?.device?.id||'',current?.device?.brand||'',current?.device?.model||''],
+    ...(SpektraRealizationDate.get(current)?{estimated_realization_date:SpektraRealizationDate.get(current)}:{}),
     items:(current?.items||[]).map(i=>[i.role,i.name,i.qty,i.price]),
     total:current?.total??null,annual_service:current?.optional_services?.annual_service!==false
   });
@@ -2887,9 +2906,10 @@ function renderFinal(){
      ? '<div class="srow" style="margin-top:10px"><span>Obnov dom mini+</span><b>až 11 000 €</b></div><div class="sub">Ďalšie kolo plánované na január 2027; konkrétna výška závisí od podmienok výzvy.</div>'
      : '';
  const title=rowsView?(items.find(i=>i.role==='device')?.name||'Položky podľa rozpisu ponuky'):customerText([current.device?.brand,current.device?.model,current.device?.variant].filter(Boolean).join(' '));
+ const realization=SpektraRealizationDate.get(current)?'<div class="sub" style="margin-top:8px"><b>CCA termín realizácie: '+esc(SpektraRealizationDate.format(current.estimated_realization_date))+'</b></div>':'';
  const breakdown=rowsView?'<div class="sub" style="margin-top:8px">Počet riadkov: '+items.length+' · '+(current.material_edits?.pdf_detail?'Podrobný rozpis v PDF':'Montážny materiál v PDF zoskupený')+'</div><div class="srow"><span>Celkom bez DPH</span><b>'+eur(current.net)+'</b></div>':
    '<div class="srow"><span>Montáž</span><b>'+(current.category==='heat_pump'?((current.installation_tier==='economy'?'EKONOM':'ŠTANDARD')+' – '+(install?.price!=null?eur(amount(install)):(locked?'podľa schválenej ponuky':eur(installationPrice(current.installation_tier||'standard'))))):(install?.price!=null?eur(amount(install)):'podľa cenníka'))+'</b></div>';
- document.getElementById('finalSummary').innerHTML='<h2 style="margin-top:0">'+esc(current.customer?.name)+'</h2><div class="sub">'+esc(current.customer?.address)+'</div><div style="margin-top:14px"><b>'+esc(title)+'</b></div>'+breakdown+optional+annual+warranty+subsidyHtml+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+(current.price_complete?eur(current.total):'Cena ešte nie je kompletná')+'</span></div>';
+ document.getElementById('finalSummary').innerHTML='<h2 style="margin-top:0">'+esc(current.customer?.name)+'</h2><div class="sub">'+esc(current.customer?.address)+'</div>'+realization+'<div style="margin-top:14px"><b>'+esc(title)+'</b></div>'+breakdown+optional+annual+warranty+subsidyHtml+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+(current.price_complete?eur(current.total):'Cena ešte nie je kompletná')+'</span></div>';
 }
 function hydrateQuoteForm(){
   if(!current)return;
@@ -2901,6 +2921,7 @@ function hydrateQuoteForm(){
   setVal('cEmail',current.customer.email||'');
   setVal('cAddress',current.customer.address||'');
   setVal('cNote',current.customer.note||'');
+  setVal('cEstimatedRealizationDate',SpektraRealizationDate.get(current));
 
   const known=!!current.building.known_loss;
   setVal('hasLoss',known?'yes':'no');
@@ -3198,6 +3219,7 @@ function offerHtmlTechnical(){
         (documentInfo.variant?'<div data-pdf-variant style="grid-column:1/-1;text-align:right">'+esc(documentInfo.variant)+'</div>':'')+
         '<div style="font-size:9px">Dátum vystavenia:</div><div style="font-weight:700;text-align:right">'+issue+'</div>'+
         '<div style="font-size:9px">Platnosť do:</div><div style="font-weight:700;text-align:right">'+valid+'</div>'+
+        (SpektraRealizationDate.get(current)?'<div data-pdf-realization style="grid-column:1/-1;margin-top:5px;text-align:right">CCA termín realizácie: <b>'+esc(SpektraRealizationDate.format(current.estimated_realization_date))+'</b></div>':'')+
       '</div>'+
     '</div>'+
 
@@ -3429,6 +3451,7 @@ function offerHtmlPresentation(){
           (documentInfo.variant?'<div data-pdf-variant>'+esc(documentInfo.variant)+'</div>':'')+
           '<div style="display:flex;justify-content:space-between;gap:8px"><span>Dátum:</span><b>'+issue+'</b></div>'+
           '<div style="display:flex;justify-content:space-between;gap:8px"><span>Platnosť:</span><b>'+valid+'</b></div>'+
+          (SpektraRealizationDate.get(current)?'<div data-pdf-realization style="margin-top:2mm">CCA termín realizácie: <b>'+esc(SpektraRealizationDate.format(current.estimated_realization_date))+'</b></div>':'')+
         '</div>'+
       '</div>'+
 
@@ -3956,9 +3979,9 @@ window.addEventListener('online',()=>syncQuotes(true,true));
 window.addEventListener('focus',()=>syncQuotes(false,true));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncQuotes(false,true)});
 </script>
-<script src="js/quote-material-editor.js?v=20261007-hvac1"></script>
-<script src="js/quote-workbench.js?v=20261007-hvac1"></script>
-<script src="js/inspections.js?v=20261006-clean1"></script>
+<script src="js/quote-material-editor.js?v=20261008-term1"></script>
+<script src="js/quote-workbench.js?v=20261008-term1"></script>
+<script src="js/inspections.js?v=20261008-term1"></script>
 <script src="js/home-toolbar.js?v=20261007-bottom1"></script>
 <script src="js/contacts.js?v=20261007-contacts1"></script>
 </body>

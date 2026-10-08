@@ -2,6 +2,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');const path=require('node:path');const vm=require('node:vm');
 const {create}=require('../js/quote-storage.js');
+const SpektraRealizationDate=require('../js/realization-date.js');
 const clone=x=>JSON.parse(JSON.stringify(x));
 function quote(id='local-1'){return {id,status:'draft',customer:{name:'Test'},items:[{name:'Test item',qty:0,price:100,cost:60}],net:0,total:0,vat_pct:23,price_complete:true};}
 function response(q,version=1){return {remote_id:'remote-'+q.id,remote_customer_id:'customer',quote_no:'26NA9999',sync_version:version,status:q.status,net:q.net,total:q.total,vat_pct:q.vat_pct,price_complete:true,updated_at:'2026-10-05T12:00:00Z'};}
@@ -68,21 +69,70 @@ test('conflict recovery preserves local copy, drops old signature, and requires 
 test('server quote mapping preserves zero VAT, zero quantity and frozen customer snapshot',()=>{
  const html=fs.readFileSync(path.join(__dirname,'../app.html'),'utf8');
  const start=html.indexOf('function remoteQuoteToLocal(');const end=html.indexOf('\nfunction mergeCloudQuotes',start);
- const c=vm.createContext({stockByCodeMap:new Map(),norm:x=>x});vm.runInContext(html.slice(start,end),c);
+ const c=vm.createContext({stockByCodeMap:new Map(),norm:x=>x,SpektraRealizationDate});vm.runInContext(html.slice(start,end),c);
  const q=c.remoteQuoteToLocal({id:'r',local_id:'x',sync_version:3,status:'approved',vat_pct:0,
+   workflow:{estimated_realization_date:'2026-11-06'},
    customers:{name:'Changed contact'},customer_snapshot:{name:'Approved customer',note:'Original'},quote_items:[{name:'Zero',qty:0}],subtotal_ex_vat:0,total_inc_vat:0});
  assert.equal(q.vat_pct,0);assert.equal(q.items[0].qty,0);assert.equal(q.customer.name,'Approved customer');assert.equal(q.sync_version,3);
+ assert.equal(q.estimated_realization_date,'2026-11-06');
+ for(const value of ['',undefined,'2026-02-30']){
+  const cleared=c.remoteQuoteToLocal({id:'r',workflow:{estimated_realization_date:value}});
+  assert.equal(cleared.estimated_realization_date,'');
+ }
 });
 test('DB writes use one RPC and preserve zero quantity and VAT',async()=>{
  const source=fs.readFileSync(path.join(__dirname,'../js/db.js'),'utf8');const calls=[];
  const client={auth:{onAuthStateChange(){},async getSession(){return {data:{session:{user:{id:'u'}}}}}},
    async rpc(name,args){calls.push({name,args});return {data:{remote_id:'r',sync_version:1}}},
    from(){throw Error('Client must not issue nontransactional writes')}};
- const window={SPEKTRA_SUPABASE:{url:'test',anonKey:'test'},supabase:{createClient:()=>client}};
+ const window={SpektraRealizationDate,SPEKTRA_SUPABASE:{url:'test',anonKey:'test'},supabase:{createClient:()=>client}};
  const c=vm.createContext({window,console});vm.runInContext(source,c);await window.SpektraDB.init();
- const q=quote();q.vat_pct=0;await window.SpektraDB.saveQuote(q,'d6ed9ca1-44e6-4308-a2b7-a1c412af0d13');
+ const q=quote();q.vat_pct=0;q.estimated_realization_date='2026-11-06';await window.SpektraDB.saveQuote(q,'d6ed9ca1-44e6-4308-a2b7-a1c412af0d13');
  assert.equal(calls.length,1);assert.equal(calls[0].name,'save_quote_atomic');assert.equal(calls[0].args.p_quote.vat_pct,0);
  assert.equal(calls[0].args.p_items[0].qty,0);
+ assert.equal(calls[0].args.p_quote.workflow.estimated_realization_date,'2026-11-06');
+ assert.equal(calls[0].args.p_quote.customer.estimated_realization_date,undefined);
+ q.estimated_realization_date='';await window.SpektraDB.saveQuote(q,'clear-realization-date');
+ assert.equal(calls[1].args.p_quote.workflow.estimated_realization_date,'');
+});
+
+test('inspection realization date survives cloud round trip and clearing preserves installation setup',async()=>{
+ const writes=[];
+ const client={
+  auth:{onAuthStateChange(){},getSession:async()=>({data:{session:{user:{id:'technician'}}}})},
+  from(table){
+   return {
+    update(payload){writes.push({table,payload:clone(payload)});return this},
+    delete(){return this},eq(){return this},select(){return this},
+    maybeSingle:async()=>({data:{id:'inspection-1',customer_id:'customer-1',status:'draft',sync_version:2}}),
+    then(resolve,reject){return Promise.resolve({error:null}).then(resolve,reject)}
+   };
+  }
+ };
+ const window={SpektraRealizationDate,SPEKTRA_SUPABASE:{url:'test',anonKey:'test'},supabase:{createClient:()=>client}};
+ const c=vm.createContext({window,console});
+ vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/db.js'),'utf8'),c);
+ await window.SpektraDB.init();
+ const source=fs.readFileSync(path.join(__dirname,'../js/inspections.js'),'utf8');
+ const start=source.indexOf('  function normalizeRemote('),end=source.indexOf('\n  function initUI(',start);
+ vm.runInContext(source.slice(start,end),c);
+ const inspection={local_id:'local-1',remote_id:'inspection-1',customer_id:'customer-1',customer:{name:'Test'},
+  estimated_realization_date:'2026-11-06',installation:{tier:'custom',labor_man_hours:12,estimated_realization_date:'2026-10-01'}};
+ await window.SpektraDB.saveInspection(inspection);
+ const first=writes.find(w=>w.table==='inspections').payload;
+ assert.equal(first.installation.estimated_realization_date,'2026-11-06');
+ assert.equal(first.installation.tier,'custom');assert.equal(first.installation.labor_man_hours,12);
+ assert.equal(first.estimated_realization_date,undefined);
+ assert.equal(writes.find(w=>w.table==='customers').payload.estimated_realization_date,undefined);
+ const restored=c.normalizeRemote({...first,id:'inspection-1'});
+ assert.equal(restored.estimated_realization_date,'2026-11-06');
+ assert.equal(restored.installation.labor_man_hours,12);
+ restored.estimated_realization_date='';
+ await window.SpektraDB.saveInspection(restored);
+ const last=writes.filter(w=>w.table==='inspections').at(-1).payload;
+ assert.equal(last.installation.estimated_realization_date,'');assert.equal(last.installation.labor_man_hours,12);
+ assert.equal(c.normalizeRemote({...last,id:'inspection-1'}).estimated_realization_date,'');
+ assert.equal(c.normalizeRemote({id:'old-record'}).estimated_realization_date,'');
 });
 
 test('validation rollback allows a corrected edit instead of replaying invalid data forever',async()=>{
