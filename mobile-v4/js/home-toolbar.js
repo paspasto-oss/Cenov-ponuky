@@ -155,6 +155,16 @@
     const observer=new root.MutationObserver(updateView);
     doc.querySelectorAll('.screen').forEach(screen=>observer.observe(screen,{attributes:true,attributeFilter:['class']}));
   }
+  // Load the optional simple quote UI from the same deployment. If it cannot
+  // load, the full editor remains visible and usable; no quote is changed.
+  const toolbarSource=root.document.currentScript?.src;
+  if(toolbarSource&&root.document.getElementById('quoteWorkbench')){
+    const quick=root.document.createElement('script');
+    quick.src=new URL('quote-quick.js?v=20261009-simple1',toolbarSource).href;
+    quick.async=true;
+    quick.onerror=()=>console.warn('Jednoduchý editor sa nenačítal. Obnovte stránku; rozšírený editor zostáva dostupný.');
+    root.document.head.appendChild(quick);
+  }
   const api={mount,updateView,compactFilters};
   root.SpektraHomeToolbar=api;
   if(root.document.readyState==='loading')root.document.addEventListener('DOMContentLoaded',mount,{once:true});
