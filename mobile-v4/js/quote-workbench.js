@@ -604,13 +604,26 @@
     }
   }
   function marginWarning(){const p=state.library.find(x=>x.key==='pricing:company')?.payload;if(p?.min_margin_pct==null)return '';const s=root.SpektraQuoteSummary.calculate(current);return s.margin!=null&&s.margin<Number(p.min_margin_pct)?'Marža '+s.margin.toFixed(1)+' % je pod firemným limitom '+p.min_margin_pct+' %.':'';}
+  function catalogItemKind(st){
+    const code=String(st?.code||'').trim().toUpperCase();
+    const name=String(st?.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    const known=/^(PR-MONT|PR-MONT-R|PR-POM|PR-SERV|PR-MAR|DOP-KM|DOP-10|DOP-20|DOP-40|PK-MONT|PK-SERV-K|PK-SERV-A|PK-DIAG|PK-SPUST|PK-KASK|TC-SERV-M|TC-SERV-S|TC-DIAG|TC-SPUST-M|TC-SPUST-S|TC-KRIV|KL-MONT-3|KL-METER|KL-SERV|KL-HLB|KL-DIAG|KL-DEM|KL-VAK|KU-CERP|KU-EXP|KU-TERM|KU-SMART|KU-PREPL|KU-INH|RPK1|PRSK|MPEL|MHPS|MK3)$/;
+    // POHODA also stores genuine physical products and sets below Služby.
+    if(!code.startsWith('SP-')&&!known.test(code))return 'material';
+    if(code.startsWith('DOP-')||code.startsWith('SP-DOP-'))return 'transport';
+    if(/^(SP-SERV-|SP-CHEM-|SP-DIAG-|SP-VYPOC|SP-POD-UVED|SP-KL-EXT)/.test(code)
+       ||/servis|revizia|diagnost|preplach|kontrola/.test(name))return 'service';
+    return 'labor';
+  }
   async function addCatalog(selected,qty){
     const st=selected&&root.SpektraQuoteMaterials.findStock(root.SpektraQuoteMaterials.reference?root.SpektraQuoteMaterials.reference(selected):{id:selected.id,fingerprint:selected.fingerprint,code:selected.code,plu:selected.plu,storage_ref:selected.storage_ref},stocks);
     if(!st){status('Skladová karta už nie je dostupná. Obnovte vyhľadávanie.',true);return {ok:false};}
     const selectedGroup=value('wbCatalogGroup');
     return mutate('Položka z katalógu bola pridaná.',q=>{
-      let group=A().groups(q).find(g=>g.id===selectedGroup&&g.pricing!=='fixed')||A().groups(q).find(g=>g.kind==='material'&&g.pricing!=='fixed');
-      if(!group)group=A().createGroup(q,{name:'Montážny materiál',kind:'material'});
+      const groupKind=catalogItemKind(st);
+      let group=A().groups(q).find(g=>g.id===selectedGroup&&g.kind===groupKind&&g.pricing!=='fixed')||
+        A().groups(q).find(g=>g.kind===groupKind&&g.pricing!=='fixed');
+      if(!group)group=A().createGroup(q,{name:groupKind==='material'?'Montážny materiál':labels[groupKind],kind:groupKind});
       const temp={status:'draft',items:[]};root.SpektraQuoteMaterials.add(temp,st,qty,root.SpektraQuoteStorage.uuid());
       A().addRows(q,group.id,temp.items,{origin:'catalog'});
     });
