@@ -140,6 +140,7 @@
     if(out.indoor_count){const count=Number(out.indoor_count);out.branch_lengths=Array.from({length:count},(_,i)=>num(out['branch_'+(i+1)+'_m'])??5);}
     state.parameters=out;return out;
   }
+  function savedTemplates(){return state.library.filter(x=>x.kind==='template'&&x.payload?.active!==false);}
   function assembliesPanel(groups){
     const sid=state.scenarioId,p=state.parameters;
     const param=(key,label,def,unit='')=>field(label+(unit?' ['+unit+']':''),'wbParam_'+key,p[key]??def,'data-wb-param="'+key+'" inputmode="decimal"');
@@ -159,9 +160,11 @@
     const rendered=new Set(['system_type','dhw_solution','route_m','indoor_count','branch_lengths','water_outlets','waste_outlets','pipe16_m','pipe20_m','pipe25_m']);
     const remaining=S().describe(sid).parameters.filter(x=>!rendered.has(x.key));
     if(remaining.length)form+='<div class="wbGrid">'+remaining.map(d=>d.type==='select'?select(d.label,'wbParam_'+d.key,d.options,p[d.key]??d.default,'data-wb-param="'+d.key+'" data-wb-rerender="1"'):param(d.key,d.label,d.default,d.unit)).join('')+'</div>';
-    const templates=state.library.filter(x=>x.kind==='template'&&x.payload?.active!==false);
+    const templates=savedTemplates();
     const optional=A().inspect(current).optional||[];
-    return '<h2>Rýchla ponuka podľa scenára</h2><div class="wbChoices">'+S().list().map(s=>'<button type="button" class="wbChoice" aria-pressed="'+(sid===s.id)+'" data-wb-action="scenario" data-id="'+E(s.id)+'">'+E(s.name||s.label)+'<small>'+E(s.description||'Zariadenie, materiál a montáž')+'</small></button>').join('')+'</div>'+
+    return '<h2>Rýchla ponuka podľa scenára</h2><div class="wbChoices">'+S().list().map(s=>'<button type="button" class="wbChoice" aria-pressed="'+(sid===s.id)+'" data-wb-action="scenario" data-id="'+E(s.id)+'">'+E(s.name||s.label)+'<small>'+E(s.description||'Zariadenie, materiál a montáž')+'</small></button>').join('')+
+      '<button type="button" class="wbChoice wbChoiceNew" data-wb-action="new-custom">＋ Nová vlastná zostava<small>Vybrať položky a uložiť ako šablónu</small></button>'+
+      templates.map(t=>'<button type="button" class="wbChoice wbChoiceSaved" data-wb-action="use-template" data-id="'+E(t.key)+'">'+E(t.payload.name)+'<small>Moja zostava · vložiť do ponuky</small></button>').join('')+'</div>'+
       '<div class="wbCard">'+form+'<div class="wbTools">'+btn('preview-scenario','Pripraviť zostavu','','primary')+'</div><div class="sub">Pred vložením zobrazíme konkrétne položky, množstvá a prípadné chýbajúce ceny.</div></div>'+
       '<div class="wbCard"><h2>Spoločné služby</h2><div class="wbTools">'+btn('service','Doprava','data-id="transport"')+btn('service','Revízia','data-id="revision"')+btn('service','Tlaková skúška a protokol','data-id="pressure"')+btn('service','Vlastná služba','data-id="service"')+'</div></div>'+
       (optional.length?'<div class="wbCard"><h2>Voliteľné doplnky</h2>'+optional.map((o,n)=>'<label class="wbCheck"><input type="checkbox" data-wb-optional="'+E(o.id||n)+'"'+(o.selected?' checked':'')+'><span>'+E(o.name||o.group?.name||'Doplnok')+'<small>'+(o.include_in_initial_total===false?'Budúci servis – mimo ceny realizácie':o.selected?'Zahrnuté v cene':'Nezahrnuté v cene')+'</small></span></label>').join('')+'</div>':'')+
@@ -262,7 +265,7 @@
       if(saved.ok&&!saved.stale){closeDialog();state.tab='items';render();}
     });
   }
-  function groupDialog(id){
+  function groupDialog(id,afterCreate=false){
     const g=id?A().groups(current).find(g=>g.id===id):{name:'Nová skupina',kind:'material',pricing:'computed',rows:[],contents:[]};
     if(!g)throw new Error('Skupina sa nenašla.');
     const html=field('Názov skupiny','wbGroupName',g.name)+select('Druh','wbGroupKind',Object.entries(labels),g.kind)+
@@ -275,7 +278,7 @@
       const saved=await mutate('Skupina bola uložená.',q=>{
         const group=id?A().updateGroup(q,id,{name,kind,pricing,contents}):A().createGroup(q,{name,kind,pricing,contents});
         if(pricing==='fixed'&&price!=='')A().setFixedPrice(q,group.id,price);
-      });if(saved.ok&&!saved.stale)closeDialog();
+      });if(saved.ok&&!saved.stale){closeDialog();if(afterCreate){state.tab='items';render();status('Nová skupina je pripravená. Pridajte položky cez Katalóg a potom zvoľte „Uložiť ako zostavu“.');}}
     });
   }
   function serviceDialog(kind){
@@ -527,6 +530,7 @@
       if(name==='confirm-dialog'){if(state.dialogOwner!==current?.id)throw new Error('Otvorená ponuka sa zmenila. Zavrite toto okno a zopakujte úpravu.');const fn=state.dialogConfirm;if(fn){node.disabled=true;try{await fn();}finally{node.disabled=false;}}return;}
       if(name==='customer'){customerDialog();return;}
       if(name==='catalog'||name==='text'){tab('items');toggleQuoteAddPanel(name==='catalog'?'catalog':'manual');if(name==='text'){document.getElementById('quoteManualKind').value='text';updateQuoteManualKind();}return;}
+      if(name==='new-custom'){groupDialog(null,true);return;}
       if(name==='new-group'||name==='edit-group'){groupDialog(id);return;}
       if(name==='service'){serviceDialog(id);return;}
       if(name==='copy-group'){await mutate('Skupina bola skopírovaná.',q=>A().copyGroup(q,id));return;}
@@ -608,6 +612,6 @@
       A().addRows(q,group.id,temp.items,{origin:'manual'});
     });if(result.ok&&!result.stale)resetManualQuoteForm();return result;
   }
-  const api={addCatalog,addManual,onOpen,render,tab,action,changeRow,setRealizationDate,mutate,prepareEdit,beginRevision,quickStart,revisionLabel,rowControls,rowGroupControl,bindRows,marginWarning,priceDialog,loadLibrary,stockLinkDialog};
+  const api={addCatalog,addManual,onOpen,render,tab,action,savedTemplates,changeRow,setRealizationDate,mutate,prepareEdit,beginRevision,quickStart,revisionLabel,rowControls,rowGroupControl,bindRows,marginWarning,priceDialog,loadLibrary,stockLinkDialog};
   root.SpektraQuoteWorkbench=api;
 })(typeof window==='object'?window:globalThis);
