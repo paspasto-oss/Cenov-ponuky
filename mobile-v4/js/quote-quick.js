@@ -204,8 +204,10 @@
     }
     let html='<div class="quickModeBar"><strong>Jednoduchá ponuka</strong>'+control('advanced','Rozšírené úpravy')+'</div>';
     if(!s.selected&&!(q.items||[]).length){
-      const scenarios=root.SpektraHvacScenarios.list();
-      html+='<h2>Čo naceniť?</h2><div class="wbChoices">'+scenarios.map(r=>'<button type="button" class="wbChoice" data-quick-action="choose" data-scenario="'+E(r.id)+'">'+E(r.id==='floor_heating_rehau'?'Podlahové kúrenie':r.name)+'<small>'+(r.id==='floor_heating_rehau'?'Plocha, materiál, montáž a km':'Otvoriť zostavu')+'</small></button>').join('')+'</div>';
+      const scenarios=root.SpektraHvacScenarios.list(),templates=typeof W.savedTemplates==='function'?W.savedTemplates():[];
+      html+='<h2>Čo naceniť?</h2><div class="wbChoices">'+scenarios.map(r=>'<button type="button" class="wbChoice" data-quick-action="choose" data-scenario="'+E(r.id)+'">'+E(r.id==='floor_heating_rehau'?'Podlahové kúrenie':r.name)+'<small>'+(r.id==='floor_heating_rehau'?'Plocha, materiál, montáž a km':'Otvoriť zostavu')+'</small></button>').join('')+
+        '<button type="button" class="wbChoice wbChoiceNew" data-quick-action="new-custom">＋ Nová vlastná zostava<small>Pridať materiál a montáž</small></button>'+
+        templates.map(t=>'<button type="button" class="wbChoice wbChoiceSaved" data-quick-action="custom-template" data-template-key="'+E(t.key)+'">'+E(t.payload.name)+'<small>Moja zostava · vložiť do ponuky</small></button>').join('')+'</div>';
       box.innerHTML=html;return;
     }
     html+=(['ready','sent','approved'].includes(q.status)?'<p class="sub">Vydaná ponuka: zmena plochy alebo km vytvorí novú revíziu. Pôvodná verzia zostane zachovaná.</p>':'');
@@ -307,6 +309,8 @@
       const b=event.target.closest('[data-quick-action]');if(!b)return;
       try{
         const action=b.dataset.quickAction;
+        if(action==='new-custom'){s.advanced=true;await W.action('new-custom',{dataset:{}});render();return;}
+        if(action==='custom-template'){s.advanced=true;await W.action('use-template',{dataset:{id:b.dataset.templateKey}});render();return;}
         if(action==='choose'){
           if(b.dataset.scenario==='floor_heating_rehau'){s.selected=true;s.area='1';s.km='0';render();return;}
           s.advanced=true;await W.action('scenario',{dataset:{id:b.dataset.scenario}});render();return;
