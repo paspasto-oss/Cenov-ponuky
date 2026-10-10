@@ -35,7 +35,8 @@
 #quoteList .quoteListRow{display:grid;grid-template-columns:minmax(180px,1fr) minmax(310px,1.1fr) auto;gap:4px 18px;align-items:center}
 #quoteList .quoteListBody,#quoteList .quoteListMeta{display:contents}
 #quoteList .quoteListBody>b{grid-column:1;grid-row:1;font-size:15px;font-weight:650;overflow-wrap:anywhere}
-#quoteList .quoteListBody>small{grid-column:1;grid-row:2;margin:0;font-size:12px;overflow-wrap:anywhere}
+#quoteList .quoteListDetails{grid-column:1;grid-row:2;display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
+#quoteList .quoteListDetails small{display:block;margin:0;font-size:12px;overflow-wrap:anywhere;line-height:1.4}
 #quoteList .quoteListCode{grid-column:1;grid-row:3;font-size:12px;margin:0;color:var(--m)}
 #quoteList .quoteListFinancials{grid-column:2;grid-row:1 / span 3;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px;margin:0}
 #quoteList .quoteListFinancials .quoteListMetric{gap:1px}
