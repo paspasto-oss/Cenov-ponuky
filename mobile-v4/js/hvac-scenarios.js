@@ -594,6 +594,21 @@
     for(const key of ['category','system_type','boiler_type','ac_mode'])if(typeof q[key]==='string'&&q[key])t.source[key]=q[key];
     return validateTemplate(t);
   }
+  // Save all quote groups as a reusable material + labor + transport assembly,
+  // without including customer details or changing the original quote.
+  function templateFromQuote(q,options={}){
+    const rows=(q.items||[]).map((item,index)=>{
+      const r=templateRow(item,index);
+      if(options.keepRules!==true)r.quantity_rule=fixed(r.qty);
+      return r;
+    });
+    const t={id:options.id||randomId('assembly'),name:options.name||'Vlastná zostava',
+      kind:'material',pricing:'computed',version:1,status:'draft',rows,
+      source:{type:'quote_bundle'},updated_at:options.now||new Date().toISOString()};
+    for(const key of ['category','system_type','boiler_type','ac_mode'])
+      if(typeof q[key]==='string'&&q[key])t.source[key]=q[key];
+    return validateTemplate(t);
+  }
   function copyTemplate(template,options={}){
     const t=validateTemplate(template);
     return validateTemplate({...t,id:options.id||randomId('assembly'),name:options.name||t.name+' – kópia',version:1,status:'draft',source:{...t.source,type:'template',template_id:t.id,template_version:t.version},updated_at:options.now||new Date().toISOString()});
@@ -647,7 +662,11 @@
     const d={id:'custom',name:t.name,category:allowedCategories.has(t.source?.category)?t.source.category:'other'};
     for(const key of ['system_type','boiler_type','ac_mode'])if(typeof t.source?.[key]==='string')d[key]=t.source[key];
     const c=makeContext(input,d,p);
-    const g=group(c,c.instance+':'+t.id,t.name,t.kind,t.pricing,t.id);g.template_version=t.version;g.contents=clone(t.contents||[]);
+    const isQuoteBundle=t.source?.type==='quote_bundle';
+    const kindNames={equipment:'Zariadenie',material:'Materiál',labor:'Montáž',transport:'Doprava',
+      revision:'Revízia',pressure:'Tlaková skúška',service:'Služby',text:'Text',other:'Ostatné'};
+    const g=isQuoteBundle?null:group(c,c.instance+':'+t.id,t.name,t.kind,t.pricing,t.id);
+    if(g){g.template_version=t.version;g.contents=clone(t.contents||[]);}
     if(t.pricing==='fixed'){
       const billed=t.rows.find(r=>r.kind!=='text'&&r.charge_mode!=='included'&&r.mapping_status!=='included_in_installation');
       // Quantities in template contents describe the saved template, while the
@@ -655,14 +674,18 @@
       g.contents_basis_quantity=t.contents_basis_quantity??(billed?.qty>0?billed.qty:1);
     }
     for(const r of t.rows){
+      const target=isQuoteBundle?group(c,c.instance+':'+t.id+':'+r.kind,
+        t.name+' – '+(kindNames[r.kind]||r.kind),r.kind,'computed',t.id):g;
+      target.template_version=t.version;
       if(r.charge_mode==='included'||r.mapping_status==='included_in_installation'){
-        g.contents.push({name:r.name,qty:evaluateRule(r.quantity_rule,p),unit:r.unit,kind:r.kind,catalog_ref:clone(r.catalog_ref),...(r.kind!=='material'?{included_duplicate:true}:{})});continue;
+        if(!Array.isArray(target.contents))target.contents=[];
+        target.contents.push({name:r.name,qty:evaluateRule(r.quantity_rule,p),unit:r.unit,kind:r.kind,catalog_ref:clone(r.catalog_ref),...(r.kind!=='material'?{included_duplicate:true}:{})});continue;
       }
       if(r.condition&&!recipeEnabled(r,c))continue;
       const future=r.include_in_initial_total===false,unselected=r.required===false&&!recipeEnabled(r,c);
-      const i=row(c,r,g.id,t.id,r.quantity_rule,{kind:r.kind,name:r.catalog_ref?.match_by==='code'&&r.name_override!==true?undefined:r.name,template:true,fixedPackage:t.pricing==='fixed',optional:future||unselected,preservePrice:input.refreshPrices!==true&&(t.pricing==='fixed'||r.price_override===true),preserveCost:input.refreshPrices!==true&&r.cost_override===true});
+      const i=row(c,r,target.id,t.id,r.quantity_rule,{kind:r.kind,name:r.catalog_ref?.match_by==='code'&&r.name_override!==true?undefined:r.name,template:true,fixedPackage:t.pricing==='fixed',optional:future||unselected,preservePrice:input.refreshPrices!==true&&(t.pricing==='fixed'||r.price_override===true),preserveCost:input.refreshPrices!==true&&r.cost_override===true});
       i.stored_metadata.quote_assembly.template_version=t.version;
-      if(t.pricing==='fixed'&&r.kind!=='text'&&r.charge_mode!=='included'&&r.mapping_status!=='included_in_installation')g.fixed_row_id=i.stored_metadata.quote_assembly.id;
+      if(t.pricing==='fixed'&&r.kind!=='text'&&r.charge_mode!=='included'&&r.mapping_status!=='included_in_installation')target.fixed_row_id=i.stored_metadata.quote_assembly.id;
       if(future||unselected)c.optional.push({id:c.instance+':optional:'+c.counter,name:i.name,kind:r.kind,selected:false,include_in_initial_total:!future,items:[i],groups:[clone(g)],template_id:t.id});
     }
     c.items=c.items.filter(i=>i.qty>0||i.stored_metadata.quote_assembly.kind==='text');
@@ -692,7 +715,7 @@
     out.parameters=clone(preview.parameters||{});return out;
   }
   const api={VERSION,FORMAT,list,describe,normalizeParameters,instantiate,recipesToAssemblies,adaptRecipes:recipesToAssemblies,
-    reference,findStock,validateRule,evaluateRule,validatePriceRule,pipeRecipe,ztiLabor,templateFromGroup,copyTemplate,updateTemplate,saveTemplate,
+    reference,findStock,validateRule,evaluateRule,validatePriceRule,pipeRecipe,ztiLabor,templateFromGroup,templateFromQuote,copyTemplate,updateTemplate,saveTemplate,
     validateTemplate,exportTemplates,importTemplates,instantiateTemplate,previewQuantities,applyQuantities};
   if(typeof module==='object'&&module.exports)module.exports=api;
   root.SpektraHvacScenarios=api;
