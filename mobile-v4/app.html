@@ -40,7 +40,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 <link rel="stylesheet" href="js/home-toolbar.css?v=20261007-bottom1">
-<link rel="stylesheet" href="js/visual-refresh.css?v=20261006-clean2">
+<link rel="stylesheet" href="js/visual-refresh.css?v=20261010-quote-meta1">
 <link rel="stylesheet" href="js/contacts.css?v=20261007-contacts1">
 <link rel="stylesheet" href="js/quote-workbench.css?v=20261007-hvac1">
 <link rel="stylesheet" href="js/theme.css?v=20261008-theme1">
@@ -836,8 +836,8 @@ function renderHome(){
    const ref=esc(q.quote_no||q.id||'');
    const date=quoteCreatedTs(q)?new Date(quoteCreatedTs(q)).toLocaleDateString('sk-SK'):'—';
    return '<div class="row quoteListRow" data-quote-ref="'+ref+'" style="cursor:pointer">'+
-     '<div class="quoteListBody"><b>'+esc(q.customer?.name||'Bez mena')+'</b><small>'+esc(date)+' · '+esc(q.customer?.address||'Bez adresy')+'</small>'+
-     (SpektraRealizationDate.get(q)?'<small>CCA termín realizácie: '+esc(SpektraRealizationDate.format(q.estimated_realization_date))+'</small>':'')+
+     '<div class="quoteListBody"><b>'+esc(q.customer?.name||'Bez mena')+'</b><div class="quoteListDetails"><small>'+esc(date)+' · '+esc(q.customer?.address||'Bez adresy')+'</small>'+
+     (SpektraRealizationDate.get(q)?'<small>CCA termín realizácie: '+esc(SpektraRealizationDate.format(q.estimated_realization_date))+'</small>':'')+'</div>'+
      '<div class="quoteListMeta"><span class="quoteListCode">'+esc(q.quote_no||'')+' · '+esc(labelCat(q.category))+' · '+esc(q.brand||'')+(q._sync_error?' · ⚠ sync':'')+'</span>'+SpektraQuoteSummary.html(q)+'</div></div>'+
      '<div class="quoteListActions"><span class="badge '+esc(q.status)+'">'+labelStatus(q.status)+'</span><div class="quoteListActionButtons"><button class="btn small quoteEditBtn" type="button" data-quote-ref="'+ref+'">Otvoriť</button><button class="btn small quotePdfBtn" type="button" data-quote-ref="'+ref+'">PDF / Tlač</button></div></div>'+
    '</div>';
