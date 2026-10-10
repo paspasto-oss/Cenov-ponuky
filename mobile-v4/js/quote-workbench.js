@@ -118,7 +118,7 @@
   }
   function itemsPanel(groups){
     return '<div class="wbTools">'+btn('tab','＋ Pridať zostavu','data-id="assemblies"')+btn('catalog','＋ Katalóg')+btn('text','＋ Text')+btn('undo','↶ Vrátiť úpravu','',state.undo.length?'ghost':'ghost')+btn('recalculate','Prepočítať množstvá')+btn('prices','Aktualizovať ceny')+'</div>'+
-      '<div class="wbTools">'+btn('new-group','Nová skupina')+btn('pricing','Cenový štandard')+btn('variant','Uložiť variant')+btn('variants','Porovnať varianty')+'</div>'+
+      '<div class="wbTools">'+btn('new-group','Nová skupina')+(groups.length?btn('save-full-template','Uložiť celú zostavu'):'')+btn('pricing','Cenový štandard')+btn('variant','Uložiť variant')+btn('variants','Porovnať varianty')+'</div>'+
       '<div class="sub">'+groups.length+' skupín · Montážny materiál a prácu môžete rozbaliť samostatne v náhľade.</div>'+
       groups.map(g=>groupPanel(g)).join('');
   }
@@ -171,7 +171,7 @@
       '<div class="wbCard"><h2>Moje zostavy</h2><div class="wbTools">'+btn('reload-library','↻ Obnoviť')+btn('import-library','Importovať zostavy')+btn('export-library','Exportovať zostavy')+btn('pricing','Cenový štandard')+'</div>'+
       state.library.filter(x=>x.pending&&x.error).map(x=>'<div class="notice warn">'+E(x.payload?.name||(x.kind==='pricing'?'Cenový štandard':'Náklady realizácie'))+': '+E(x.error)+' '+btn('library-conflict','Skontrolovať uloženie','data-id="'+E(x.key)+'"')+'</div>').join('')+
       (templates.length?'<div class="wbLibraryList">'+templates.map(t=>'<div class="wbLibraryItem"><h3>'+E(t.payload.name)+'</h3><div class="sub">'+E(t.payload.status==='verified'?'Overená':'Rozpracovaná')+' · verzia '+E(t.payload.version||1)+(t.pending?' · čaká na synchronizáciu':'')+'</div><div class="wbTools">'+btn('use-template','Pridať','data-id="'+E(t.key)+'"')+btn('edit-template','Upraviť','data-id="'+E(t.key)+'"')+'</div></div>').join('')+'</div>':'<div class="wbEmpty">Zostavu uložíte zo skupiny položiek tlačidlom „Uložiť ako zostavu“.</div>')+'</div>'+
-      (groups.length?'<h2>Zostavy v ponuke</h2>'+groups.map(groupPanel).join(''):'');
+      (groups.length?'<h2>Zostavy v ponuke</h2>'+btn('save-full-template','Uložiť materiál + montáž + dopravu')+groups.map(groupPanel).join(''):'');
   }
   function previewPanel(){
     const settings=A().outputSettings(current),modes=[['summary','Jedna položka'],['contents','Obsah bez cien riadkov'],['detail','Úplný rozpis s cenami']];
@@ -266,19 +266,19 @@
     });
   }
   function groupDialog(id,afterCreate=false){
-    const g=id?A().groups(current).find(g=>g.id===id):{name:'Nová skupina',kind:'material',pricing:'computed',rows:[],contents:[]};
+    const g=id?A().groups(current).find(g=>g.id===id):{name:afterCreate?'Nová vlastná zostava':'Nová skupina',kind:'material',pricing:'computed',rows:[],contents:[]};
     if(!g)throw new Error('Skupina sa nenašla.');
-    const html=field('Názov skupiny','wbGroupName',g.name)+select('Druh','wbGroupKind',Object.entries(labels),g.kind)+
+    const html=afterCreate?field('Názov zostavy','wbGroupName',g.name)+'<p class="sub">Po vytvorení pridajte položky z POHODY, montáž a dopravu. Celú zostavu potom uložte do knižnice.</p>':field('Názov skupiny','wbGroupName',g.name)+select('Druh','wbGroupKind',Object.entries(labels),g.kind)+
       select('Výpočet ceny','wbGroupPricing',[['computed','Súčet položiek'],['fixed','Pevná cena – jeden účtovaný riadok']],g.pricing)+
       field('Pevná cena / MJ bez DPH','wbGroupPrice',g.pricing==='fixed'?g.rows[0]?.price??'':'','inputmode="decimal"')+
       '<label class="wbField"><span>Rozsah / úkony – každý na samostatnom riadku</span><textarea id="wbGroupContents">'+E((g.contents||[]).map(x=>typeof x==='string'?x:x.name).join('\n'))+'</textarea><small>Opisný rozpis pevnej ceny. Ceny jednotlivých úkonov sa tu nevytvárajú.</small></label>';
-    showDialog(id?'Upraviť skupinu':'Nová skupina',html,'Uložiť',async()=>{
-      const name=value('wbGroupName'),kind=value('wbGroupKind'),pricing=value('wbGroupPricing'),price=value('wbGroupPrice');
-      const contents=value('wbGroupContents').split('\n').map(x=>x.trim()).filter(Boolean).map(name=>{const original=(g.contents||[]).find(x=>typeof x==='object'&&x.name===name);return original?clone(original):{name};});
+    showDialog(afterCreate?'Nová vlastná zostava':id?'Upraviť skupinu':'Nová skupina',html,'Uložiť',async()=>{
+      const name=value('wbGroupName'),kind=afterCreate?'material':value('wbGroupKind'),pricing=afterCreate?'computed':value('wbGroupPricing'),price=afterCreate?'':value('wbGroupPrice');
+      const contents=(afterCreate?'':value('wbGroupContents')).split('\n').map(x=>x.trim()).filter(Boolean).map(name=>{const original=(g.contents||[]).find(x=>typeof x==='object'&&x.name===name);return original?clone(original):{name};});
       const saved=await mutate('Skupina bola uložená.',q=>{
         const group=id?A().updateGroup(q,id,{name,kind,pricing,contents}):A().createGroup(q,{name,kind,pricing,contents});
         if(pricing==='fixed'&&price!=='')A().setFixedPrice(q,group.id,price);
-      });if(saved.ok&&!saved.stale){closeDialog();if(afterCreate){state.tab='items';render();status('Nová skupina je pripravená. Pridajte položky cez Katalóg a potom zvoľte „Uložiť ako zostavu“.');}}
+      });if(saved.ok&&!saved.stale){closeDialog();if(afterCreate){state.tab='items';render();status('Nová zostava je pripravená. Pridajte položky cez Katalóg, montáž a dopravu a použite „Uložiť celú zostavu“.');}}
     });
   }
   function serviceDialog(kind){
@@ -425,6 +425,17 @@
       const template=S().templateFromGroup(draft,groupId,{name:value('wbTemplateName')});const saved=await saveLibrary('template:'+template.id,'template',template);if(!saved.stale)closeDialog();
     });
   }
+  function saveWholeTemplateDialog(){
+    const draft=clone(current);draft.status='draft';delete draft._server_status;A().init(draft);
+    const name=A().groups(draft)[0]?.name||'Moja zostava';
+    showDialog('Uložiť celú zostavu',field('Názov zostavy','wbTemplateName',name)+
+      '<p class="sub">Do spoločnej knižnice sa uložia všetky položky ponuky – materiál, montáž, doprava a ďalšie služby. Údaje zákazníka sa neukladajú.</p>',
+      'Uložiť zostavu',async()=>{
+        const template=S().templateFromQuote(draft,{name:value('wbTemplateName')});
+        const saved=await saveLibrary('template:'+template.id,'template',template);
+        if(!saved.stale)closeDialog();
+      });
+  }
   function editTemplateDialog(key){
     const entry=state.library.find(x=>x.key===key);if(!entry)throw new Error('Zostava sa nenašla.');const t=entry.payload;
     showDialog('Správa zostavy',field('Názov','wbTemplateName',t.name)+select('Stav','wbTemplateStatus',[['draft','Rozpracovaná'],['verified','Overená na zákazke']],t.status||'draft')+
@@ -556,6 +567,7 @@
         stockLinkDialog(state.linkIndex,clone(st));return;
       }
       if(name==='copy-row'){await mutate('Položka bola skopírovaná.',q=>A().copyRow(q,Number(id)));return;}
+      if(name==='save-full-template'){saveWholeTemplateDialog();return;}
       if(name==='save-template'){saveTemplateDialog(id);return;}
       if(name==='use-template'){await useTemplate(id);return;}
       if(name==='edit-template'){editTemplateDialog(id);return;}
