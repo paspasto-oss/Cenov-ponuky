@@ -491,7 +491,11 @@ async function parseXml(file){
   if(!stocks.length)throw new Error('V XML som nenašiel žiadne uzly <stock>. Exportuj agendu Zásoby z POHODY.');
   sourceRows=stocks.length;
   const requested=document.getElementById('syncMode').value;
-  effectiveMode=requested==='auto'?'full':requested;
+  // Small XML exports represent partial catalogues (e.g., services). Do not deactivate unrelated stock.
+  const baselineCount=baseline().length;
+  effectiveMode=requested==='auto'
+    ?(sourceRows<1000||(baselineCount&&sourceRows<Math.max(500,baselineCount*0.5))?'partial':'full')
+    :requested;
   setProgress(40,'Spracúvam '+sourceRows.toLocaleString('sk-SK')+' skladových kariet…');
   const out=[];
   const batch=500;
