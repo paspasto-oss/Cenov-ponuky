@@ -15,7 +15,9 @@ async function geocode(address:string,key:string,allowMunicipality=false){
   const municipalityOnly=allowMunicipality&&!/\d/.test(address);
   if(municipalityOnly)url.searchParams.set('layers','locality');
   const data=await json(url.href,{headers:{Authorization:key}});
-  const hits=data.features||[],f=hits[0],p=f?.properties;
+  const place=normalizePlace(address.split(',')[0]);
+  const hits=(data.features||[]).filter((f:any)=>!municipalityOnly||(f.properties?.layer==='locality'&&normalizePlace(f.properties.name||f.properties.locality||'')===place));
+  const f=hits[0],p=f?.properties;
   const municipality=municipalityOnly&&p?.layer==='locality'&&normalizePlace(p.name||p.locality||'')===normalizePlace(address.split(',')[0]);
   if(municipalityOnly&&!municipality)throw Error('Obec sa nenašla jednoznačne. Doplňte okres alebo presnú adresu.');
   if(!p||(!municipality&&!['address','venue'].includes(p.layer))||!Number.isFinite(Number(p.confidence))||Number(p.confidence)<.85||(!municipality&&(!p.housenumber||!p.street||!p.locality))||!f.geometry?.coordinates?.every(Number.isFinite))throw Error('Adresa nie je jednoznačná. Doplňte ulicu, číslo a obec.');

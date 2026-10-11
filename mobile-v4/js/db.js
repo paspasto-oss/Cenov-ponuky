@@ -760,7 +760,13 @@ window.SpektraDB = (() => {
   async function routeTransport(address) {
     if (!client || !user) throw new Error('Prihláste sa pre výpočet trasy.');
     const {data,error}=await client.functions.invoke('transport-route',{body:{address}});
-    if(error||data?.error) throw new Error(data?.error||'Routovacie API je nedostupné. Skontrolujte pripojenie alebo konfiguráciu.');
+    if(error||data?.error) {
+      let detail=data?.error;
+      if(!detail&&error?.context&&typeof error.context.json==='function'){
+        try{detail=(await error.context.json())?.error;}catch(_e){}
+      }
+      throw new Error(typeof detail==='string'?detail:'Routovacie API je nedostupné. Skontrolujte pripojenie alebo konfiguráciu.');
+    }
     return data;
   }
   return { routeTransport, configured, init, signIn, signUp, signOut, isAuthenticated, getUser, getProfile, listStocks, upsertStocks, uploadProductImage, uploadQuoteImage, listPdfBanners, listCustomers, listQuotes, listQuoteLibrary, saveQuoteLibrary, nextQuoteNo, saveQuote, listInspections, saveInspection, uploadInspectionPhoto, deleteInspectionPhoto, linkInspectionQuote, deleteDraftInspection };
