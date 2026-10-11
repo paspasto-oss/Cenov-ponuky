@@ -33,6 +33,9 @@ test('all 18 independent detail/appendix combinations preserve every billed euro
     const before=JSON.stringify(q),model=rows.customerModel(q,options);
     assert.equal(model.rows.reduce((sum,item)=>sum+(rows.amounts(item,q).amount||0),0),sumBill(q),JSON.stringify({material,labor,appendix}));
     assert.equal(model.appendixRows.reduce((sum,item)=>sum+(rows.amounts(item,q).amount||0),0),0,'Appendix is not additional billing.');
+    assert.ok(!model.rows.some(row=>row._quote_output.group_kind==='transport'));
+    assert.ok(model.rows.some(row=>row.name==='Montáž zariadenia s dopravou'));
+    assert.ok(!model.appendixRows.some(row=>row._quote_output.group_kind==='transport'));
     assert.equal(model.totals.net,5600);assert.equal(model.totals.total,6888);
     assert.equal(model.appendixRows.length>0,appendix&&(material!=='summary'||labor!=='summary'));
     output.renderCustomer(q,options);assert.equal(JSON.stringify(q),before);
@@ -54,9 +57,9 @@ test('material contents display quantity and one group price while full detail d
 test('fixed labor detail preserves the negotiated parent price and uses unpriced operations',()=>{
   const q=fixture();q.items[3].price=850;q.material_edits.assemblies.output.labor='detail';
   const model=rows.customerModel(q,options),labor=model.rows.filter(x=>x._quote_output.group_kind==='labor');
-  assert.equal(labor.length,6);assert.equal(labor[0].price,850);assert.equal(labor[0].name,'Montáž dohodnutá');
+  assert.equal(labor.length,6);assert.equal(labor[0].price,910);assert.equal(labor[0].name,'Montáž zariadenia s dopravou');
   for(const line of labor.slice(1)){assert.equal(line.price,null);assert.equal(rows.amounts(line,q).amount,null);}
-  const html=output.renderRows(q,{...options,model,rows:labor});assert.equal((html.match(/850\.00 €/g)||[]).length,2);
+  const html=output.renderRows(q,{...options,model,rows:labor});assert.equal((html.match(/910\.00 €/g)||[]).length,2);
   assert.match(html,/Zameranie &lt;otvor&gt;/);assert.doesNotMatch(html,/\b900\.00 €|\b0\.00 €/);
 });
 
@@ -66,8 +69,8 @@ test('computed labor detail uses saved operation prices and does not charge the 
   q.items.push(item('Montáž',{role:'installation',price:820,kind:'labor'}));q.material_edits.assemblies.groups[2].indices.push(7);
   q.material_edits.assemblies.output.labor='detail';
   const lines=rows.customerModel(q,options).rows.filter(x=>x._quote_output.group_kind==='labor');
-  assert.equal(lines.length,4);assert.equal(lines.reduce((sum,i)=>sum+(rows.amounts(i,q).amount||0),0),900);
-  assert.equal(rows.displayAmounts(lines.at(-1),q).amount,900);assert.equal(rows.amounts(lines.at(-1),q).amount,null);
+  assert.equal(lines.length,4);assert.equal(lines.reduce((sum,i)=>sum+(rows.amounts(i,q).amount||0),0),960);
+  assert.equal(rows.displayAmounts(lines.at(-1),q).amount,960);assert.equal(rows.amounts(lines.at(-1),q).amount,null);
 });
 
 test('customer model and both table layouts exclude internal fields, escape all text, and preserve multiline notes',()=>{
@@ -184,4 +187,37 @@ test('canonical totals match atomic-save rounding for fractional prices and quan
     const totals=rows.canonicalTotals(q);assert.equal(totals.net,net);assert.equal(totals.total,total);assert.equal(JSON.stringify(q),before);
   }
   assert.equal(rows.canonicalTotals({items:[]}).complete,false);
+});
+
+test('transport is combined once with labor for summary, details and appendix, without changing saved prices',()=>{
+  for(const mode of ['summary','contents','detail'])for(const appendix of [false,true]){
+    const q=fixture();q.material_edits.assemblies.output.labor=mode;q.material_edits.assemblies.output.appendix=appendix;
+    q.items[3].qty=3;q.items[3].unit='h';q.items[3].price=100;
+    q.items[4].qty=2;q.items[4].price=60;
+    const before=JSON.stringify(q),model=rows.customerModel(q,options);
+    const labor=model.rows.find(row=>row.name==='Montáž zariadenia s dopravou');
+    assert.equal(rows.displayAmounts(labor,q).amount,420);
+    assert.equal(model.rows.reduce((sum,row)=>sum+(rows.amounts(row,q).amount||0),0),sumBill(q));
+    const html=output.renderCustomer(q,options);assert.doesNotMatch(html,/>Doprava</);assert.match(html,/Montáž zariadenia s dopravou/);
+    if(appendix&&mode!=='summary'){
+      const detail=model.appendixRows.find(row=>row.name==='Montáž zariadenia s dopravou');
+      assert.equal(rows.displayAmounts(detail,q).amount,420);assert.equal(rows.amounts(detail,q).amount,null);
+    }
+    assert.equal(JSON.stringify(q),before);
+  }
+});
+test('legacy transport, multiple trips and unknown transport prices preserve totals and source snapshots',()=>{
+  for(const detail of [false,true])for(const price of [25,0,null]){
+    const q={vat_pct:23,material_edits:{pdf_detail:detail},items:[
+      {role:'device',name:'Kotol',qty:1,price:1000},
+      {role:'installation',name:'Montáž kotla',qty:2,unit:'h',price:100},
+      {role:'transport',name:'Doprava',qty:3,price,visible:false}
+    ]};
+    const before=JSON.stringify(q),model=rows.customerModel(q);
+    assert.equal(model.rows.length,2);assert.equal(model.rows[1].name,'Montáž zariadenia s dopravou');
+    assert.equal(rows.displayAmounts(model.rows[1],q).amount,price==null?null:200+3*price);
+    assert.equal(model.totals.net,price==null?null:1200+3*price);
+    assert.equal(JSON.stringify(q),before);
+    assert.equal(rows.customerRows(q)[1].price,price==null?null:200+3*price);
+  }
 });
