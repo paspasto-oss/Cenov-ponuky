@@ -8,14 +8,19 @@ async function json(url:string, init:RequestInit={}) {
   if(!res.ok)throw Error('Routovacia služba je nedostupná.');
   return res.json();
 }
-async function geocode(address:string,key:string){
+const normalizePlace = (value:string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('sk').replace(/\s+/g,' ').trim();
+async function geocode(address:string,key:string,allowMunicipality=false){
   const url=new URL('https://api.openrouteservice.org/geocode/search');
   url.searchParams.set('text',address);url.searchParams.set('boundary.country','SVK');url.searchParams.set('size','3');
+  const municipalityOnly=allowMunicipality&&!/\d/.test(address);
+  if(municipalityOnly)url.searchParams.set('layers','locality');
   const data=await json(url.href,{headers:{Authorization:key}});
   const hits=data.features||[],f=hits[0],p=f?.properties;
-  if(!p||!['address','venue'].includes(p.layer)||!Number.isFinite(Number(p.confidence))||Number(p.confidence)<.85||!p.housenumber||!p.street||!p.locality||!f.geometry?.coordinates?.every(Number.isFinite))throw Error('Adresa nie je jednoznačná. Doplňte ulicu, číslo a obec.');
+  const municipality=municipalityOnly&&p?.layer==='locality'&&normalizePlace(p.name||p.locality||'')===normalizePlace(address.split(',')[0]);
+  if(municipalityOnly&&!municipality)throw Error('Obec sa nenašla jednoznačne. Doplňte okres alebo presnú adresu.');
+  if(!p||(!municipality&&!['address','venue'].includes(p.layer))||!Number.isFinite(Number(p.confidence))||Number(p.confidence)<.85||(!municipality&&(!p.housenumber||!p.street||!p.locality))||!f.geometry?.coordinates?.every(Number.isFinite))throw Error('Adresa nie je jednoznačná. Doplňte ulicu, číslo a obec.');
   if(hits[1]&&Number(hits[1].properties.confidence)>=Number(p.confidence)-.05&&JSON.stringify(hits[1].geometry.coordinates)!==JSON.stringify(f.geometry.coordinates))throw Error('Našlo sa viac adries. Spresnite adresu realizácie.');
-  return f;
+  return {...f,approximate:municipality};
 }
 Deno.serve(async (req:Request)=>{
  if(req.method==='OPTIONS')return new Response(null,{headers});
@@ -34,14 +39,14 @@ Deno.serve(async (req:Request)=>{
   if(Number(req.headers.get('content-length')||0)>2048)return reply({error:'Príliš veľká požiadavka.'},413);
   const body=await req.text();if(body.length>2048)return reply({error:'Príliš veľká požiadavka.'},413);
   const address=JSON.parse(body).address;
-  if(typeof address!=='string'||address.trim().length<6||address.length>300)return reply({error:'Doplňte úplnú adresu realizácie.'},400);
+  if(typeof address!=='string'||address.trim().length<2||address.length>300)return reply({error:'Doplňte obec alebo úplnú adresu realizácie.'},400);
   const key=Deno.env.get('ORS_API_KEY');if(!key)return reply({error:'Výpočet trasy nie je nakonfigurovaný (ORS_API_KEY). Použite ručnú korekciu.'},503);
   const id=address.trim().toLowerCase(),hit=cache.get(id);if(hit&&now-hit.at<86400000)return reply(hit.value);
-  const [start,end]=await Promise.all([geocode(ORIGIN,key),geocode(address,key)]);
+  const [start,end]=await Promise.all([geocode(ORIGIN,key),geocode(address,key,true)]);
   async function distance(a:number[],b:number[]){const d=await json('https://api.openrouteservice.org/v2/directions/driving-car/json',{method:'POST',headers:{Authorization:key,'Content-Type':'application/json'},body:JSON.stringify({coordinates:[a,b],instructions:false})});const metres=d.routes?.[0]?.summary?.distance;if(!Number.isFinite(metres)||metres<0)throw Error('Cestná trasa sa nenašla.');return metres;}
   const [out,back]=await Promise.all([distance(start.geometry.coordinates,end.geometry.coordinates),distance(end.geometry.coordinates,start.geometry.coordinates)]);
   const km=Math.round((out+back)/10)/100;if(km<=0)throw Error('Trasa má nulovú dĺžku. Skontrolujte adresu alebo zadajte ručne km.');
-  const value={round_trip_km:km,outbound_km:out/1000,return_km:back/1000,is_rajec:end.properties.locality.toLocaleLowerCase('sk')==='rajec',destination_label:end.properties.label,source:'openrouteservice',calculated_at:new Date().toISOString()};
+  const value={round_trip_km:km,outbound_km:out/1000,return_km:back/1000,is_rajec:normalizePlace(end.properties.locality||end.properties.name||'')==='rajec',approximate:end.approximate,destination_label:end.properties.label+(end.approximate?' – stred obce (orientačná trasa)':''),source:'openrouteservice',calculated_at:new Date().toISOString()};
   if(cache.size>=500)cache.delete(cache.keys().next().value!);cache.set(id,{at:now,value});return reply(value);
  }catch(_e){return reply({error:_e instanceof Error?_e.message:'Trasu sa nepodarilo vypočítať.'},422);}
 });

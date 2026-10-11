@@ -32,7 +32,7 @@ function apply(q,route,options={}){
  A.init(q);q.material_edits.transport=data;
  let row=q.items.find(r=>A.kind(r)==='transport');
  if(!row){const g=A.createGroup(q,{name:'Doprava',kind:'transport'});A.addRows(q,g.id,[{name:'Doprava',role:'transport',qty:1,unit:'súb.',price:0,cost:null,visible:true,stored_metadata:{quote_assembly:{kind:'transport',singleton_key:'transport',origin:'manual',transport_auto:true}}}]);row=q.items.find(r=>A.kind(r)==='transport');}
- row.qty=1;row.unit='súb.';row.name='Doprava – '+km+' km tam aj späť'+(count==null?' (doplňte výjazdy)':' × '+count+' výjazdov');
+ row.qty=1;row.unit='súb.';row.name='Doprava'+(route.approximate?' (orientačne do stredu obce)':'')+' – '+km+' km tam aj späť'+(count==null?' (doplňte výjazdy)':' × '+count+' výjazdov');
  row.price=preserve?preservedTotal:count==null?null:price(km,count,rajec);row.cost=null;row.cost_override=false;row.price_override=!!preserve;
  Object.assign(A.metadata(row),{transport_auto:true,transport_manual_price:!!preserve,total_km:km,trip_count:count,rate_per_km:.65,minimum_price:25,is_rajec:rajec,quantity_rule:{type:'fixed',qty:1},manual:{...meta.manual,qty:false,price:!!preserve}});
  return true;
@@ -47,7 +47,7 @@ function ensurePending(q){
  const g=A.createGroup(q,{name:'Doprava',kind:'transport'});A.addRows(q,g.id,[{name:'Doprava – čaká na trasu a rozsah práce',role:'transport',qty:1,unit:'súb.',price:null,cost:null,visible:true,stored_metadata:{quote_assembly:{kind:'transport',singleton_key:'transport',transport_auto:true,manual:{price:false},quantity_rule:{type:'fixed',qty:1}}}}]);
 }
 function validateRoute(r){if(!r||typeof r.is_rajec!=='boolean'||!r.destination_label||number(r.round_trip_km)<=0)throw Error('API nevrátilo platnú cestnú trasu.');return r;}
-function router(invoke){const cache=new Map();return async function(addr){if(addr.length<6)throw Error('Doplňte úplnú adresu realizácie.');const key=addr.trim().toLowerCase(),hit=cache.get(key);if(hit&&Date.now()-hit.at<86400000)return hit.value;const value=validateRoute(await invoke(addr));if(cache.size>100)cache.delete(cache.keys().next().value);cache.set(key,{value,at:Date.now()});return value;};}
+function router(invoke){const cache=new Map();return async function(addr){if(addr.trim().length<2)throw Error('Doplňte obec alebo úplnú adresu realizácie.');const key=addr.trim().toLowerCase(),hit=cache.get(key);if(hit&&Date.now()-hit.at<86400000)return hit.value;const value=validateRoute(await invoke(addr));if(cache.size>100)cache.delete(cache.keys().next().value);cache.set(key,{value,at:Date.now()});return value;};}
 const api={number,trips,price,locked,address,covered,hours,apply,invalidate,ensurePending,validateRoute,router};
 if(typeof module==='object'&&module.exports){module.exports=api;return;}
 root.SpektraQuoteTransport=api;
