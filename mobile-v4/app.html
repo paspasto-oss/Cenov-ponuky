@@ -32,7 +32,7 @@
 <script src="js/quote-materials.js?v=20261008-code1"></script>
 <script src="js/quote-assemblies.js?v=20261008-code1"></script>
 <script src="js/hvac-scenarios.js?v=20261010-bundle1"></script>
-<script src="js/quote-row-output.js?v=20261007-hvac1"></script>
+<script src="js/quote-row-output.js?v=20261011-transport-output1"></script>
 <script src="js/quote-workbench-output.js?v=20261008-term1"></script>
 <script src="js/quote-storage.js?v=20261005-atomic1"></script>
 <script src="js/db.js?v=20261011-route1"></script>
@@ -279,7 +279,7 @@
       <label class="row" style="cursor:pointer;margin-top:10px">
         <div>
           <b>Ročný servis plynového kotla</b>
-          <small>POHODA: 90 € bez DPH / 110,70 € s DPH za rok · nezvyšuje cenu montáže</small>
+          <small>80 € / rok + doprava podľa miesta realizácie · nezvyšuje cenu montáže</small>
         </div>
         <input id="gasAnnualServiceToggle" type="checkbox" checked style="width:24px;height:24px" onchange="toggleBoilerAnnualService()">
       </label>
@@ -289,7 +289,7 @@
       <label class="row" style="cursor:pointer">
         <div>
           <b>Ročný servis kotla na biomasu</b>
-          <small>110 € / rok · účtuje sa pri vykonaní servisu</small>
+          <small>80 € / rok + doprava podľa miesta realizácie · účtuje sa pri vykonaní servisu</small>
         </div>
         <input id="biomassAnnualServiceToggle" type="checkbox" checked style="width:24px;height:24px" onchange="toggleBiomassAnnualService()">
       </label>
@@ -310,7 +310,7 @@
       <label class="row" style="cursor:pointer;margin-top:10px">
         <div>
           <b>Ročná servisná prehliadka TČ</b>
-          <small id="hpAnnualServicePrice">150 € / rok · účtuje sa až pri vykonaní prehliadky</small>
+          <small id="hpAnnualServicePrice">130 € / rok + doprava podľa miesta realizácie · účtuje sa až pri vykonaní prehliadky</small>
         </div>
         <input id="annualServiceToggle" type="checkbox" checked style="width:24px;height:24px" onchange="toggleAnnualService()">
       </label>
@@ -2755,7 +2755,7 @@ function pdfPresentationSubtitle(){
 }
 const SPEKTRA_WARRANTY='ZÁRUKA SPEKTRA 5 rokov na zariadenia pri pravidelnom ročnom servise.';
 const SPEKTRA_CONSENT='Súhlasím s podmienkami 5-ročnej záruky Spektra na zariadenie uvedenými na 2. strane tejto ponuky a s pravidelným ročným servisom počas 5 rokov.';
-const SPEKTRA_WARRANTY_TERMS_VERSION='2026-09-28-v1';
+const SPEKTRA_WARRANTY_TERMS_VERSION='2026-10-11-v2';
 function warrantyOfferKey(){
   return JSON.stringify({
     warranty_terms_version:SPEKTRA_WARRANTY_TERMS_VERSION,
@@ -2862,12 +2862,11 @@ function backFromFinal(){
 function annualServiceInfo(){
   const activeCategory=current?.category||category;
   if(activeCategory==='heat_pump'){
-    const split=current?.system_type==='split'||systemType(current?.device||recommendation||{})==='split';
-    return {label:'Ročná servisná prehliadka tepelného čerpadla',price:split?'170 € / rok':'150 € / rok'};
+    return {label:'Ročná servisná prehliadka tepelného čerpadla',price:'130 € / rok + doprava podľa miesta realizácie'};
   }
   if(activeCategory==='air_conditioning')return {label:'Ročný servis klimatizácie',price:'69 € / 1 split jednotku / rok'};
-  if(activeCategory==='boiler'&&current?.boiler_type==='gas')return {label:'Ročný servis plynového kotla',price:'90 € bez DPH / 110,70 € s DPH / rok'};
-  if(activeCategory==='boiler')return {label:'Ročný servis kotla na biomasu',price:'110 € / rok'};
+  if(activeCategory==='boiler'&&current?.boiler_type==='gas')return {label:'Ročný servis plynového kotla',price:'80 € / rok + doprava podľa miesta realizácie'};
+  if(activeCategory==='boiler')return {label:'Ročný servis kotla na biomasu',price:'80 € / rok + doprava podľa miesta realizácie'};
   return null;
 }
 function annualServiceText(){
@@ -2892,6 +2891,7 @@ function renderFinal(){
  const install=items.find(i=>i.role==='installation_service'||i.role==='installation');
  const flush=items.find(i=>i.role==='heating_system_flush_cleaner_inhibitor');
  const amount=i=>i?.price==null?null:Number(i.price)*Number(i.qty);
+ const combinedInstall=SpektraQuoteRowOutput.customerRows(current,customerMaterialBundleName()).find(i=>i.name==='Montáž zariadenia s dopravou');
  const scope=!rowsView&&install?.work_scope?.length?'<div style="margin-top:12px"><b>Montáž zahŕňa:</b><ul style="margin:7px 0 0 18px;padding:0">'+install.work_scope.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>':'';
  const optional=!rowsView&&flush?'<div class="srow" style="margin-top:10px"><span>'+esc(flush.name)+'</span><b>'+eur(amount(flush))+'</b></div>':'';
  const service=annualServiceInfo();
@@ -2908,7 +2908,7 @@ function renderFinal(){
  const title=rowsView?(items.find(i=>i.role==='device')?.name||'Položky podľa rozpisu ponuky'):customerText([current.device?.brand,current.device?.model,current.device?.variant].filter(Boolean).join(' '));
  const realization=SpektraRealizationDate.get(current)?'<div class="sub" style="margin-top:8px"><b>CCA termín realizácie: '+esc(SpektraRealizationDate.format(current.estimated_realization_date))+'</b></div>':'';
  const breakdown=rowsView?'<div class="sub" style="margin-top:8px">Počet riadkov: '+items.length+' · '+(current.material_edits?.pdf_detail?'Podrobný rozpis v PDF':'Montážny materiál v PDF zoskupený')+'</div><div class="srow"><span>Celkom bez DPH</span><b>'+eur(current.net)+'</b></div>':
-   '<div class="srow"><span>Montáž</span><b>'+(current.category==='heat_pump'?((current.installation_tier==='economy'?'EKONOM':'ŠTANDARD')+' – '+(install?.price!=null?eur(amount(install)):(locked?'podľa schválenej ponuky':eur(installationPrice(current.installation_tier||'standard'))))):(install?.price!=null?eur(amount(install)):'podľa cenníka'))+'</b></div>';
+   '<div class="srow"><span>'+(combinedInstall?'Montáž zariadenia s dopravou':'Montáž')+'</span><b>'+(combinedInstall?eur(SpektraQuoteRowOutput.displayAmounts(combinedInstall,current).amount):current.category==='heat_pump'?((current.installation_tier==='economy'?'EKONOM':'ŠTANDARD')+' – '+(install?.price!=null?eur(amount(install)):(locked?'podľa schválenej ponuky':eur(installationPrice(current.installation_tier||'standard'))))):(install?.price!=null?eur(amount(install)):'podľa cenníka'))+'</b></div>';
  document.getElementById('finalSummary').innerHTML='<h2 style="margin-top:0">'+esc(current.customer?.name)+'</h2><div class="sub">'+esc(current.customer?.address)+'</div>'+realization+'<div style="margin-top:14px"><b>'+esc(title)+'</b></div>'+breakdown+optional+annual+warranty+subsidyHtml+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+(current.price_complete?eur(current.total):'Cena ešte nie je kompletná')+'</span></div>';
 }
 function hydrateQuoteForm(){
@@ -3531,7 +3531,7 @@ function warrantyTermsHtml(){
       '<div><b>Zákazník a zariadenie</b><br>'+esc(current.customer?.name||'—')+'<br>'+esc(device||'Zariadenie uvedené v ponuke')+'<br>Identifikácia a sériové číslo: podľa dokladu o odovzdaní</div>'+
     '</div>'+
     row(1,'Rozsah a trvanie','Spektra Install s.r.o. poskytuje na nové zariadenie uvedené v tejto cenovej ponuke, ktoré dodala a odborne nainštalovala, dobrovoľnú záruku 5 rokov. Plynutie záruky začína dňom dokončenia montáže a odovzdania zariadenia zákazníkovi, uvedeným v odovzdávacom alebo montážnom protokole. Záruka sa vzťahuje na vady samotného zariadenia, ktoré sa prejavia pri používaní v súlade s návodom. Nevzťahuje sa na ostatné práce a materiál, ak nie je výslovne uvedené inak.')+
-    row(2,'Podmienka ročného servisu','Počas celej 5-ročnej doby musí byť na zariadení vykonaný odborný servis najmenej raz v každom 12-mesačnom období od jeho odovzdania, v rozsahu predpísanom výrobcom. Servis vykoná odborne spôsobilá osoba; zákazník uchová doklady o dátume a rozsahu každého servisu a pri uplatnení záruky ich predloží. Ročný servis je platená služba, účtovaná pri vykonaní podľa dohodnutej ceny. Ak pravidelný servis nie je preukázaný, nárok z tejto dobrovoľnej 5-ročnej záruky za obdobie po zmeškanom servise nevzniká; zákonné práva zákazníka tým nie sú dotknuté.')+
+    row(2,'Podmienka ročného servisu','Počas celej 5-ročnej doby musí byť na zariadení vykonaný odborný servis najmenej raz v každom 12-mesačnom období od jeho odovzdania, v rozsahu predpísanom výrobcom. Servis vykoná odborne spôsobilá osoba; zákazník uchová doklady o dátume a rozsahu každého servisu a pri uplatnení záruky ich predloží. Ročný servis je platená služba, účtovaná pri vykonaní podľa dohodnutej ceny. '+(['heat_pump','boiler'].includes(current?.category||category)&&annualServiceInfo()?.price?'Cena ročného servisu: '+annualServiceInfo().price+'. Doprava sa účtuje samostatne podľa miesta realizácie. ':'')+'Ak pravidelný servis nie je preukázaný, nárok z tejto dobrovoľnej 5-ročnej záruky za obdobie po zmeškanom servise nevzniká; zákonné práva zákazníka tým nie sú dotknuté.')+
     row(3,'Čo záruka zahŕňa','Pri vade krytej touto zárukou Spektra bezplatne zabezpečí diagnostiku, opravu vrátane potrebných náhradných dielov a práce. Ak oprava nie je možná alebo primeraná, zabezpečí výmenu vadného zariadenia za rovnaké alebo porovnateľné zariadenie. Spôsob vybavenia oznámi zákazníkovi po posúdení vady.')+
     row(4,'Čo záruka nezahŕňa','Záruka nekryje bežné opotrebovanie a pravidelnú údržbu (napr. filtre, čistenie, nastavenie), ani poškodenie spôsobené nesprávnym používaním, neodborným zásahom, zanedbaním údržby, nevhodným médiom alebo palivom, mrazom, prepätím či inou vonkajšou príčinou. Vylúčenie sa uplatní len v rozsahu, v akom táto okolnosť spôsobila reklamovanú vadu. Záruka sa nevzťahuje na škody na iných veciach alebo následné škody.')+
     row(5,'Ako uplatniť záruku','Vadu oznámte bez zbytočného odkladu spoločnosti Spektra Install s.r.o. na adrese uvedenej vyššie alebo cez kontaktné údaje v ponuke. Uveďte číslo ponuky, označenie a sériové číslo zariadenia, opis vady a kontakt; priložte doklad o kúpe alebo odovzdaní a záznamy o ročných servisoch. Umožnite obhliadku a prístup k zariadeniu. O prijatí a vybavení uplatnenia dostanete potvrdenie.')+

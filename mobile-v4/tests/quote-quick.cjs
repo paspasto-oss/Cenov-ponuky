@@ -17,8 +17,8 @@ const empty=()=>({id:'q1',status:'draft',customer:{name:'TEST',phone:'1'},catego
 function quote(area=100,km=40,c=config,st=stocks){const q=empty();Q.applyNew(q,c,area,km,st);return q;}
 function row(q,k){return q.items.find(r=>r.role===k||A.kind(r)===k);}
 
-test('simple form builds a detailed BOM with exactly three customer summary rows',()=>{
- const q=quote(),model=O.customerModel(q);assert.equal(model.rows.length,3);assert.equal(q.items.length,5);
+test('simple form builds a detailed BOM with material and installation including transport in customer summary',()=>{
+ const q=quote(),model=O.customerModel(q);assert.equal(model.rows.length,2);assert.equal(model.rows[1].name,'Montáž zariadenia s dopravou');assert.equal(model.rows[1].price,732);assert.equal(q.items.length,5);
  assert.equal(row(q,'floor_pipe').qty,737);assert.equal(row(q,'floor_board').qty,105);assert.equal(row(q,'floor_manifold').qty,1);
  assert.equal(row(q,'labor').qty,100);assert.equal(row(q,'transport').qty,40);
  assert.equal(model.totals.net,2656.4);assert.equal(model.totals.total,3267.37);
