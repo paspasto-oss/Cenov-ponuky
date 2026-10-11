@@ -36,7 +36,7 @@
     if(detailed(q))return items.slice();
     const device=items.find(i=>i.role==='device');
     const installation=items.find(i=>i.role==='installation_service'||i.role==='installation');
-    const separate=i=>!!i.visible||isManual(i)||separatelyShownRoles.has(i.role);
+    const separate=i=>!!i.visible||isManual(i)||separatelyShownRoles.has(i.role)||outputKind(i)==='transport';
     const material=items.filter(i=>i!==device&&i!==installation&&!separate(i));
     const rows=[];
     if(device)rows.push(device);
@@ -78,7 +78,7 @@
   function publicRow(item,index,patch={}){
     const row={role:item.role||'',name:String(item.name??''),qty:number(item.qty),unit:String(item.unit??''),price:number(item.price),
       public_description:String(item.public_description??item.customer_description??''),
-      _quote_output:{type:isText(item)?'text':'line',billable:!isText(item),source_index:index,...patch}};
+      _quote_output:{type:isText(item)?'text':'line',billable:!isText(item),source_index:index,group_kind:outputKind(item),...patch}};
     if(isText(item)){row.qty=null;row.unit='';row.price=null;}
     return row;
   }
@@ -140,10 +140,41 @@
     return {...row,price:null,_quote_output:{...row._quote_output,billable:false,appendix:true,
       ...(row._quote_output?.hide_prices?{}:{display_amount:values.amount,display_unit:values.unit})}};
   }
+  function outputKind(row){
+    return row?._quote_output?.group_kind||row?.stored_metadata?.quote_assembly?.kind||
+      (/^(transport|delivery|travel|doprava)(_|$)/.test(row?.role||'')?'transport':
+        ['installation','installation_service','zti_base_work'].includes(row?.role)?'labor':'');
+  }
+  // Combine only the customer projection. Saved transport remains available for
+  // routing, internal costs and POHODA, and is counted exactly once in totals.
+  function includeTransportInLabor(rows,q={},transportSource){
+    const transport=(transportSource||rows).filter(row=>outputKind(row)==='transport'&&!isText(row)&&row?._quote_output?.billable!==false);
+    if(!transport.length)return rows;
+    const target=rows.find(row=>outputKind(row)==='labor'&&!isText(row)&&
+      !['heading','contents'].includes(row?._quote_output?.type)&&
+      (row?._quote_output?.billable!==false||row?._quote_output?.appendix)&&
+      (number(row.qty)>0||row?._quote_output?.appendix));
+    if(!target)return rows;
+    const values=transport.map(row=>displayAmounts(row,q).amount);
+    const extra=values.some(value=>value==null)?null:values.reduce((sum,value)=>sum+value,0);
+    const add=value=>value==null||extra==null?null:value+extra;
+    return rows.filter(row=>outputKind(row)!=='transport'||isText(row)).map(row=>{
+      if(row===target){
+        const amount=add(displayAmounts(row,q).amount),meta=row._quote_output||{};
+        return {...row,name:'Montáž zariadenia s dopravou',qty:meta.appendix?null:1,unit:meta.appendix?'':'súb.',price:meta.appendix?null:amount,
+          _quote_output:{...meta,group_kind:'labor',...(Object.prototype.hasOwnProperty.call(meta,'display_amount')||meta.appendix?{display_amount:amount,display_unit:meta.appendix?null:amount}:{})}};
+      }
+      if(row._quote_output?.type==='subtotal'&&row._quote_output?.billable===false&&
+          row._quote_output.group_id===target._quote_output?.group_id){
+        return {...row,_quote_output:{...row._quote_output,display_amount:add(displayAmounts(row,q).amount)}};
+      }
+      return row;
+    });
+  }
   function customerModel(q={},options={}){
     const bundleName=options.bundleName||'Montážny materiál',settings=outputSettings(q);
     if(!configured(q)){
-      return {configured:false,settings,rows:legacyCustomerRows(q,bundleName).map((row,index)=>publicRow(row,index)),appendixRows:[],totals:canonicalTotals(q)};
+      return {configured:false,settings,rows:includeTransportInLabor(legacyCustomerRows(q,bundleName).map((row,index)=>publicRow(row,index)),q),appendixRows:[],totals:canonicalTotals(q)};
     }
     const groups=engine(options).groups(q),rows=[],appendixRows=[];
     for(const group of groups){
@@ -156,10 +187,10 @@
         appendixRows.push(...detail.map(row=>appendixOnly(row,q)));
       }
     }
-    return {configured:true,settings,rows,appendixRows,totals:canonicalTotals(q)};
+    return {configured:true,settings,rows:includeTransportInLabor(rows,q),appendixRows:includeTransportInLabor(appendixRows,q,rows),totals:canonicalTotals(q)};
   }
   function customerRows(q={},bundleName='Montážny materiál',options={}){
-    return configured(q)?customerModel(q,{...options,bundleName}).rows:legacyCustomerRows(q,bundleName);
+    return configured(q)?customerModel(q,{...options,bundleName}).rows:includeTransportInLabor(legacyCustomerRows(q,bundleName),q);
   }
   const api={rowsMode,detailed,configured,outputSettings,isManual,isText,amounts,displayAmounts,itemName,customerRows,customerModel,canonicalTotals};
   if(typeof module==='object'&&module.exports)module.exports=api;
