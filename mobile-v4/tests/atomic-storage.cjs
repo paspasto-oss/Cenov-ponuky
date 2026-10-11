@@ -71,10 +71,10 @@ test('server quote mapping preserves zero VAT, zero quantity and frozen customer
  const start=html.indexOf('function remoteQuoteToLocal(');const end=html.indexOf('\nfunction mergeCloudQuotes',start);
  const c=vm.createContext({stockByCodeMap:new Map(),norm:x=>x,SpektraRealizationDate});vm.runInContext(html.slice(start,end),c);
  const q=c.remoteQuoteToLocal({id:'r',local_id:'x',sync_version:3,status:'approved',vat_pct:0,
-   workflow:{estimated_realization_date:'2026-11-06'},
+   workflow:{estimated_realization_date:'2026-11-06',realization_address:'Hollého 210, Rajec'},
    customers:{name:'Changed contact'},customer_snapshot:{name:'Approved customer',note:'Original'},quote_items:[{name:'Zero',qty:0}],subtotal_ex_vat:0,total_inc_vat:0});
  assert.equal(q.vat_pct,0);assert.equal(q.items[0].qty,0);assert.equal(q.customer.name,'Approved customer');assert.equal(q.sync_version,3);
- assert.equal(q.estimated_realization_date,'2026-11-06');
+ assert.equal(q.estimated_realization_date,'2026-11-06');assert.equal(q.customer.realization_address,'Hollého 210, Rajec');
  for(const value of ['',undefined,'2026-02-30']){
   const cleared=c.remoteQuoteToLocal({id:'r',workflow:{estimated_realization_date:value}});
   assert.equal(cleared.estimated_realization_date,'');
@@ -87,10 +87,10 @@ test('DB writes use one RPC and preserve zero quantity and VAT',async()=>{
    from(){throw Error('Client must not issue nontransactional writes')}};
  const window={SpektraRealizationDate,SPEKTRA_SUPABASE:{url:'test',anonKey:'test'},supabase:{createClient:()=>client}};
  const c=vm.createContext({window,console});vm.runInContext(source,c);await window.SpektraDB.init();
- const q=quote();q.vat_pct=0;q.estimated_realization_date='2026-11-06';await window.SpektraDB.saveQuote(q,'d6ed9ca1-44e6-4308-a2b7-a1c412af0d13');
+ const q=quote();q.vat_pct=0;q.estimated_realization_date='2026-11-06';q.customer.realization_address='Hollého 210, Rajec';await window.SpektraDB.saveQuote(q,'d6ed9ca1-44e6-4308-a2b7-a1c412af0d13');
  assert.equal(calls.length,1);assert.equal(calls[0].name,'save_quote_atomic');assert.equal(calls[0].args.p_quote.vat_pct,0);
  assert.equal(calls[0].args.p_items[0].qty,0);
- assert.equal(calls[0].args.p_quote.workflow.estimated_realization_date,'2026-11-06');
+ assert.equal(calls[0].args.p_quote.workflow.estimated_realization_date,'2026-11-06');assert.equal(calls[0].args.p_quote.workflow.realization_address,'Hollého 210, Rajec');
  assert.equal(calls[0].args.p_quote.customer.estimated_realization_date,undefined);
  q.estimated_realization_date='';await window.SpektraDB.saveQuote(q,'clear-realization-date');
  assert.equal(calls[1].args.p_quote.workflow.estimated_realization_date,'');

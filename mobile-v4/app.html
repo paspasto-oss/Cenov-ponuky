@@ -717,7 +717,7 @@ function remoteQuoteToLocal(r){
     quote_no:r.quote_no,status:r.status||'draft',
     estimated_realization_date:SpektraRealizationDate.normalize(w.estimated_realization_date),
     created:Date.parse(r.created_at)||Date.now(),updated:Date.parse(r.updated_at)||Date.now(),
-    customer:{name:cust.name||'Bez mena',phone:cust.phone||'',email:cust.email||'',address:cust.address||'',note:cust.notes||''},
+    customer:{name:cust.name||'Bez mena',phone:cust.phone||'',email:cust.email||'',address:cust.address||'',realization_address:w.realization_address||'',note:cust.notes||''},
     category:r.category||null,brand:r.brand||null,system_type:r.system_type||null,
     installation_tier:r.installation_tier||'standard',building:r.building||{},device:r.device||{},
     optional_services:r.optional_services||{},subsidy:r.subsidy||{},
