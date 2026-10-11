@@ -1,6 +1,6 @@
 {
-  "version": 30,
-  "updated_at": "2026-09-28",
+  "version": 31,
+  "updated_at": "2026-10-11",
   "source": "POHODA export Zásoby1.xlsx",
   "note": "Jadrový prestup Ø80 mm do 50 cm je pri štandardnej montáži TČ zahrnutý v cene montáže; chýbajúca POHODA karta JV-80 už neblokuje kompletnosť ceny.",
   "bundles": [
@@ -1150,14 +1150,14 @@
           "unit": "rok",
           "required": false,
           "mapping_status": "needs_service_card",
-          "default_sell_price_ex_vat": 121.95,
-          "default_sell_price_inc_vat": 150,
+          "default_sell_price_ex_vat": 105.69,
+          "default_sell_price_inc_vat": 130,
           "vat_pct": 23,
           "visible_to_customer": true,
           "customer_group": "Servis a záruka",
           "charge_mode": "future_annual_service",
           "include_in_initial_total": false,
-          "note": "150 € s DPH za každú vykonanú ročnú prehliadku. V úvodnej ponuke sa zobrazuje informačne a nezvyšuje cenu montáže. Povinnosť pre predĺženú záruku závisí od výrobcu/programu."
+          "note": "130 € s DPH za každú vykonanú ročnú prehliadku. Doprava sa účtuje samostatne podľa miesta realizácie. V úvodnej ponuke sa zobrazuje informačne a nezvyšuje cenu montáže. Povinnosť pre predĺženú záruku závisí od výrobcu/programu."
         }
       ]
     },
