@@ -23,7 +23,7 @@
 <link rel="stylesheet" href="js/quote-list-summary.css?v=20261005-list1">
 <script src="js/realization-date.js?v=20261008-term1"></script>
 <script src="js/quote-list-summary.js?v=20261007-hvac1"></script>
-<script src="js/pdf-banners.js?v=20261005-universal1"></script>
+<script src="js/pdf-banners.js?v=20261011-trades1"></script>
 <script src="js/pdf-pagination.js?v=20261007-hvac1"></script>
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -3404,6 +3404,11 @@ function offerHtmlPresentation(){
     :bannerType==='airconditioning'?'Klimatizácie'
     :bannerType==='gas_boiler'?'Plynové kotly'
     :bannerType==='biomass'?'Kotly na biomasu'
+    :bannerType==='zti'?'Zdravotechnické inštalácie'
+    :bannerType==='floor_heating'?'Podlahové kúrenie'
+    :bannerType==='stainless_pipes'?'Nerezové potrubné rozvody'
+    :bannerType==='water_heater'?'Ohrev vody'
+    :bannerType==='recovery'?'Lokálna rekuperácia'
     :'Spektra Install';
 
   const bannerHtml=current.pdf_banner_mode==='none'

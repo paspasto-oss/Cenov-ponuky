@@ -6,7 +6,12 @@
     heatpump:'assets/pdf-banners/heatpump.jpg',
     airconditioning:'assets/pdf-banners/airconditioning.jpg',
     gas_boiler:'assets/pdf-banners/gas-boiler.jpg',
-    biomass:'assets/pdf-banners/biomass.jpg'
+    biomass:'assets/pdf-banners/biomass.jpg',
+    zti:'assets/pdf-banners/zti.jpg',
+    floor_heating:'assets/pdf-banners/floor-heating.jpg',
+    stainless_pipes:'assets/pdf-banners/stainless-pipes.jpg',
+    water_heater:'assets/pdf-banners/water-heater.jpg',
+    recovery:'assets/pdf-banners/recovery.jpg'
   });
   const text=x=>typeof x==='string'?x.trim():'';
   const escape=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -16,6 +21,13 @@
     const boiler=q.boiler_type||q.device?.boiler_type;
     if(q.category==='boiler'&&boiler==='gas')return 'gas_boiler';
     if(q.category==='boiler'&&['pellet','biomass'].includes(boiler))return 'biomass';
+    if(['stainless_pipes','stainless_piping'].includes(q.category)||q.trade_type==='stainless_pipes')return 'stainless_pipes';
+    // A stainless filter or manifold alone must not change the offer category.
+    if(['zti','other'].includes(q.category)){
+      const names=[q.title,q.name,...(q.material_edits?.assemblies?.groups||[]).map(g=>g.name),...(q.items||[]).map(i=>i.name)];
+      if(names.some(n=>/nerezov[ýéáého]*\s+(?:potrub|rozvod)|rozvod.{0,25}nerez|stainless\s+(?:pip|distribution)/i.test(text(n))))return 'stainless_pipes';
+    }
+    if(['zti','floor_heating','water_heater','recovery'].includes(q.category))return q.category;
     return 'generic';
   }
   function isUniversal(url){

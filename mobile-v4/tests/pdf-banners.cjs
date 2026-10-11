@@ -5,7 +5,7 @@ const path=require('node:path');
 const vm=require('node:vm');
 const api=require('../js/pdf-banners.js');
 const html=fs.readFileSync(path.join(__dirname,'../app.html'),'utf8');
-for(const category of ['zti','floor_heating','water_heater','recovery','other']){
+for(const category of ['other']){
   test(category+' selects approved universal artwork, not the equipment thumbnail',()=>{
     const q={category,pdf_banner_mode:'auto',device:{image_url:'https://example.test/product.jpg'}};
     assert.deepEqual(api.select(q),{type:'generic',url:api.universal,precomposed:true});
@@ -29,7 +29,7 @@ test('custom banner and deliberate no-banner mode take precedence',()=>{
   q.pdf_banner_mode='none';assert.equal(api.select(q).url,null);
 });
 test('empty custom banner and whitespace catalog URL fall back to bundled artwork',()=>{
-  assert.equal(api.select({category:'zti',pdf_banner_mode:'custom',pdf_banner_url:' '},{generic:' '}).url,api.universal);
+  assert.equal(api.select({category:'other',pdf_banner_mode:'custom',pdf_banner_url:' '},{generic:' '}).url,api.universal);
 });
 test('a configured generic banner is not overwritten',()=>{
   assert.equal(api.select({category:'other'},{generic:'https://example.test/own.jpg'}).url,'https://example.test/own.jpg');
@@ -69,4 +69,36 @@ test('technical template and customer amounts remain unchanged by integration',(
 test('all inline and banner scripts compile',()=>{
   for(const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))new vm.Script(match[1]);
   new vm.Script(fs.readFileSync(path.join(__dirname,'../js/pdf-banners.js'),'utf8'));
+});
+
+for(const category of ['zti','floor_heating','water_heater','recovery','stainless_pipes']){
+  test(category+' selects its local illustration and preserves overrides',()=>{
+    const q={category,device:{image_url:'https://example.test/product.jpg'}};
+    assert.equal(api.select(q).url,api.defaults[category]);
+    assert.equal(api.select(q).precomposed,false);
+    assert.equal(api.select(q,{[category]:'custom.jpg'}).url,'custom.jpg');
+    assert.equal(api.select({...q,pdf_banner_mode:'custom',pdf_banner_url:'own.jpg'}).url,'own.jpg');
+    assert.equal(api.select({...q,pdf_banner_mode:'none'}).url,null);
+    const bytes=fs.readFileSync(path.join(__dirname,'..',api.defaults[category]));
+    assert.equal(bytes.readUInt16BE(0),0xffd8);
+  });
+}
+test('nerez distribution is recognized within ZTI and other assemblies, not incidental fittings',()=>{
+  for(const category of ['zti','other']){
+    assert.equal(api.type({category,items:[{name:'Rozvody nerezového potrubia'}]}),'stainless_pipes');
+    assert.equal(api.type({category,material_edits:{assemblies:{groups:[{name:'Nerezové potrubné rozvody'}]}}}),'stainless_pipes');
+  }
+  assert.equal(api.type({category:'heat_pump',items:[{name:'Nerezové potrubie'}]}),'heatpump');
+  assert.equal(api.type({category:'zti',items:[{name:'Nerezový filter'}]}),'zti');
+});
+test('presentation header renders all trade labels with local images and existing logo',()=>{
+  const start=html.indexOf('  const bannerType=getPdfBannerType();',html.indexOf('function offerHtmlPresentation(){'));
+  const end=html.indexOf('  const benefits=',start);
+  for(const [category,label] of Object.entries({zti:'Zdravotechnické inštalácie',floor_heating:'Podlahové kúrenie',stainless_pipes:'Nerezové potrubné rozvody',water_heater:'Ohrev vody',recovery:'Lokálna rekuperácia'})){
+    const bannerUrl=api.select({category}).url;
+    const out=vm.runInNewContext(html.slice(start,end)+'\nbannerHtml',{current:{category,pdf_banner_mode:'auto'},bannerUrl,getPdfBannerType:()=>api.type({category}),SpektraPdfBanners:api,esc:x=>x});
+    assert.ok(out.includes(label));assert.ok(out.includes(bannerUrl));
+    assert.ok(out.includes('SPEKTRA'));assert.ok(out.includes('height:58mm'));
+    assert.equal((out.match(/<img /g)||[]).length,1);
+  }
 });
