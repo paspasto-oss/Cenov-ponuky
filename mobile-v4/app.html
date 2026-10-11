@@ -32,7 +32,7 @@
 <script src="js/quote-materials.js?v=20261008-code1"></script>
 <script src="js/quote-assemblies.js?v=20261008-code1"></script>
 <script src="js/hvac-scenarios.js?v=20261010-bundle1"></script>
-<script src="js/quote-row-output.js?v=20261007-hvac1"></script>
+<script src="js/quote-row-output.js?v=20261011-transport-output1"></script>
 <script src="js/quote-workbench-output.js?v=20261008-term1"></script>
 <script src="js/quote-storage.js?v=20261005-atomic1"></script>
 <script src="js/db.js?v=20261011-route1"></script>
@@ -2891,6 +2891,7 @@ function renderFinal(){
  const install=items.find(i=>i.role==='installation_service'||i.role==='installation');
  const flush=items.find(i=>i.role==='heating_system_flush_cleaner_inhibitor');
  const amount=i=>i?.price==null?null:Number(i.price)*Number(i.qty);
+ const combinedInstall=SpektraQuoteRowOutput.customerRows(current,customerMaterialBundleName()).find(i=>i.name==='Montáž zariadenia s dopravou');
  const scope=!rowsView&&install?.work_scope?.length?'<div style="margin-top:12px"><b>Montáž zahŕňa:</b><ul style="margin:7px 0 0 18px;padding:0">'+install.work_scope.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>':'';
  const optional=!rowsView&&flush?'<div class="srow" style="margin-top:10px"><span>'+esc(flush.name)+'</span><b>'+eur(amount(flush))+'</b></div>':'';
  const service=annualServiceInfo();
@@ -2907,7 +2908,7 @@ function renderFinal(){
  const title=rowsView?(items.find(i=>i.role==='device')?.name||'Položky podľa rozpisu ponuky'):customerText([current.device?.brand,current.device?.model,current.device?.variant].filter(Boolean).join(' '));
  const realization=SpektraRealizationDate.get(current)?'<div class="sub" style="margin-top:8px"><b>CCA termín realizácie: '+esc(SpektraRealizationDate.format(current.estimated_realization_date))+'</b></div>':'';
  const breakdown=rowsView?'<div class="sub" style="margin-top:8px">Počet riadkov: '+items.length+' · '+(current.material_edits?.pdf_detail?'Podrobný rozpis v PDF':'Montážny materiál v PDF zoskupený')+'</div><div class="srow"><span>Celkom bez DPH</span><b>'+eur(current.net)+'</b></div>':
-   '<div class="srow"><span>Montáž</span><b>'+(current.category==='heat_pump'?((current.installation_tier==='economy'?'EKONOM':'ŠTANDARD')+' – '+(install?.price!=null?eur(amount(install)):(locked?'podľa schválenej ponuky':eur(installationPrice(current.installation_tier||'standard'))))):(install?.price!=null?eur(amount(install)):'podľa cenníka'))+'</b></div>';
+   '<div class="srow"><span>'+(combinedInstall?'Montáž zariadenia s dopravou':'Montáž')+'</span><b>'+(combinedInstall?eur(SpektraQuoteRowOutput.displayAmounts(combinedInstall,current).amount):current.category==='heat_pump'?((current.installation_tier==='economy'?'EKONOM':'ŠTANDARD')+' – '+(install?.price!=null?eur(amount(install)):(locked?'podľa schválenej ponuky':eur(installationPrice(current.installation_tier||'standard'))))):(install?.price!=null?eur(amount(install)):'podľa cenníka'))+'</b></div>';
  document.getElementById('finalSummary').innerHTML='<h2 style="margin-top:0">'+esc(current.customer?.name)+'</h2><div class="sub">'+esc(current.customer?.address)+'</div>'+realization+'<div style="margin-top:14px"><b>'+esc(title)+'</b></div>'+breakdown+optional+annual+warranty+subsidyHtml+scope+'<div class="srow total"><span>Spolu s DPH</span><span>'+(current.price_complete?eur(current.total):'Cena ešte nie je kompletná')+'</span></div>';
 }
 function hydrateQuoteForm(){
