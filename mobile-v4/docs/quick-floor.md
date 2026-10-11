@@ -23,3 +23,7 @@ Zmiešané ponuky, viac scenárov, doplnky a varianty zostávajú v plnom editor
 node --test mobile-v4/tests/*.cjs
 
 314 testov prešlo vrátane 16 nových testov jednoduchého editora. V izolovanom Chromium sa preveril postup výber -> m² a km -> uloženie cez reálny outbox s testovacím úložiskom -> finálny náhľad, uloženie štandardu a mobilné zobrazenie 390 px. Produkčné zásoby, cenové ponuky ani spoločné sadzby neboli pri testovaní menené. Ceny v testoch sú výhradne testovacie.
+
+## Automatická doprava (11. 10. 2026)
+
+Nová jednoduchá ponuka používa spoločný panel **Doprava** a adresu realizácie. Kilometre sa zisťujú automaticky cez server; samostatný podlahový cenník €/km sa pre nové ponuky nepoužíva. Doplňte človekohodiny a počet montérov, prípadne opravte výjazdy/km. Materiálový normatív ani montáž €/m² sa nemenia. Staré kilometrové ponuky zostávajú kompatibilné. Podrobnosti a aktivácia API: [transport-pricing.md](transport-pricing.md).

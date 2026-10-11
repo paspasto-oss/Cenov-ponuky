@@ -38,8 +38,8 @@
     try{
       if(!current)throw new Error('Nie je otvorená ponuka.');
       // Validate on a draft copy before creating a new revision or touching rows.
-      const trial=clone(current);trial.status='draft';delete trial._server_status;A().init(trial);change(trial);
-      prepareEdit();remember();change(current);delete current.warranty_consent;
+      const trial=clone(current);trial.status='draft';delete trial._server_status;A().init(trial);change(trial);root.SpektraQuoteTransport?.invalidate(trial);
+      prepareEdit();remember();change(current);root.SpektraQuoteTransport?.invalidate(current);delete current.warranty_consent;
       const owner=current,pending=saveQuoteMaterialChange(message,renderRows),token=owner._edit_token;
       const saved=await pending;
       if(current?.id!==owner.id||current?._edit_token!==token)return {...saved,stale:true};
@@ -48,7 +48,7 @@
     }catch(e){status(e.message||String(e),true);setQuoteMaterialStatus?.(e.message||String(e),true);return {ok:false,error:e.message};}
   }
   async function changeRow(index,fieldName,newValue,input){
-    const pending=mutate('Položka bola zmenená.',q=>A().setField(q,index,fieldName,newValue),{renderRows:false});
+    const pending=mutate('Položka bola zmenená.',q=>{A().setField(q,index,fieldName,newValue);if(fieldName==='price'&&A().kind(q.items[index])==='transport')A().metadata(q.items[index]).transport_manual_price=true;},{renderRows:false});
     const owner=current,token=owner?._edit_token,result=await pending;
     if(result.stale||current?.id!==owner?.id||current?._edit_token!==token)return result;
     if(input){if(result.ok){input.removeAttribute('aria-invalid');input.value=current.items[index]?.[fieldName]??'';}else input.setAttribute('aria-invalid','true');}
@@ -110,7 +110,9 @@
     if(isIssued)body+='<div class="wbReadOnly">Prvá úprava vytvorí novú revíziu. Vydaná verzia zostane uložená.</div>';
     body+='<div id="wbStatus" class="wbStatus'+(state.error?' error':'')+'" role="status" aria-live="polite">'+E(state.status)+'</div>';
     body+='<div class="wbPanel" role="tabpanel">'+(state.tab==='assemblies'?assembliesPanel(groups):state.tab==='preview'?previewPanel():itemsPanel(groups))+'</div>';
+    body+=root.SpektraQuoteTransport?.panel(current)||'';
     box.innerHTML=body;bind(box);
+    root.SpektraQuoteTransport?.schedule();
     document.getElementById('rowMaterialEditorSlot')?.classList.toggle('hidden',state.tab!=='items');
     const old=document.getElementById('quoteRowsDetailedPdf');if(old)old.closest('label')?.classList.add('hidden');
     const rev=document.getElementById('quoteRowsRevision');if(rev)rev.textContent=r;
@@ -261,6 +263,7 @@
         }
         const company=state.library.find(x=>x.key==='pricing:company')?.payload;
         if(company)companyPrices(q,company,new Set(added.items.map(A().rowId)));
+        root.SpektraQuoteTransport?.ensurePending(q);
       });
       if(saved.ok&&!saved.stale){closeDialog();state.tab='items';render();}
     });
@@ -282,6 +285,7 @@
     });
   }
   function serviceDialog(kind){
+    if(kind==='transport'&&root.SpektraQuoteTransport){status('Dopravu upravte v paneli Doprava pod položkami.');root.SpektraQuoteTransport.schedule(true);return;}
     const names={transport:'Doprava',revision:'Revízia',pressure:'Tlaková skúška a protokol',service:'Ďalšia služba'};
     const pricebook=state.library.find(x=>x.key==='pricing:company')?.payload||{};
     showDialog(names[kind]||'Služba',field('Názov','wbServiceName',names[kind]||'Služba')+'<div class="wbGrid">'+field('Množstvo','wbServiceQty',1,'inputmode="decimal"')+field('MJ','wbServiceUnit',kind==='transport'?'výjazd':'súb.')+field('Predaj / MJ bez DPH','wbServicePrice',kind==='transport'?pricebook.transport_price??'':'','inputmode="decimal"')+field('Náklad / MJ bez DPH','wbServiceCost',kind==='transport'?pricebook.transport_cost??'':'','inputmode="decimal"')+'</div>'+
@@ -455,14 +459,15 @@
         const primary=!q.items.some(i=>A().kind(i)==='equipment')&&!q.material_edits.assemblies.scenarios.length;const added=A().addScenario(q,clone(result));
         if(primary){q.category=result.scenario?.category||'other';for(const key of ['system_type','boiler_type','ac_mode'])if(result.scenario?.[key])q[key]=result.scenario[key];}
         const company=state.library.find(x=>x.key==='pricing:company')?.payload;if(company)companyPrices(q,company,new Set(added.items.map(A().rowId)));
+        root.SpektraQuoteTransport?.ensurePending(q);
       });if(saved.ok&&!saved.stale){closeDialog();state.tab='items';render();}
     });
   }
   function pricingDialog(){
     const p=state.library.find(x=>x.key==='pricing:company')?.payload||{};
-    showDialog('Firemný cenový štandard','<div class="wbGrid">'+select('Ocenenie materiálu','wbPricingMode',[['catalog','Predajná cena z POHODY'],['markup','Náklad + prirážka %'],['margin','Požadovaná marža %']],p.material_mode||'catalog')+field('Prirážka / marža materiálu [%]','wbPricingValue',p.material_value??'','inputmode="decimal"')+field('Predaj práce [€/čh]','wbLaborSell',p.labor_sell_rate??'','inputmode="decimal"')+field('Náklad práce [€/čh]','wbLaborCost',p.labor_cost_rate??'','inputmode="decimal"')+field('Doprava – predaj za výjazd','wbTransportSell',p.transport_price??'','inputmode="decimal"')+field('Doprava – náklad za výjazd','wbTransportCost',p.transport_cost??'','inputmode="decimal"')+field('Upozorniť pri marži pod [%]','wbMinMargin',p.min_margin_pct??'','inputmode="decimal"')+'</div>'+
-      '<div class="notice">Prázdny náklad ostáva neoverený. Zmena sadzobníka neprepisuje existujúce ponuky.</div><label class="wbCheck"><input id="wbPricingApply" type="checkbox"><span>Po uložení pripraviť náhľad použitia na túto ponuku</span></label>','Uložiť pravidlá',async()=>{
-      const p={material_mode:value('wbPricingMode'),material_value:A().money(value('wbPricingValue')),labor_sell_rate:A().money(value('wbLaborSell')),labor_cost_rate:A().money(value('wbLaborCost')),transport_price:A().money(value('wbTransportSell')),transport_cost:A().money(value('wbTransportCost')),min_margin_pct:A().money(value('wbMinMargin')),updated_at:new Date().toISOString()};
+    showDialog('Firemný cenový štandard','<div class="wbGrid">'+select('Ocenenie materiálu','wbPricingMode',[['catalog','Predajná cena z POHODY'],['markup','Náklad + prirážka %'],['margin','Požadovaná marža %']],p.material_mode||'catalog')+field('Prirážka / marža materiálu [%]','wbPricingValue',p.material_value??'','inputmode="decimal"')+field('Predaj práce [€/čh]','wbLaborSell',p.labor_sell_rate??'','inputmode="decimal"')+field('Náklad práce [€/čh]','wbLaborCost',p.labor_cost_rate??'','inputmode="decimal"')+field('Starší paušál dopravy – iba pre archív','wbTransportSell',p.transport_price??'','inputmode="decimal"')+field('Starší náklad dopravy – iba pre archív','wbTransportCost',p.transport_cost??'','inputmode="decimal"')+field('Upozorniť pri marži pod [%]','wbMinMargin',p.min_margin_pct??'','inputmode="decimal"')+'</div>'+
+      '<div class="notice">Nová doprava: Rajec 10 €/výjazd; mimo Rajca 0,65 €/spiatočný km, min. 25 €/výjazd. Interný náklad nie je overený.</div><div class="notice">Prázdny náklad ostáva neoverený. Zmena sadzobníka neprepisuje existujúce ponuky.</div><label class="wbCheck"><input id="wbPricingApply" type="checkbox"><span>Po uložení pripraviť náhľad použitia na túto ponuku</span></label>','Uložiť pravidlá',async()=>{
+      const p={transport_mode:'distance',transport_sell_per_km:0.65,transport_min_sell:25,transport_rajec_per_trip:10,transport_cost_per_km:null,material_mode:value('wbPricingMode'),material_value:A().money(value('wbPricingValue')),labor_sell_rate:A().money(value('wbLaborSell')),labor_cost_rate:A().money(value('wbLaborCost')),transport_price:A().money(value('wbTransportSell')),transport_cost:A().money(value('wbTransportCost')),min_margin_pct:A().money(value('wbMinMargin')),updated_at:new Date().toISOString()};
       if(p.material_mode!=='catalog'&&p.material_value==null)throw new Error('Zadajte prirážku alebo maržu.');
       if(p.material_mode==='margin'&&p.material_value>=100||p.min_margin_pct!=null&&p.min_margin_pct>=100)throw new Error('Marža musí byť menšia ako 100 %.');
       const apply=document.getElementById('wbPricingApply').checked;const saved=await saveLibrary('pricing:company','pricing',p);if(!saved.stale){closeDialog();if(apply)previewCompanyPricing(p);}
@@ -493,8 +498,8 @@
   function variantDialog(){showDialog('Uložiť variant',field('Názov variantu','wbVariantName','Variant '+((A().inspect(current).variants||[]).length+1)),'Uložiť',async()=>{const name=value('wbVariantName');const saved=await mutate('Variant bol uložený.',q=>A().saveVariant(q,{name}));if(saved.ok&&!saved.stale)closeDialog();});}
   function customerDialog(){
     const c=current.customer||{};
-    showDialog('Kontakt a miesto realizácie',field('Meno / firma','wbCustomerName',c.name)+field('Telefón','wbCustomerPhone',c.phone)+field('E-mail','wbCustomerEmail',c.email,'type="email"')+field('Adresa realizácie','wbCustomerAddress',c.address),'Uložiť',async()=>{
-      const customer={...current.customer,name:value('wbCustomerName').trim(),phone:value('wbCustomerPhone').trim(),email:value('wbCustomerEmail').trim(),address:value('wbCustomerAddress').trim()};
+    showDialog('Kontakt a miesto realizácie',field('Meno / firma','wbCustomerName',c.name)+field('Telefón','wbCustomerPhone',c.phone)+field('E-mail','wbCustomerEmail',c.email,'type="email"')+field('Adresa kontaktu','wbCustomerAddress',c.address)+field('Odlišná adresa realizácie (nepovinné)','wbRealizationAddress',c.realization_address||''),'Uložiť',async()=>{
+      const customer={...current.customer,name:value('wbCustomerName').trim(),phone:value('wbCustomerPhone').trim(),email:value('wbCustomerEmail').trim(),address:value('wbCustomerAddress').trim(),realization_address:value('wbRealizationAddress').trim()};
       if(!customer.name||!customer.phone||!customer.address)throw new Error('Vyplňte meno, telefón a adresu.');
       const saved=await mutate('Kontakt bol upravený.',q=>{q.customer=clone(customer);});if(saved.ok&&!saved.stale)closeDialog();
     });

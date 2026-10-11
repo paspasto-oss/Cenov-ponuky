@@ -160,7 +160,7 @@
   const toolbarSource=root.document.currentScript?.src;
   if(toolbarSource&&root.document.getElementById('quoteWorkbench')){
     const quick=root.document.createElement('script');
-    quick.src=new URL('quote-quick.js?v=20261009-simple1',toolbarSource).href;
+    quick.src=new URL('quote-quick.js?v=20261011-route1',toolbarSource).href;
     quick.async=true;
     quick.onerror=()=>console.warn('Jednoduchý editor sa nenačítal. Obnovte stránku; rozšírený editor zostáva dostupný.');
     root.document.head.appendChild(quick);

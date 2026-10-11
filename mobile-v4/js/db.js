@@ -426,6 +426,7 @@ window.SpektraDB = (() => {
     }));
     return {
       estimated_realization_date:window.SpektraRealizationDate.get(q),
+      realization_address:q.customer?.realization_address||'',
       boiler_type:q.boiler_type||null,
       ac_mode:q.ac_mode||null,
       multisplit_count:q.multisplit_count||null,
@@ -756,5 +757,11 @@ window.SpektraDB = (() => {
     if(error)throw error;
   }
 
-  return { configured, init, signIn, signUp, signOut, isAuthenticated, getUser, getProfile, listStocks, upsertStocks, uploadProductImage, uploadQuoteImage, listPdfBanners, listCustomers, listQuotes, listQuoteLibrary, saveQuoteLibrary, nextQuoteNo, saveQuote, listInspections, saveInspection, uploadInspectionPhoto, deleteInspectionPhoto, linkInspectionQuote, deleteDraftInspection };
+  async function routeTransport(address) {
+    if (!client || !user) throw new Error('Prihláste sa pre výpočet trasy.');
+    const {data,error}=await client.functions.invoke('transport-route',{body:{address}});
+    if(error||data?.error) throw new Error(data?.error||'Routovacie API je nedostupné. Skontrolujte pripojenie alebo konfiguráciu.');
+    return data;
+  }
+  return { routeTransport, configured, init, signIn, signUp, signOut, isAuthenticated, getUser, getProfile, listStocks, upsertStocks, uploadProductImage, uploadQuoteImage, listPdfBanners, listCustomers, listQuotes, listQuoteLibrary, saveQuoteLibrary, nextQuoteNo, saveQuote, listInspections, saveInspection, uploadInspectionPhoto, deleteInspectionPhoto, linkInspectionQuote, deleteDraftInspection };
 })();
