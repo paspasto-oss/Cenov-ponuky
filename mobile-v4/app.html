@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="sk">
 <head>
+<meta http-equiv="Content-Security-Policy" content="connect-src 'self'; form-action 'self'; object-src 'none'; base-uri 'self'">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f3f6f8">
@@ -9,7 +10,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Spektra Ponuky v4</title>
+<title>TEST – Spektra Ponuky</title>
 <style>
 :root{--bg:#B9D9EB;--p:#ffffff;--p2:#eaf4f9;--line:#8fb8cf;--t:#173247;--m:#607787;--r:#c20000;--r2:#d82323;--g:#28775c;--a:#9a7628;--b:#00539B}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--t);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}body{padding-bottom:82px}button,input,select,textarea{font:inherit}button{cursor:pointer}.wrap{max-width:1100px;margin:auto;padding:12px}.head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}.brand{display:flex;align-items:center;gap:10px;min-width:0}.logo{width:38px;height:38px;border:5px solid var(--r);border-right-color:transparent;border-radius:50%;flex:0 0 auto}.brand b{font-size:19px}.sub{color:var(--m);font-size:12px}.activeContext{font-size:12px;font-weight:800;color:#07385b;background:rgba(255,255,255,.65);border:1px solid var(--line);border-radius:999px;padding:7px 10px;max-width:min(420px,42vw);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.activeContext.hidden{display:none}.pill{font-size:11px;padding:6px 9px;border:1px solid var(--line);border-radius:999px;color:#31566f;background:rgba(255,255,255,.55)}
@@ -28,6 +29,7 @@
 <script src="js/idb-stock.js?v=20260926-scale100k2"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
+<script src="js/pohoda-sync-lab.js"></script>
 <link rel="stylesheet" href="js/quote-material-editor.css?v=20261008-code1">
 <script src="js/quote-materials.js?v=20261008-code1"></script>
 <script src="js/quote-assemblies.js?v=20261008-code1"></script>
@@ -456,6 +458,7 @@
       <button class="btn" onclick="shareWA()">WhatsApp</button>
       <button class="btn" onclick="shareEmail()">E-mail s PDF</button>
       <button class="btn" onclick="downloadPohodaIssuedOfferXml()">POHODA XML – Vydaná ponuka</button>
+      <button class="btn" onclick="queuePohodaTest()">Test: zaradiť prenos</button>
       <button class="btn green" onclick="approveQuote()">✓ Schváliť ponuku</button>
     </div>
     <div class="notice" style="margin-top:10px">Ponuka je uložená a dá sa znovu otvoriť z úvodnej obrazovky. Po pripojení spoločnej databázy bude rovnaká ponuka dostupná Martine aj technikom na všetkých zariadeniach.</div>
@@ -471,7 +474,7 @@
 </nav>
 
 <script>
-const QUOTES_KEY='spektra_quotes_v4';
+const QUOTES_KEY='spektra_sync_test_quotes_v4';
 let quotes=JSON.parse(localStorage.getItem(QUOTES_KEY)||'[]');
 let stocks=[];
 let staticDeviceCatalog=[];
@@ -3949,6 +3952,13 @@ function createPohodaIssuedOfferXml(){
     '</dat:dataPack>',
     ''
   ].join('\n');
+}
+
+function queuePohodaTest(){
+  try{
+    const result=SpektraSyncLab.enqueue(current.id||current.quote_no,createPohodaIssuedOfferXml());
+    alert(result.duplicate?'Rovnaká XML snímka už je v testovacej fronte.':'Zaradené do lokálnej testovacej fronty. POHODA je odpojená.');
+  }catch(e){alert(e.message||String(e));}
 }
 
 async function downloadPohodaIssuedOfferXml(){

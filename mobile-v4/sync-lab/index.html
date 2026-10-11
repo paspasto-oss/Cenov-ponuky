@@ -1,0 +1,11 @@
+<!doctype html><html lang="sk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'">
+<title>Spektra – test synchronizácie</title>
+<style>body{font:16px system-ui;max-width:950px;margin:30px auto;padding:15px;background:#f6f6f6;color:#222}h1{color:#c20000}section{background:white;padding:20px;margin:15px 0;border-radius:10px}button,a{margin:6px;padding:10px}input{display:block;margin:10px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere}.error{color:#b00020}</style>
+</head><body><h1>TEST synchronizácie POHODA ↔ Spektra</h1>
+<p>Offline prototyp: simulácia nekomunikuje s POHODOU ani databázou a nemení ponuky.</p>
+<p><a href="../app.html">Otvoriť testovaciu kópiu ponúk</a></p>
+<section><h2>Fronta vydaných ponúk</h2><p>V testovacej ponuke použite tlačidlo „Test: zaradiť prenos“. Opakované zaradenie rovnakého XML sa neduplikuje.</p><div id="jobs"></div></section>
+<section><h2>Náhľad exportu zásob</h2><label>Načítajte XML export zásob POHODY. Údaje sa len zobrazia, neuložia sa do katalógu.<input id="stockFile" type="file" accept=".xml"></label><pre id="stockResult"></pre></section>
+<p id="error" class="error" role="alert"></p>
+<script src="../supabase-config.js"></script><script src="../js/pohoda-sync-lab.js"></script><script src="lab.js"></script></body></html>

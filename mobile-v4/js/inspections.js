@@ -4,8 +4,8 @@
 (function(){
   'use strict';
 
-  const CACHE_KEY='spektra_inspections_v1';
-  const PHOTO_DB='spektra_inspection_photos_v1';
+  const CACHE_KEY='spektra_sync_test_inspections_v1';
+  const PHOTO_DB='spektra_sync_test_inspection_photos_v1';
   const PHOTO_STORE='photos';
   const PHOTO_PREVIEW_MAX=1600;
   const PHOTO_PREVIEW_QUALITY=0.72;

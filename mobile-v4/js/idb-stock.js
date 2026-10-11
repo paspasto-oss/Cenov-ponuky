@@ -1,5 +1,5 @@
 window.SpektraStockDB = (() => {
-  const DB_NAME='SpektraPonukyDB';
+  const DB_NAME='SpektraSyncTestDB';
   const DB_VERSION=2;
   const STOCK_STORE='pohoda_stocks';
   const LITE_STORE='pohoda_stocks_lite';

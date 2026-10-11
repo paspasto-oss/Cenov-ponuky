@@ -7,6 +7,7 @@ window.SpektraDB = (() => {
   }
 
   function configured() {
+    if(window.SPEKTRA_SYNC_SANDBOX) return false;
     const c = config();
     return !!(c.url && c.anonKey);
   }

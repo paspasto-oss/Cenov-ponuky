@@ -1,5 +1,4 @@
-window.SPEKTRA_SUPABASE = {
-  url: "https://rrakzoicawqbcpnzavet.supabase.co",
-  anonKey: "sb_publishable_ZZOAMeOcSHS6IGghKIu1lA_xss5sJzK"
-};
+// Test branch only. Cloud database and POHODA are disconnected.
+window.SPEKTRA_SYNC_SANDBOX = true;
+window.SPEKTRA_SUPABASE = Object.freeze({url:'', anonKey:''});
 window.SPEKTRA_PERF_VERSION = '20260926';
