@@ -28,7 +28,7 @@
       !(state?.optional||[]).length&&!(state?.variants||[]).length&&
       A.groups(q).every(g=>g.pricing!=='fixed')&&
       ['material','labor','transport'].every(k=>A.groups(q).filter(g=>g.kind===k&&g.rows.length).length<=1)&&
-      q.items.filter(r=>A.kind(r)==='transport').every(r=>normUnit(r.unit)==='km')&&
+      q.items.filter(r=>A.kind(r)==='transport').every(r=>(normUnit(r.unit)==='km'||A.metadata(r).transport_auto))&&
       q.items.filter(r=>A.kind(r)==='transport').length<=1&&
       (state?.scenarios||[]).length<=1;
   }
@@ -43,6 +43,7 @@
   }
   function travel(q){
     const rows=(q.items||[]).filter(r=>A.kind(r)==='transport');
+    if(rows.length===1&&A.metadata(rows[0]).transport_auto)return A.metadata(rows[0]).total_km;
     if(rows.some(r=>normUnit(r.unit)!=='km'))return null;
     return round(rows.reduce((s,r)=>s+Number(r.qty||0),0));
   }
@@ -53,7 +54,7 @@
   function summary(q,area=sourceArea(q)||1,km=travel(q)||0){
     return [['material','Materiál podlahového kúrenia',area,'m²'],['labor','Montáž podlahového kúrenia',area,'m²'],['transport','Doprava',km,'km']].map(([kind,name,qty,unit])=>{
       const rows=(q.items||[]).filter(r=>A.kind(r)===kind);
-      const net=rows.length?total(rows,'price'):kind==='transport'&&km===0?0:null;
+      const net=rows.length?total(rows,'price'):kind==='transport'&&km===0&&!(q.material_edits?.quick_floor&&root.SpektraQuoteTransport)?0:null;
       return {kind,name,qty,unit,net,unit_price:net==null?null:qty>0?net/qty:0};
     });
   }
@@ -90,7 +91,7 @@
     return {name,role:kind==='material'?'quote_manual':kind==='labor'?'installation_service':'transport_km',qty:round(qty),unit,price,cost,
       visible:kind!=='material',...extra,stored_metadata:{quote_assembly:{group_id:'quick-'+kind,kind,origin:'scenario',manual:{qty:false,price:kind!=='material',cost:kind!=='material'},...extra.stored_metadata?.quote_assembly}}};
   }
-  function build(config,areaInput,kmInput,stocks=[]){
+  function build(config,areaInput,kmInput,stocks=[],options={}){
     const c=validate(config),area=round(number(areaInput,'plochu',true)),km=round(number(kmInput,'celkové kilometre'));
     if(!area)throw new Error('Plocha musí byť aspoň 0,001 m².');
     const items=c.materials.map(m=>{
@@ -103,16 +104,16 @@
     });
     items.push(rawRow('Montáž podlahového kúrenia vrátane tlakovej skúšky','labor',area,'m²',c.labor_price,c.labor_cost,{price_override:true,cost_override:c.labor_cost!=null,
       work_scope:['Montáž podlahového kúrenia','Tlaková skúška'],stored_metadata:{quote_assembly:{quantity_rule:{type:'parameter',parameter:'area_m2',factor:1,min:0}}}}));
-    items.push(rawRow('Doprava','transport',km,'km',km===0?(c.transport_price??0):c.transport_price,c.transport_cost,{price_override:true,cost_override:c.transport_cost!=null,
+    if(!options.automatic_transport)items.push(rawRow('Doprava','transport',km,'km',km===0?(c.transport_price??0):c.transport_price,c.transport_cost,{price_override:true,cost_override:c.transport_cost!=null,
       stored_metadata:{quote_assembly:{singleton_key:'transport',quick_tariff:c.transport_price,quantity_rule:{type:'parameter',parameter:'travel_km',factor:1,min:0}}}}));
     return {version:1,scenario:{id:'floor_heating_quick',name:c.name,category:'floor_heating'},parameters:{area_m2:area,travel_km:km},
       groups:[{id:'quick-material',name:'Materiál podlahového kúrenia – '+area+' m²',kind:'material',pricing:'computed'},
         {id:'quick-labor',name:'Montáž podlahového kúrenia – '+area+' m²',kind:'labor',pricing:'computed'},
         {id:'quick-transport',name:'Doprava',kind:'transport',pricing:'computed'}],items,optional:[],warnings:[],covered_services:['pressure']};
   }
-  function applyNew(q,config,area,km,stocks){
+  function applyNew(q,config,area,km,stocks,options={}){
     if((q.items||[]).length)throw new Error('Novú zostavu nemožno vložiť cez existujúce položky.');
-    const result=build(config,area,km,stocks);A.addScenario(q,result);
+    const result=build(config,area,km,stocks,options);A.addScenario(q,result);if(options.automatic_transport)(root.SpektraQuoteTransport||(typeof module==='object'?require('./quote-transport.js'):null))?.ensurePending(q);
     q.category='floor_heating';q.system_type='service';
     q.material_edits.quick_floor={area_m2:result.parameters.area_m2,travel_km:result.parameters.travel_km,version:1};
     A.setOutput(q,{material:'summary',labor:'summary',appendix:false});return q;
@@ -122,7 +123,7 @@
     const oldArea=sourceArea(q),area=round(number(areaInput,'plochu',true)),km=round(number(kmInput,'celkové kilometre'));
     if(!oldArea||!area)throw new Error('Nie je známa východisková plocha. Nastavte ju v rozšírených úpravách.');
     const transports=q.items.filter(r=>A.kind(r)==='transport');
-    if(transports.length>1||transports.some(r=>normUnit(r.unit)!=='km'))throw new Error('Doprava nie je jedna položka v kilometroch. Upravte ju v rozšírenom editore.');
+    if(transports.length>1||transports.some(r=>normUnit(r.unit)!=='km'&&!A.metadata(r).transport_auto))throw new Error('Doprava nie je jedna položka v kilometroch. Upravte ju v rozšírenom editore.');
     A.init(q);
     for(const row of q.items){
       const kind=A.kind(row),meta=A.metadata(row);if(kind==='transport')continue;
@@ -134,12 +135,14 @@
       meta.quantity_rule={type:'fixed',qty:row.qty};meta.manual={...meta.manual,qty:false};
     }
     let t=transports[0];
-    if(t){
+    if(t&&A.metadata(t).transport_auto){
+      // Managed distance and manual overrides belong to the shared transport panel.
+    }else if(t){
       const savedRate=A.metadata(t).quick_tariff;
       const rate=Number(t.qty)===0&&savedRate===null?amount(transportRate,'dopravu €/km'):amount(t.price,'dopravu €/km');
       t.qty=km;t.price=km===0?(rate??0):rate;A.metadata(t).quick_tariff=rate;
       A.metadata(t).quantity_rule={type:'fixed',qty:km};A.metadata(t).baseline_quantity=km;
-    }else{
+    }else if(transportRate!==undefined){
       const rate=amount(transportRate,'dopravu €/km'),g=A.createGroup(q,{name:'Doprava',kind:'transport',pricing:'computed'});
       t=rawRow('Doprava','transport',km,'km',km===0?(rate??0):rate,null,{price_override:true,stored_metadata:{quote_assembly:{singleton_key:'transport',quick_tariff:rate,quantity_rule:{type:'fixed',qty:km}}}});
       A.addRows(q,g.id,[t]);
@@ -176,9 +179,9 @@
   function draft(){
     const q=active(),out=copy(q);out.status='draft';delete out._server_status;
     const config=cached()?.payload;
-    if((q.items||[]).length)return resize(out,s.area,s.km,config?.transport_price);
+    if((q.items||[]).length)return resize(out,s.area,s.km,root.SpektraQuoteTransport?undefined:config?.transport_price);
     if(!config)throw new Error('Štandard ešte nie je pripravený. Pavol ho raz nastaví v rozšírených úpravách.');
-    return applyNew(out,config,s.area,s.km,inventory());
+    return applyNew(out,config,s.area,s.km,inventory(),{automatic_transport:!!root.SpektraQuoteTransport});
   }
   function table(rows){return '<div class="quickTableWrap"><table class="quickTable"><thead><tr><th>Položka</th><th>Množstvo</th><th>Celkom bez DPH</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+E(r.name)+'</td><td>'+E(r.qty)+' '+E(r.unit)+'</td><td class="'+(r.net==null?'quickMissing':'')+'">'+E(money(r.net))+'</td></tr>').join('')+'</tbody></table></div>';}
   function preview(){
@@ -215,6 +218,7 @@
       '<div class="quickInputs"><label class="wbField"><span>Vykurovaná plocha [m²]</span><input id="quickArea" inputmode="decimal" autocomplete="off" value="'+E(s.area)+'"></label>'+
       '<label class="wbField"><span>Doprava – celkom [km]</span><input id="quickKm" inputmode="decimal" autocomplete="off" value="'+E(s.km)+'"><small>Celkový počet km, vrátane cesty späť.</small></label></div>'+
       '<div id="quickSummary" aria-live="polite"></div><div id="quickStatus" class="wbStatus" role="status"></div><div class="quickActions">'+control('save','Uložiť ponuku')+control('pdf','PDF / Odoslanie →',true)+'</div>';
+    if(root.SpektraQuoteTransport){html=html.replace(/<label class="wbField"><span>Doprava – celkom \[km\]<\/span>[\s\S]*?<\/label>/,'');html+=root.SpektraQuoteTransport.panel(q);}
     box.innerHTML=html;preview();
   }
   async function refreshLibrary(){
@@ -237,8 +241,8 @@
       if(pdf&&!root.SpektraQuoteRowOutput.canonicalTotals(prepared).complete)throw new Error('Doplňte chýbajúce ceny pred vytvorením PDF.');
       const area=s.area,km=s.km,config=cached()?.payload,stockSnapshot=copy(inventory());
       const result=await W.mutate('Plocha, montáž a doprava boli uložené.',q=>{
-        if((q.items||[]).length)resize(q,area,km,config?.transport_price);
-        else applyNew(q,config,area,km,stockSnapshot);
+        if((q.items||[]).length)resize(q,area,km,root.SpektraQuoteTransport?undefined:config?.transport_price);
+        else applyNew(q,config,area,km,stockSnapshot,{automatic_transport:!!root.SpektraQuoteTransport});
       });
       if(!result?.ok||result.stale)return;
       s.dirty=false;s.signature='';render();feedback(result.synced?'Ponuka je uložená.':'Ponuka je uložená v zariadení; čaká na synchronizáciu.');
@@ -248,7 +252,7 @@
   function closeSetup(){doc.getElementById('quickSetup')?.remove();}
   function setup(){
     const q=active(),area=sourceArea(q);if(!area)throw new Error('Nie je známa plocha tejto zostavy. Najprv pripravte podlahové kúrenie cez scenár.');
-    const rows=q.items.filter(r=>A.kind(r)==='material'),labor=q.items.filter(r=>A.kind(r)==='labor'),tr=q.items.filter(r=>A.kind(r)==='transport'&&normUnit(r.unit)==='km');
+    const rows=q.items.filter(r=>A.kind(r)==='material'),labor=q.items.filter(r=>A.kind(r)==='labor'),tr=q.items.filter(r=>A.kind(r)==='transport'&&(normUnit(r.unit)==='km'||A.metadata(r).transport_auto));
     const old=cached(),owner=user(),quoteId=q.id,before=quoteSignature(q);
     const norm=configuration(q,{area_m2:area});
     const rate=total(labor,'price');const laborRate=old?.payload?.labor_price??(rate>0?rate/area:'');
@@ -259,6 +263,7 @@
       '<div class="quickTableWrap"><table class="quickTable"><thead><tr><th>Materiál / kód</th><th>Výpočet</th></tr></thead><tbody>'+rows.map((r,i)=>'<tr><td>'+E(r.name)+'<small class="wbMeta">'+E(reference(r)?.code||'Nepriradené – najprv vyberte zásobu')+'</small></td><td><select data-quick-rule="'+i+'"><option value="area"'+(norm.materials[i].mode==='area'?' selected':'')+'>Podľa m²</option><option value="fixed"'+(norm.materials[i].mode==='fixed'?' selected':'')+'>Raz na zákazku</option></select></td></tr>').join('')+'</tbody></table></div>'+
       '<p class="sub">Potrubie a dosky sa násobia plochou. Rozdeľovač a skrinka sú predvolene raz na zákazku. Ide o cenový normatív, nie hydraulický projekt.</p><div class="quickInputs">'+field('quickLaborRate','Montáž – predaj bez DPH [€/m²]',laborRate)+field('quickTravelRate','Doprava – predaj bez DPH [€/km]',transportRate)+'</div>'+
       '<details><summary>Interné náklady</summary><div class="quickInputs">'+field('quickLaborCost','Náklad montáže [€/m²]',old?.payload?.labor_cost??'')+field('quickTravelCost','Náklad dopravy [€/km]',old?.payload?.transport_cost??'')+'</div></details><p>Prázdna cena nie je nula. Všetky skladové karty a jednotky musia byť priradené pred uložením štandardu.</p><div id="quickSetupStatus" class="wbStatus error" role="alert"></div><div class="wbDialogActions">'+control('close-setup','Zavrieť')+control('save-setup','Uložiť štandard',true)+'</div></section>';
+    if(root.SpektraQuoteTransport){el.querySelector('#quickTravelRate').value='0.65';el.querySelector('#quickTravelCost').value='';el.querySelector('#quickTravelRate').closest('label').hidden=true;el.querySelector('#quickTravelCost').closest('label').hidden=true;}
     closeSetup();doc.body.appendChild(el);el.querySelector('input')?.focus();
     el.addEventListener('click',async event=>{
       const b=event.target.closest('[data-quick-action]');if(!b)return;
@@ -335,6 +340,6 @@
     doc.addEventListener('keydown',e=>{if(e.key==='Escape')closeSetup();});
     render();refreshLibrary();
   }
-  api.mount=mount;
+  api.mount=mount;api.render=render;
   if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
 })(typeof window==='object'?window:globalThis);
