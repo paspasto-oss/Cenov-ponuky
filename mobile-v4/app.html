@@ -138,6 +138,7 @@
       </div>
     </div>
     <button class="btn primary full" onclick="nextCategory()">Pokračovať →</button>
+    <button class="btn ghost full" style="margin-top:10px" onclick="selectCat('other');go('step3')">🔧 INÉ – montáže a opravy bez výpočtu tepelnej straty</button>
       <div class="quoteBackBar"><button class="btn ghost" type="button" onclick="go('step1')">← Späť / upraviť zákazníka</button></div>
   </section>
 
@@ -170,7 +171,12 @@
         <button id="boilerPellet" class="choice" onclick="selectBoilerType('pellet')"><span>●</span><b>BIOMASA / PELETY</b></button>
       </div>
     </div>
-    <div class="card"><h2>Vyber značku</h2><div id="brandChoices" class="choiceGrid"></div></div>
+    <div id="brandCard" class="card"><h2>Vyber značku</h2><div id="brandChoices" class="choiceGrid"></div></div>
+    <div id="otherQuoteCard" class="card hidden">
+      <h2>Montáže a opravy</h2>
+      <div class="field"><label for="otherQuoteName">Názov zákazky</label><input id="otherQuoteName" placeholder="napr. Výmena ventilov a oprava rozvodu" oninput="current.custom_job_name=this.value"></div>
+      <div class="notice">Pridajte položky zo zásob POHODA alebo vlastné položky práce a materiálu. Pri každej položke môžete upraviť množstvo, mernú jednotku a cenu bez DPH. Prácu môžete naceniť aj v hodinách.</div>
+    </div>
     <button id="recommendBtn" class="btn primary full" onclick="makeRecommendation()">Vypočítať ponuku →</button>
       <div class="quoteBackBar"><button class="btn ghost" type="button" onclick="go('step2')">← Späť / upraviť objekt</button></div>
   </section>
@@ -1001,7 +1007,12 @@ function backToTypeBrand(){
   go('step3');
 }
 function renderChoices(){
-  let cats=[['heat_pump','♨','Tepelné čerpadlo'],['air_conditioning','❄','Klimatizácia'],['boiler','🔥','Kotol']];
+  let cats=[['heat_pump','♨','Tepelné čerpadlo'],['air_conditioning','❄','Klimatizácia'],['boiler','🔥','Kotol'],['other','🔧','INÉ']];
+  const other=category==='other';
+  document.getElementById('brandCard').classList.toggle('hidden',other);
+  document.getElementById('otherQuoteCard').classList.toggle('hidden',!other);
+  document.getElementById('otherQuoteName').value=current?.custom_job_name||(current?.system_type==='service'?current.device?.model:'')||'';
+  document.getElementById('recommendBtn').textContent=other?'Naceniť montáž / opravu →':'Vypočítať ponuku →';
   document.getElementById('catChoices').innerHTML=cats.map(c=>'<button class="choice '+(category===c[0]?'on':'')+'" onclick="selectCat(\''+c[0]+'\')"><span>'+c[1]+'</span><b>'+c[2]+'</b></button>').join('');
   const boilerCard=document.getElementById('boilerTypeCard');
   if(boilerCard)boilerCard.classList.toggle('hidden',category!=='boiler');
@@ -1591,6 +1602,7 @@ function systemType(d){
   return null;
 }
 function makeRecommendation(){
+ if(category==='other'){return startOtherQuote();}
  if(!brand){alert('Vyber značku.');return}
  current.category=category;current.brand=brand;
  if(category==='boiler')current.boiler_type=boilerType;
@@ -1615,6 +1627,27 @@ function makeRecommendation(){
    return;
  }
  current.required_kw=required;current.target_kw=target;buildBOM();renderRecommendation();go('step4')
+}
+async function startOtherQuote(){
+ if(!current||isQuotePriceLocked())return;
+ // Existing equipment rows must never be silently replaced by a service quote.
+ if(current.items?.length&&current.system_type!=='service'){
+   alert('Táto ponuka už obsahuje položky. Pre samostatnú montáž alebo opravu vytvorte novú ponuku; existujúce položky môžete upraviť v editore ponuky.');return;
+ }
+ const name=s(document.getElementById('otherQuoteName').value)||'Montáže a opravy';
+ current.category='other';current.brand='';current.system_type='service';
+ current.custom_job_name=name;
+ current.device={brand:'Spektra Install',model:name,variant:''};
+ current.required_kw=null;current.target_kw=null;
+ current.building={};current.optional_services={annual_service:false};current.subsidy={program:'none'};
+ recommendation=null;
+ // Replace only the default heat-pump illustration; preserve user-selected photos.
+ current.pdf_images=(current.pdf_images||[]).filter(i=>i.source!=='default');
+ SpektraQuoteMaterials.enableRows(current);
+ openQuoteRows();
+ window.SpektraQuoteWorkbench?.tab('items');
+ if(document.getElementById('quoteCatalogPanel')?.classList.contains('hidden'))toggleQuoteAddPanel('catalog');
+ await saveQuoteMaterialChange('Ponuka na montáže a opravy je pripravená. Pridajte zásoby alebo vlastnú prácu.');
 }
 function roleToStock(role){
  if(!stocks.length)return null;
