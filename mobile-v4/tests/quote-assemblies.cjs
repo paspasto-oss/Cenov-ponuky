@@ -174,8 +174,13 @@ test('new revisions preserve issued originals and increment through all existing
   const original=quote({status:'approved',remote_id:'remote',remote_customer_id:'customer',sync_version:5,_server_status:'approved',_outbox:{request:'old'},issued_on:'2026-10-01',valid_until:'2026-10-15',pohoda_offer_exported_at:'2026-10-01'});
   const before=JSON.stringify(original);const second=A.createRevision(original,[original],{id:'revision-2',now:100});
   assert.equal(second.status,'draft');assert.equal(second.material_edits.assemblies.revision.number,2);assert.equal(second.inspection_id,'inspection-1');
-  for(const key of ['remote_id','remote_customer_id','sync_version','warranty_consent','_server_status','_outbox','issued_on','pohoda_offer_exported_at'])assert.equal(second[key],undefined);
+  for(const key of ['remote_id','sync_version','warranty_consent','_server_status','_outbox','issued_on','pohoda_offer_exported_at'])assert.equal(second[key],undefined);
+  assert.equal(second.remote_customer_id,original.remote_customer_id);
+  second.customer.name='Changed revision';assert.notEqual(second.customer.name,original.customer.name);
   const third=A.createRevision(original,[original,second],{id:'revision-3',now:200});
+  assert.equal(third.remote_customer_id,original.remote_customer_id);
+  const chained=A.createRevision(second,[original,second,third],{id:'revision-4'});
+  assert.equal(chained.remote_customer_id,original.remote_customer_id);
   assert.equal(third.material_edits.assemblies.revision.number,3);assert.equal(third.material_edits.assemblies.revision.root_quote_no,original.quote_no);
   assert.equal(JSON.stringify(original),before);second.items[0].price=0;assert.equal(original.items[0].price,1000);
   assert.throws(()=>A.createRevision(original,[second],{id:'revision-2'}));

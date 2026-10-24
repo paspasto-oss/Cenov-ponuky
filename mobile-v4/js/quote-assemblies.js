@@ -708,7 +708,7 @@
     let last=Number(previous.number)||1;
     for(const q of allQuotes){const revision=q.material_edits?.assemblies?.revision;if(q.id===rootId||revision?.root_id===rootId)last=Math.max(last,Number(revision?.number)||1);}
     for(const key of Object.keys(copy))if(key.startsWith('_'))delete copy[key];
-    for(const key of ['remote_id','remote_customer_id','sync_version','issued_on','valid_until','warranty_consent','signature','signature_data_url','customer_signature','pohoda_offer_exported_at','pohoda_offer_export_file'])delete copy[key];
+    for(const key of ['remote_id','sync_version','issued_on','valid_until','warranty_consent','signature','signature_data_url','customer_signature','pohoda_offer_exported_at','pohoda_offer_export_file'])delete copy[key];
     const now=options.now??Date.now();copy.id=options.id;copy.quote_no=options.quote_no||'NÁVRH-R'+(last+1);copy.status='draft';copy.created=now;copy.updated=now;copy._dirty=true;copy._server_quote_no=false;
     normalize(copy);copy.material_edits.rows_mode=true;
     copy.material_edits.assemblies.revision={root_id:rootId,root_quote_no:rootNo,number:last+1,parent_id:source.id,parent_quote_no:source.quote_no||'',created_at:now};
