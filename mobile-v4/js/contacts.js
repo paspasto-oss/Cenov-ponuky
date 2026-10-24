@@ -9,7 +9,7 @@
   function contacts(){
     const uid=root.SpektraDB?.getUser()?.id||null;
     if(uid!==owner){remote=[];loaded=0;owner=uid;}
-    const records=[...remote,...local('spektra_quotes_v4').map(r=>r.customer),...local('spektra_inspections_v1').map(r=>r.customer)];
+    const records=[...remote.map(c=>({...c,name:c.name||c.company||''})),...local('spektra_quotes_v4').map(r=>r.customer),...local('spektra_inspections_v1').map(r=>r.customer)];
     const seen=new Set();return records.filter(Boolean).map(c=>Object.fromEntries(fields.map(k=>[k,String(c[k]||'').trim()]))).filter(c=>{
       if(!c.name||(!c.phone&&!c.email&&!c.address)||fold(c.name)==='bez mena')return false;
       // Keep different people and different site addresses distinct.

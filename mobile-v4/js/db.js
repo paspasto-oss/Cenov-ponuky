@@ -371,7 +371,8 @@ window.SpektraDB = (() => {
     const rows=[];
     for(let offset=0;;offset+=500){
       const {data,error}=await client.from('customers')
-        .select('id,name,phone,email,address').order('id').range(offset,offset+499);
+        .select('id,name,company,ico,dic,ic_dph,phone,email,address,street,city,notes,archived,created_at,updated_at')
+        .eq('archived',false).order('name').range(offset,offset+499);
       if(error)throw error;
       rows.push(...(data||[]));
       if(!data||data.length<500)return rows;
