@@ -1,5 +1,5 @@
-/* Shared customer picker. Reuses saved customers; selection copies fields only,
- * never attaches a new quote to a mutable customer record or edits old offers. */
+/* Shared customer picker. After three characters it reuses a saved customer ID;
+ * quote snapshots remain immutable even when the shared contact changes later. */
 (function(root){
   'use strict';
   const doc=root.document,fields=['name','phone','email','address'];
@@ -10,7 +10,7 @@
     const uid=root.SpektraDB?.getUser()?.id||null;
     if(uid!==owner){remote=[];loaded=0;owner=uid;}
     const records=[...remote.map(c=>({...c,name:c.name||c.company||''})),...local('spektra_quotes_v4').map(r=>r.customer),...local('spektra_inspections_v1').map(r=>r.customer)];
-    const seen=new Set();return records.filter(Boolean).map(c=>Object.fromEntries(fields.map(k=>[k,String(c[k]||'').trim()]))).filter(c=>{
+    const seen=new Set();return records.filter(Boolean).map(c=>({id:c.id||null,...Object.fromEntries(fields.map(k=>[k,String(c[k]||'').trim()]))})).filter(c=>{
       if(!c.name||(!c.phone&&!c.email&&!c.address)||fold(c.name)==='bez mena')return false;
       // Keep different people and different site addresses distinct.
       const key=fields.map(k=>k==='phone'?c[k].replace(/\D/g,''):fold(c[k])).join('\u0000');
@@ -38,12 +38,15 @@
     let error=false;
     const close=()=>{box.hidden=true;input.setAttribute('aria-expanded','false');};
     function choose(c){
+      if(prefix==='c'&&root.current)root.current.remote_customer_id=c.id||null;
+      if(prefix==='ic'&&root.SpektraInspections?.setCustomerId)root.SpektraInspections.setCustomerId(c.id||null);
       for(const key of fields){const el=doc.getElementById(prefix+key[0].toUpperCase()+key.slice(1));if(!el)continue;
         el.value=c[key];el.dispatchEvent(new root.Event('input',{bubbles:true}));el.dispatchEvent(new root.Event('change',{bubbles:true}));}
       close();doc.getElementById(prefix+'Phone')?.focus();
     }
     function show(){
       const query=fold(input.value),tokens=query.split(/\s+/).filter(Boolean);
+      if(query.length<3){box.replaceChildren();box.hidden=true;input.setAttribute('aria-expanded','false');return;}
       const matches=contacts().filter(c=>tokens.every(t=>fold(fields.map(k=>c[k]).join(' ')).includes(t)||c.phone.replace(/\D/g,'').includes(t.replace(/\D/g,''))&&/\d/.test(t)));
       box.replaceChildren();const status=doc.createElement('small');
       status.textContent=error?'Spoločný adresár sa nepodarilo načítať. Zobrazené sú dostupné kontakty.':matches.length?'Vyberte uložený kontakt ('+matches.length+'). Údaje môžete upraviť.':'Žiadny uložený kontakt. Pokračujte vyplnením nového zákazníka.';

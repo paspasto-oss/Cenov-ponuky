@@ -100,6 +100,7 @@ test('inspection realization date survives cloud round trip and clearing preserv
  const writes=[];
  const client={
   auth:{onAuthStateChange(){},getSession:async()=>({data:{session:{user:{id:'technician'}}}})},
+  rpc:async(name,args)=>{assert.equal(name,'resolve_customer');assert.equal(args.requested_id,'customer-1');return {data:'customer-1',error:null}},
   from(table){
    return {
     update(payload){writes.push({table,payload:clone(payload)});return this},
@@ -123,7 +124,7 @@ test('inspection realization date survives cloud round trip and clearing preserv
  assert.equal(first.installation.estimated_realization_date,'2026-11-06');
  assert.equal(first.installation.tier,'custom');assert.equal(first.installation.labor_man_hours,12);
  assert.equal(first.estimated_realization_date,undefined);
- assert.equal(writes.find(w=>w.table==='customers').payload.estimated_realization_date,undefined);
+ assert.equal(writes.some(w=>w.table==='customers'),false);
  const restored=c.normalizeRemote({...first,id:'inspection-1'});
  assert.equal(restored.estimated_realization_date,'2026-11-06');
  assert.equal(restored.installation.labor_man_hours,12);

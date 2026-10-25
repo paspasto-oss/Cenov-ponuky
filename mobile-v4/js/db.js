@@ -532,39 +532,13 @@ window.SpektraDB = (() => {
   }
 
   async function ensureInspectionCustomer(i) {
-    let customerId=i.customer_id||i.remote_customer_id||null;
     const c=i.customer||{};
-    if(!customerId && c.phone){
-      const {data}=await client.from('customers').select('id').eq('phone',c.phone).limit(1).maybeSingle();
-      if(data?.id)customerId=data.id;
-    }
-    if(!customerId && c.email){
-      const {data}=await client.from('customers').select('id').eq('email',c.email).limit(1).maybeSingle();
-      if(data?.id)customerId=data.id;
-    }
-    if(!customerId){
-      const {data,error}=await client.from('customers').insert({
-        name:c.name||'Bez mena',
-        phone:c.phone||null,
-        email:c.email||null,
-        address:c.address||i.site_address||null,
-        notes:c.notes||null,
-        created_by:user.id
-      }).select('id').single();
-      if(error)throw error;
-      customerId=data.id;
-    }else{
-      const {error}=await client.from('customers').update({
-        name:c.name||'Bez mena',
-        phone:c.phone||null,
-        email:c.email||null,
-        address:c.address||i.site_address||null,
-        notes:c.notes||null,
-        updated_at:new Date().toISOString()
-      }).eq('id',customerId);
-      if(error)throw error;
-    }
-    return customerId;
+    const {data,error}=await client.rpc('resolve_customer',{
+      payload:{name:c.name||'Bez mena',phone:c.phone||'',email:c.email||'',address:c.address||i.site_address||'',notes:c.notes||'',source_app:'obhliadky'},
+      requested_id:i.customer_id||i.remote_customer_id||null
+    });
+    if(error)throw error;
+    return data;
   }
 
   async function saveInspection(i, eventType=null) {

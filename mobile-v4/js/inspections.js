@@ -1906,6 +1906,7 @@
       holder.remove();
     }
   }
+  function setCustomerId(id){if(active)active.customer_id=id||null;}
   async function openInspectionPdf(localId=null){
     const i=localId?rows.find(x=>x.local_id===localId):active;
     if(!i){alert('Obhliadka sa nenašla.');return}
@@ -2135,7 +2136,7 @@
   }
 
   window.SpektraInspections={
-    openHome,startNew,edit,refresh,next,back,save,complete,createQuote,openPdf:openInspectionPdf,renderList,resetFilters:resetInspectionFilters,
+    openHome,startNew,edit,refresh,next,back,save,complete,createQuote,openPdf:openInspectionPdf,renderList,resetFilters:resetInspectionFilters,setCustomerId,
     input:(path,el,kind,rerender)=>setFromInput(path,el,kind||'text',!!rerender),
     check:(path,el,rerender)=>setFromInput(path,el,'bool',!!rerender),
     toggleType,toggleExtra,routeChanged,material,addMaterial,removeMaterial,searchStock,chooseStock,materialAutocomplete,chooseMaterialAutocomplete,editTradeSetup,ztiChanged,ztiLaborChanged,dhwSolutionChanged,photo,deletePhoto,retryPhoto,downloadPhoto
