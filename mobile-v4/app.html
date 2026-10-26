@@ -33,7 +33,7 @@
 <script src="js/quote-assemblies.js?v=20261024-customer1"></script>
 <script src="js/hvac-scenarios.js?v=20261010-bundle1"></script>
 <script src="js/quote-row-output.js?v=20261011-transport-output1"></script>
-<script src="js/quote-workbench-output.js?v=20261008-term1"></script>
+<script src="js/quote-workbench-output.js?v=20261026-header1"></script>
 <script src="js/quote-storage.js?v=20261005-atomic1"></script>
 <script src="js/db.js?v=20261025-contacts1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -3248,7 +3248,6 @@ function offerHtmlTechnical(){
       '</div>'+
       '<div style="display:grid;grid-template-columns:auto auto;gap:2px 14px;justify-content:end">'+
         '<div style="font-size:9px">Číslo ponuky:</div><div style="font-weight:700;text-align:right">'+esc(current.quote_no||'')+'</div>'+
-        (documentInfo.revision?'<div data-pdf-revision style="grid-column:1/-1;font-weight:700;text-align:right">'+esc(documentInfo.revision)+(documentInfo.original_quote_no?'<br><span style="font-weight:400;font-size:8px">Pôvodná '+esc(documentInfo.original_quote_no)+'</span>':'')+'</div>':'')+
         (documentInfo.variant?'<div data-pdf-variant style="grid-column:1/-1;text-align:right">'+esc(documentInfo.variant)+'</div>':'')+
         '<div style="font-size:9px">Dátum vystavenia:</div><div style="font-weight:700;text-align:right">'+issue+'</div>'+
         '<div style="font-size:9px">Platnosť do:</div><div style="font-weight:700;text-align:right">'+valid+'</div>'+
@@ -3485,7 +3484,6 @@ function offerHtmlPresentation(){
         '</div>'+
         '<div style="font-size:8px;line-height:1.75">'+
           '<div style="display:flex;justify-content:space-between;gap:8px"><span>Číslo:</span><b>'+esc(current.quote_no||'')+'</b></div>'+
-          (documentInfo.revision?'<div data-pdf-revision style="font-weight:700">'+esc(documentInfo.revision)+(documentInfo.original_quote_no?'<br><span style="font-weight:400">Pôvodná ponuka '+esc(documentInfo.original_quote_no)+'</span>':'')+'</div>':'')+
           (documentInfo.variant?'<div data-pdf-variant>'+esc(documentInfo.variant)+'</div>':'')+
           '<div style="display:flex;justify-content:space-between;gap:8px"><span>Dátum:</span><b>'+issue+'</b></div>'+
           '<div style="display:flex;justify-content:space-between;gap:8px"><span>Platnosť:</span><b>'+valid+'</b></div>'+
@@ -3557,7 +3555,7 @@ function warrantyTermsHtml(){
   return '<div style="box-sizing:border-box;width:210mm;height:297mm;padding:15mm 16mm 13mm;font-family:Arial,sans-serif;color:#173247;background:#fff;position:relative;overflow:hidden">'+
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:5mm;border-bottom:2px solid #00539B">'+
       '<div><div style="color:#c20000;font-size:8px;font-weight:900;letter-spacing:1px">SPEKTRA INSTALL</div><div style="font-size:21px;line-height:1.1;font-weight:900;color:#00539B;margin-top:2mm">Podmienky 5-ročnej záruky</div><div style="font-size:9px;margin-top:2mm">ZÁRUKA SPEKTRA na zariadenie pri pravidelnom ročnom servise</div></div>'+
-      '<div style="text-align:right;font-size:8px;line-height:1.45;color:#516474"><span data-pdf-warranty-folio>'+(assembled||SpektraQuoteRowOutput.detailed(current)?'Posledná strana':'Strana 2/2')+'</span><br>Č. ponuky: <b>'+esc(current.quote_no||'—')+'</b>'+(documentInfo.revision?'<br>'+esc(documentInfo.revision):'')+(documentInfo.variant?'<br>'+esc(documentInfo.variant):'')+'</div>'+
+      '<div style="text-align:right;font-size:8px;line-height:1.45;color:#516474"><span data-pdf-warranty-folio>'+(assembled||SpektraQuoteRowOutput.detailed(current)?'Posledná strana':'Strana 2/2')+'</span><br>Č. ponuky: <b>'+esc(current.quote_no||'—')+'</b>'+(documentInfo.variant?'<br>'+esc(documentInfo.variant):'')+'</div>'+
     '</div>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4mm;background:#f2f7fa;padding:3.5mm 4mm;margin:5mm 0 6mm;font-size:8.5px;line-height:1.45">'+
       '<div><b>Poskytovateľ záruky</b><br>Spektra Install s.r.o.<br>Hollého 210, 015 01 Rajec<br>IČO: 53690036</div>'+
