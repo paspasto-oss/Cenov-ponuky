@@ -25,6 +25,7 @@
         quote_no:result.quote_no,_server_quote_no:true,sync_version:result.sync_version,
         _server_status:result.status||snapshot.status,_server_updated_at:result.updated_at,
         issued_on:result.issued_on,valid_until:result.valid_until};
+      delete q._unlock_approved;
       Object.assign(q,meta);
       const unchanged=q._edit_token===snapshot._edit_token;
       if(unchanged){
@@ -34,7 +35,7 @@
       }
       q._outbox=null;q._sync_error=null;q._conflict=false;
       patchEditor(id,q._edit_token,{...meta,_dirty:!unchanged,_outbox:null,_sync_error:null,_conflict:false,
-        ...(unchanged?{net:q.net,vat_pct:q.vat_pct,total:q.total,vat:q.vat,price_complete:q.price_complete}:{})});
+        ...(unchanged?{status:result.status||snapshot.status,_unlock_approved:false,net:q.net,vat_pct:q.vat_pct,total:q.total,vat:q.vat,price_complete:q.price_complete}:{})});
       store();
     }
     async function drain(id){

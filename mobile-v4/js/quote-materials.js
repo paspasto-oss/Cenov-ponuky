@@ -7,7 +7,7 @@
   const clone=x=>JSON.parse(JSON.stringify(x));
   const fold=x=>String(x??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
   const metadata=i=>i?.stored_metadata?.quote_material||{};
-  const unlocked=q=>!!q&&q.status!=='approved'&&q._server_status!=='approved';
+  const unlocked=q=>!!q&&q.status!=='approved'&&(q._server_status!=='approved'||q._unlock_approved===true);
   const editable=i=>!!i;
   const extra=i=>['catalog','manual'].includes(metadata(i).origin);
   const isText=i=>i?.role==='quote_text'||metadata(i).kind==='text';

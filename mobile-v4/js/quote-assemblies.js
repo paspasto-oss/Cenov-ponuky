@@ -14,7 +14,7 @@
   const metadata=row=>object(row?.stored_metadata?.quote_assembly)?row.stored_metadata.quote_assembly:{};
   const materialMetadata=row=>row?.stored_metadata?.quote_material||{};
   const rowId=row=>metadata(row).id||null;
-  const unlocked=q=>!!q&&q.status!=='approved'&&q._server_status!=='approved';
+  const unlocked=q=>!!q&&q.status!=='approved'&&(q._server_status!=='approved'||q._unlock_approved===true);
   const isText=row=>row?.role==='quote_text'||metadata(row).kind==='text'||materialMetadata(row).kind==='text';
   const rounded=(value,digits=2)=>Math.round((value+Number.EPSILON)*10**digits)/10**digits;
 

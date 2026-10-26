@@ -29,13 +29,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <link rel="stylesheet" href="js/quote-material-editor.css?v=20261008-code1">
-<script src="js/quote-materials.js?v=20261008-code1"></script>
-<script src="js/quote-assemblies.js?v=20261024-customer1"></script>
+<script src="js/quote-materials.js?v=20261026-unlock1"></script>
+<script src="js/quote-assemblies.js?v=20261026-unlock1"></script>
 <script src="js/hvac-scenarios.js?v=20261010-bundle1"></script>
 <script src="js/quote-row-output.js?v=20261011-transport-output1"></script>
 <script src="js/quote-workbench-output.js?v=20261026-header1"></script>
-<script src="js/quote-storage.js?v=20261005-atomic1"></script>
-<script src="js/db.js?v=20261025-contacts1"></script>
+<script src="js/quote-storage.js?v=20261026-unlock1"></script>
+<script src="js/db.js?v=20261026-unlock1"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
@@ -428,8 +428,9 @@
         </div>
       </div>
     </div>
-    <div id="approvedPriceNotice" class="notice hidden" style="margin-bottom:10px">Schválená ponuka je uzamknutá. Pre ďalšie úpravy vytvorte kópiu s novým číslom.</div>
+    <div id="approvedPriceNotice" class="notice hidden" style="margin-bottom:10px">Schválená ponuka je uzamknutá. Môžete odomknúť túto verziu na opravu položiek alebo vytvoriť novú revíziu.</div>
     <button id="editQuoteRowsButton" type="button" class="btn ghost full" style="margin-bottom:10px" onclick="openQuoteRows()">≡ Upraviť položky ponuky</button>
+    <button id="unlockApprovedQuoteButton" type="button" class="btn primary full hidden" style="margin-bottom:10px" onclick="unlockApprovedQuoteForEditing()">🔓 Odomknúť túto verziu na úpravu položiek</button>
     <button id="copyApprovedQuoteButton" type="button" class="btn ghost full hidden" style="margin-bottom:10px" onclick="copyQuoteForEditing()">+ Vytvoriť upraviteľnú kópiu</button>
     <div id="finalMaterialEditorSlot"></div>
     <div id="finalSummary" class="card"></div>
@@ -605,7 +606,19 @@ function draftQuoteNameChanged(){
   }
 }
 window.SpektraSetActiveContext=setActiveContext;
-function isQuotePriceLocked(q=current){return q?.status==='approved'||q?._server_status==='approved'}
+function isQuotePriceLocked(q=current){return q?.status==='approved'||(q?._server_status==='approved'&&q?._unlock_approved!==true)}
+async function unlockApprovedQuoteForEditing(){
+ if(!current||!isQuotePriceLocked())return;
+ const quote=current;
+ if(!confirm('Odomknúť ponuku '+(quote.quote_no||'')+' na opravu položiek? Jej stav sa zmení zo „Schválená“ na „Na schválenie“. Číslo tejto ponuky zostane zachované.'))return;
+ quote.status='ready';quote._unlock_approved=true;
+ const result=await upsertCurrent();
+ if(current!==quote)return;
+ if(!result?.ok){quote.status='approved';renderFinal();alert('Odomknutie nebolo potvrdené: '+(result?.error||'uloženie nebolo potvrdené.')+' Miestna požiadavka zostala zachovaná; skúste synchronizáciu zopakovať.');return;}
+ renderFinal();
+ if(!result.synced)alert('Odomknutie čaká na synchronizáciu. Položky môžete upraviť; zmeny sa odošlú po obnovení pripojenia.');
+ openQuoteRows();
+}
 function go(id){
   if((id==='home'||id==='inspectionHome')&&typeof quoteRowsEditorActive!=='undefined')quoteRowsEditorActive=false;
   if(isQuotePriceLocked()&&(/^step[1-4]$/.test(id)||id==='quoteRows')){
@@ -2915,6 +2928,7 @@ function renderFinal(){
  const locked=isQuotePriceLocked();
  const priceLockNotice=document.getElementById('approvedPriceNotice');if(priceLockNotice)priceLockNotice.classList.toggle('hidden',!locked);
  const editButton=document.getElementById('editQuoteRowsButton');if(editButton)editButton.classList.toggle('hidden',locked);
+ const unlockButton=document.getElementById('unlockApprovedQuoteButton');if(unlockButton)unlockButton.classList.toggle('hidden',!locked);
  const copyButton=document.getElementById('copyApprovedQuoteButton');if(copyButton)copyButton.classList.toggle('hidden',!locked);
  const finalRefresh=document.getElementById('finalRefreshPriceBtn');if(finalRefresh)finalRefresh.classList.toggle('hidden',locked||!isTradeQuote(current));
  const tradeQuote=isTradeQuote(current),items=current.items||[];

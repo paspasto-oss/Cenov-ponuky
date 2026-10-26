@@ -463,6 +463,7 @@ window.SpektraDB = (() => {
     const metadataOnly=q.status==='approved'&&q._server_status==='approved';
     const quotePayload={
       id:q.remote_id||null,local_id:q.id,customer_id:q.remote_customer_id||null,status:q.status||'draft',
+      unlock_approved:q._unlock_approved===true,
       category:q.category||null,brand:q.brand||null,system_type:q.system_type||null,
       installation_tier:q.installation_tier||'standard',building:q.building||{},device:q.device||{},
       optional_services:q.optional_services||{},subsidy:q.subsidy||{},workflow:workflowState(q),
