@@ -109,6 +109,7 @@
       <div class="field"><label>Poznámka</label><textarea id="cNote" placeholder="Čokoľvek dôležité od zákazníka…"></textarea></div>
     </div>
     <div class="grid2"><button class="btn primary full" type="button" onclick="SpektraQuoteWorkbench.quickStart()">Rýchla ponuka zo scenára →</button><button class="btn ghost full" type="button" onclick="nextBuilding()">Výber podľa budovy →</button></div>
+    <button class="btn ghost full" type="button" style="margin-top:9px;min-height:48px" onclick="nextOtherQuote()">🔧 Ponuka na iné práce – rozvod potrubia, výmena radiátorov, montáže a opravy →</button>
       <div class="quoteBackBar"><button class="btn ghost" type="button" onclick="go('home')">← Späť na prehľad</button></div>
   </section>
 
@@ -1005,6 +1006,21 @@ function nextBuilding(){
   current.customer={name,phone,email:s(document.getElementById('cEmail').value),address:addr,note:s(document.getElementById('cNote').value)};
   current.estimated_realization_date=date;
   renderExternalDhwTankPicker();go('step2');
+}
+function nextOtherQuote(){
+  const name=s(document.getElementById('cName').value),phone=s(document.getElementById('cPhone').value),addr=s(document.getElementById('cAddress').value);
+  if(!name||!phone||!addr){alert('Vyplň meno, telefón a adresu realizácie.');return;}
+  const dateInput=document.getElementById('cEstimatedRealizationDate');
+  const date=SpektraRealizationDate.normalize(dateInput?.value||'');
+  if(dateInput?.validity?.badInput||(dateInput?.value&&!date)){
+    dateInput.setAttribute('aria-invalid','true');dateInput.reportValidity?.();
+    alert('Zadaj platný dátum realizácie alebo nechaj pole prázdne.');return;
+  }
+  dateInput?.removeAttribute('aria-invalid');
+  current.customer={name,phone,email:s(document.getElementById('cEmail').value),address:addr,note:s(document.getElementById('cNote').value)};
+  current.estimated_realization_date=date;
+  selectCat('other');
+  go('step3');
 }
 function toggleLoss(){let known=document.getElementById('hasLoss').value==='yes';document.getElementById('lossKnown').classList.toggle('hidden',!known);document.getElementById('lossEstimate').classList.toggle('hidden',known)}
 function nextCategory(){let known=document.getElementById('hasLoss').value==='yes',loss=+document.getElementById('heatLoss').value||0,area=+document.getElementById('area').value||0;if(known&&loss<=0){alert('Zadaj tepelnú stratu.');return}if(!known&&area<=0){alert('Zadaj vykurovanú plochu.');return}const dhwSolution=current.category==='air_conditioning'?'none':document.getElementById('dhwMode').value;const externalTankCode=dhwSolution==='external'?(document.getElementById('externalDhwTankCode')?.value||EXTERNAL_DHW_TANK_200.code):null;current.building={known_loss:known,heat_loss_kw:known?loss:null,area_m2:known?null:area,w_per_m2:+document.getElementById('buildingClass').value,heating:document.getElementById('heating').value,dhw_solution:dhwSolution,with_external_dhw_tank:dhwSolution==='external',external_dhw_tank_code:externalTankCode};renderChoices();go('step3')}
