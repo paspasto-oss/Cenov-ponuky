@@ -11,7 +11,7 @@
     if(uid!==owner){remote=[];loaded=0;owner=uid;}
     const records=[...remote.map(c=>({...c,name:c.name||c.company||''})),...local('spektra_quotes_v4').map(r=>r.customer),...local('spektra_inspections_v1').map(r=>r.customer)];
     const seen=new Set();return records.filter(Boolean).map(c=>({id:c.id||null,...Object.fromEntries(fields.map(k=>[k,String(c[k]||'').trim()]))})).filter(c=>{
-      if(!c.name||(!c.phone&&!c.email&&!c.address)||fold(c.name)==='bez mena')return false;
+      if(!c.name||fold(c.name)==='bez mena')return false;
       // Keep different people and different site addresses distinct.
       const key=fields.map(k=>k==='phone'?c[k].replace(/\D/g,''):fold(c[k])).join('\u0000');
       if(seen.has(key))return false;seen.add(key);return true;
